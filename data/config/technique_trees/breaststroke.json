@@ -1,0 +1,224 @@
+{
+  "strokeId": "breaststroke",
+  "name": "Breaststroke Technique Tree",
+  "generatedAt": "2026-04-22",
+  "customized": true,
+  "nodes": [
+    {
+      "id": "breast_body",
+      "techniqueId": "body_position",
+      "level": 1,
+      "name": "Breaststroke Body Position",
+      "description": "Float prone, head neutral between breaths",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "body_flat",
+          "name": "Flatness",
+          "unit": "rating",
+          "description": "Body flatness 1-5"
+        }
+      ],
+      "prerequisites": [],
+      "children": [
+        "breast_stream",
+        "breast_kick"
+      ]
+    },
+    {
+      "id": "breast_stream",
+      "techniqueId": "streamline",
+      "level": 2,
+      "name": "Breaststroke Streamline",
+      "description": "Push off in streamline, arms extended",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "hold_time",
+          "name": "Glide Time",
+          "unit": "seconds",
+          "description": "Glide duration off wall"
+        }
+      ],
+      "prerequisites": [
+        "breast_body"
+      ],
+      "children": [
+        "breast_kick"
+      ]
+    },
+    {
+      "id": "breast_pull",
+      "techniqueId": "pull",
+      "level": 4,
+      "name": "Breaststroke Pull",
+      "description": "Small outsweep, catch, insweep to chin",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "pull_width",
+          "name": "Pull Width",
+          "unit": "cm",
+          "description": "Width of outsweep"
+        }
+      ],
+      "prerequisites": [
+        "breast_kick"
+      ],
+      "children": [
+        "breast_breath"
+      ]
+    },
+    {
+      "id": "breast_breath",
+      "techniqueId": "breathing",
+      "level": 5,
+      "name": "Breaststroke Breath Timing",
+      "description": "Breathe during insweep, head down during kick",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "breath_timing",
+          "name": "Timing",
+          "unit": "rating",
+          "description": "Breath timing 1-5"
+        }
+      ],
+      "prerequisites": [
+        "breast_pull"
+      ],
+      "children": [
+        "breast_glide"
+      ]
+    },
+    {
+      "id": "breast_glide",
+      "techniqueId": "streamline",
+      "level": 6,
+      "name": "Glide Phase",
+      "description": "Streamline glide between strokes",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "stroke_rate",
+          "name": "Stroke Rate",
+          "unit": "strokes/min",
+          "description": "Strokes per minute"
+        }
+      ],
+      "prerequisites": [
+        "breast_breath"
+      ],
+      "children": [
+        "breast_turn"
+      ]
+    },
+    {
+      "id": "breast_turn",
+      "techniqueId": "open_turn",
+      "level": 7,
+      "name": "Breaststroke Turn",
+      "description": "Touch both hands, pivot, push off streamline",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "turn_time",
+          "name": "Turn Time",
+          "unit": "seconds",
+          "description": "Turn duration"
+        }
+      ],
+      "prerequisites": [
+        "breast_glide"
+      ],
+      "children": [
+        "breast_pullout"
+      ]
+    },
+    {
+      "id": "breast_pullout",
+      "techniqueId": "pull",
+      "level": 8,
+      "name": "Breaststroke Pullout",
+      "description": "One pull, one kick, streamline to surface",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "pullout_dist",
+          "name": "Pullout Distance",
+          "unit": "meters",
+          "description": "Distance before surfacing"
+        }
+      ],
+      "prerequisites": [
+        "breast_turn"
+      ],
+      "children": []
+    },
+    {
+      "id": "breast_kick",
+      "techniqueId": "breaststroke_kick",
+      "level": 3,
+      "name": "Whip Kick Basics",
+      "description": "Bring heels to bum, whip out and together",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "kick_width",
+          "name": "Kick Width",
+          "unit": "cm",
+          "description": "Width of kick"
+        }
+      ],
+      "prerequisites": [
+        "breast_body",
+        "breast_stream"
+      ],
+      "children": [
+        "breast_pull",
+        "breast_kick.1",
+        "breast_kick.2",
+        "breast_kick.3"
+      ]
+    },
+    {
+      "id": "breast_kick.1",
+      "techniqueId": "breaststroke_kick",
+      "level": 4,
+      "name": "Whip Kick Basics: Surface-Level Hip Alignment",
+      "description": "Maintain a flat, horizontal body line with hips positioned at or just below the water surface throughout the entire kick cycle.",
+      "revisit": true,
+      "prerequisites": [
+        "breast_kick"
+      ],
+      "children": []
+    },
+    {
+      "id": "breast_kick.2",
+      "techniqueId": "breaststroke_kick",
+      "level": 5,
+      "name": "Whip Kick Basics: Elevated Knee Recovery",
+      "description": "Draw heels toward glutes while actively keeping knees pointed downward and maintained at or above hip height to prevent lower-body drag.",
+      "revisit": true,
+      "prerequisites": [
+        "breast_kick"
+      ],
+      "children": []
+    },
+    {
+      "id": "breast_kick.3",
+      "techniqueId": "breaststroke_kick",
+      "level": 6,
+      "name": "Whip Kick Basics: Strategic Pause Timing",
+      "description": "Hold the fully flexed leg position for a distinct one-second beat before initiating the outward and backward leg extension to optimize catch and rhythm.",
+      "revisit": false,
+      "prerequisites": [
+        "breast_kick"
+      ],
+      "children": []
+    }
+  ],
+  "rootNodes": [
+    "breast_body"
+  ]
+}

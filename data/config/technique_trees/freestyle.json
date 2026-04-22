@@ -1,0 +1,119 @@
+{
+  "strokeId": "freestyle",
+  "name": "Freestyle Technique Tree",
+  "generatedAt": "2026-04-22",
+  "customized": false,
+  "nodes": [
+    {
+      "id": "free_body",
+      "techniqueId": "body_position",
+      "level": 1,
+      "name": "Horizontal Body Position",
+      "description": "Maintain flat, horizontal body position in water",
+      "revisit": true,
+      "metrics": [{"id": "body_angle", "name": "Body Angle", "unit": "degrees", "description": "Angle from horizontal"}],
+      "prerequisites": [],
+      "children": ["free_stream"]
+    },
+    {
+      "id": "free_stream",
+      "techniqueId": "streamline",
+      "level": 2,
+      "name": "Streamline Off Wall",
+      "description": "Push off wall in tight streamline position",
+      "revisit": true,
+      "metrics": [{"id": "hold_time", "name": "Hold Time", "unit": "seconds", "description": "Time in streamline"}],
+      "prerequisites": ["free_body"],
+      "children": ["free_kick"]
+    },
+    {
+      "id": "free_kick",
+      "techniqueId": "flutter_kick",
+      "level": 2,
+      "name": "Basic Flutter Kick",
+      "description": "Continuous alternating up-down kick from hips",
+      "revisit": true,
+      "metrics": [{"id": "kick_rate", "name": "Kick Rate", "unit": "kicks/sec", "description": "Kicks per second"}],
+      "prerequisites": ["free_body"],
+      "children": ["free_entry"]
+    },
+    {
+      "id": "free_entry",
+      "techniqueId": "catch",
+      "level": 3,
+      "name": "Hand Entry",
+      "description": "Enter hand smoothly, fingertips first, in front of shoulder",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["free_stream", "free_kick"],
+      "children": ["free_catch"]
+    },
+    {
+      "id": "free_catch",
+      "techniqueId": "catch",
+      "level": 4,
+      "name": "High-Elbow Catch",
+      "description": "Early vertical forearm, catch water with high elbow",
+      "revisit": true,
+      "metrics": [{"id": "catch_depth", "name": "Catch Depth", "unit": "cm", "description": "Depth of catch"}],
+      "prerequisites": ["free_entry"],
+      "children": ["free_pull", "free_breath"]
+    },
+    {
+      "id": "free_pull",
+      "techniqueId": "pull",
+      "level": 5,
+      "name": "Pull Phase",
+      "description": "Powerful pull through with accelerating speed",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["free_catch"],
+      "children": ["free_finish"]
+    },
+    {
+      "id": "free_breath",
+      "techniqueId": "breathing",
+      "level": 5,
+      "name": "Bilateral Breathing",
+      "description": "Breath every 3 strokes, maintain rhythm",
+      "revisit": true,
+      "metrics": [{"id": "breath_count", "name": "Breath Count", "unit": "strokes/breath", "description": "Strokes per breath"}],
+      "prerequisites": ["free_catch"],
+      "children": ["free_finish"]
+    },
+    {
+      "id": "free_finish",
+      "techniqueId": "recovery",
+      "level": 6,
+      "name": "Recovery & Finish",
+      "description": "Smooth arm recovery, relaxed hand exit",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["free_pull", "free_breath"],
+      "children": ["free_turn"]
+    },
+    {
+      "id": "free_turn",
+      "techniqueId": "flip_turn",
+      "level": 7,
+      "name": "Flip Turn",
+      "description": "Approach wall, flip quickly, push off in streamline",
+      "revisit": true,
+      "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Time from approach to push"}],
+      "prerequisites": ["free_finish"],
+      "children": ["free_dolphin"]
+    },
+    {
+      "id": "free_dolphin",
+      "techniqueId": "dolphin_kicks",
+      "level": 8,
+      "name": "Underwater Dolphin Kicks",
+      "description": "3-5 dolphin kicks off wall before surfacing",
+      "revisit": true,
+      "metrics": [{"id": "kick_count", "name": "Kick Count", "unit": "kicks", "description": "Number of underwater kicks"}],
+      "prerequisites": ["free_turn"],
+      "children": []
+    }
+  ],
+  "rootNodes": ["free_body"]
+}

@@ -1,0 +1,108 @@
+{
+  "strokeId": "butterfly",
+  "name": "Butterfly Technique Tree",
+  "generatedAt": "2026-04-22",
+  "customized": false,
+  "nodes": [
+    {
+      "id": "fly_body",
+      "techniqueId": "body_position",
+      "level": 1,
+      "name": "Butterfly Body Motion",
+      "description": "Undulating body motion, chest press and hip snap",
+      "revisit": true,
+      "metrics": [{"id": "undulation", "name": "Undulation", "unit": "rating", "description": "Body undulation 1-5"}],
+      "prerequisites": [],
+      "children": ["fly_dolphin"]
+    },
+    {
+      "id": "fly_dolphin",
+      "techniqueId": "dolphin_kicks",
+      "level": 2,
+      "name": "Dolphin Kick Basics",
+      "description": "Continuous dolphin kick from core",
+      "revisit": true,
+      "metrics": [{"id": "kick_count", "name": "Kick Count", "unit": "kicks/stroke", "description": "Kicks per arm stroke"}],
+      "prerequisites": ["fly_body"],
+      "children": ["fly_stream", "fly_entry"]
+    },
+    {
+      "id": "fly_stream",
+      "techniqueId": "streamline",
+      "level": 2,
+      "name": "Fly Streamline",
+      "description": "Push off streamline with dolphin kicks",
+      "revisit": true,
+      "metrics": [{"id": "kick_count_wall", "name": "Wall Kicks", "unit": "kicks", "description": "Kicks off wall"}],
+      "prerequisites": ["fly_dolphin"],
+      "children": ["fly_entry"]
+    },
+    {
+      "id": "fly_entry",
+      "techniqueId": "catch",
+      "level": 3,
+      "name": "Butterfly Entry",
+      "description": "Enter hands together, wide, in front",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["fly_stream", "fly_dolphin"],
+      "children": ["fly_catch"]
+    },
+    {
+      "id": "fly_catch",
+      "techniqueId": "catch",
+      "level": 4,
+      "name": "Fly Catch",
+      "description": "Catch water, press outward then inward",
+      "revisit": true,
+      "metrics": [{"id": "catch_width", "name": "Catch Width", "unit": "cm", "description": "Width of catch"}],
+      "prerequisites": ["fly_entry"],
+      "children": ["fly_pull"]
+    },
+    {
+      "id": "fly_pull",
+      "techniqueId": "pull",
+      "level": 5,
+      "name": "Fly Pull Pattern",
+      "description": "Keyhole pull, press out, in, then back",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["fly_catch"],
+      "children": ["fly_breath"]
+    },
+    {
+      "id": "fly_breath",
+      "techniqueId": "breathing",
+      "level": 6,
+      "name": "Fly Breathing",
+      "description": "Breathe during pull, head down before recovery",
+      "revisit": true,
+      "metrics": [{"id": "breath_freq", "name": "Breath Frequency", "unit": "strokes/breath", "description": "Strokes per breath"}],
+      "prerequisites": ["fly_pull"],
+      "children": ["fly_recovery"]
+    },
+    {
+      "id": "fly_recovery",
+      "techniqueId": "recovery",
+      "level": 7,
+      "name": "Fly Recovery",
+      "description": "Throw arms forward, low and wide",
+      "revisit": false,
+      "metrics": [],
+      "prerequisites": ["fly_breath"],
+      "children": ["fly_turn"]
+    },
+    {
+      "id": "fly_turn",
+      "techniqueId": "open_turn",
+      "level": 8,
+      "name": "Fly Turn",
+      "description": "Two-hand touch, pivot, streamline exit",
+      "revisit": true,
+      "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Turn duration"}],
+      "prerequisites": ["fly_recovery"],
+      "children": []
+    }
+  ],
+  "rootNodes": ["fly_body"]
+}

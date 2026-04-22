@@ -1,0 +1,196 @@
+@import "tailwindcss";
+
+/* ============================================
+   SWIMMER NOTES - Deep Blue Pool Theme
+   Inspired by Olympic swimming pools
+   ============================================ */
+
+@theme inline {
+  /* Pool Water Colors */
+  --color-pool-surface: #e0f7fa;
+  --color-pool-light: #80deea;
+  --color-pool-mid: #26c6da;
+  --color-pool-deep: #0097a7;
+  --color-pool-dark: #006064;
+
+  /* Lane Line Colors */
+  --color-lane-red: #e53935;
+  --color-lane-yellow: #ffd54f;
+  --color-lane-white: #ffffff;
+
+  /* Accent */
+  --color-accent: #ff7043;
+
+  /* Background/Foreground */
+  --color-background: #e0f7fa;
+  --color-foreground: #004d56;
+
+  /* Fonts */
+  --font-sans: 'Outfit', 'DM Sans', system-ui, sans-serif;
+  --font-mono: 'DM Mono', monospace;
+}
+
+/* Pool Wave Background Pattern */
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: 'Outfit', 'DM Sans', system-ui, sans-serif;
+  position: relative;
+  overflow-x: hidden;
+}
+
+/* Animated Wave Background */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 120'%3E%3Cpath fill='rgba(255,255,255,0.1)' d='M0,60 C300,120 600,0 900,60 C1200,120 1200,60 1200,60 L1200,120 L0,120 Z'/%3E%3C/svg%3E") repeat-x;
+  background-size: 1200px 120px;
+  animation: wave-move 8s linear infinite;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 0;
+}
+
+body::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 100%;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 80'%3E%3Cpath fill='rgba(0,150,167,0.15)' d='M0,40 C200,80 400,0 600,40 C800,80 1000,0 1200,40 L1200,80 L0,80 Z'/%3E%3C/svg%3E") repeat-x;
+  background-size: 1200px 80px;
+  animation: wave-move 12s linear infinite reverse;
+  opacity: 0.6;
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes wave-move {
+  from { background-position-x: 0; }
+  to { background-position-x: 1200px; }
+}
+
+/* Ripple Effect Animation */
+@keyframes ripple {
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+}
+
+/* Bubble Float Animation */
+@keyframes bubble-float {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    opacity: 0.7;
+  }
+  50% {
+    transform: translateY(-10px) scale(1.1);
+    opacity: 0.9;
+  }
+}
+
+/* Splash Effect */
+@keyframes splash {
+  0% { transform: scale(1) rotate(0deg); }
+  25% { transform: scale(1.2) rotate(-5deg); }
+  50% { transform: scale(0.9) rotate(5deg); }
+  75% { transform: scale(1.1) rotate(-3deg); }
+  100% { transform: scale(1) rotate(0deg); }
+}
+
+/* Lane Line Pattern */
+.lane-pattern {
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    transparent 20px,
+    var(--lane-red) 20px,
+    var(--lane-red) 25px,
+    transparent 25px,
+    transparent 45px,
+    var(--lane-yellow) 45px,
+    var(--lane-yellow) 50px
+  );
+}
+
+/* Glass Card Effect */
+.glass-card {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow:
+    0 8px 32px rgba(0, 97, 115, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+/* Water Droplet Shape */
+.water-drop {
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+}
+
+/* Scrollbar Styling - Pool Themed */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--pool-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--pool-mid);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pool-deep);
+}
+
+/* Focus Ring - Water Ripple Style */
+*:focus-visible {
+  outline: 2px solid var(--pool-deep);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(38, 198, 218, 0.3);
+}
+
+/* Selection Color */
+::selection {
+  background: var(--pool-light);
+  color: var(--text-primary);
+}
+
+/* Responsive Water Animation */
+@media (max-width: 768px) {
+  body::before,
+  body::after {
+    animation-duration: 6s;
+    background-size: 800px 80px;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  body::before,
+  body::after,
+  .status-bubble,
+  .splash-hover:hover {
+    animation: none;
+  }
+
+  .ripple-container::after {
+    animation: none;
+  }
+}
