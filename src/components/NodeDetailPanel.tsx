@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { TechniqueTreeNode, MetricValue } from '@/lib/types';
-import { RefreshCw, Plus, X, Sparkles, Loader2, ChevronDown } from 'lucide-react';
+import { RefreshCw, Plus, X, Sparkles, Loader2, ChevronDown, Edit3, Check, Save } from 'lucide-react';
 
 interface NodeDetailPanelProps {
   node: TechniqueTreeNode | null;
@@ -11,18 +11,27 @@ interface NodeDetailPanelProps {
   onClose: () => void;
   onExpandNode?: (nodeId: string, coachingTips: string) => void;
   onAddCustomNode?: (parentNode: TechniqueTreeNode) => void;
+  onUpdateNode?: (node: TechniqueTreeNode) => void;
 }
 
-export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNode, onAddCustomNode }: NodeDetailPanelProps) {
+export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNode, onAddCustomNode, onUpdateNode }: NodeDetailPanelProps) {
   const [metrics, setMetrics] = useState<Record<string, { actual: number; unit: string }>>({});
   const [coachingTips, setCoachingTips] = useState<string | null>(null);
   const [loadingTips, setLoadingTips] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [editRevisit, setEditRevisit] = useState(false);
 
   // Fetch coaching tips when node changes
   useEffect(() => {
     if (node) {
       setLoadingTips(true);
       setCoachingTips(null);
+      setIsEditing(false);
+      setEditName(node.name);
+      setEditDescription(node.description);
+      setEditRevisit(node.revisit);
 
       fetch('/api/coaching', {
         method: 'POST',
@@ -38,6 +47,7 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
         .finally(() => setLoadingTips(false));
     } else {
       setCoachingTips(null);
+      setIsEditing(false);
     }
   }, [node]);
 
@@ -72,6 +82,32 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
     onConfirm(node, metricValues, coachingTips || undefined);
   };
 
+  const handleStartEdit = () => {
+    setEditName(node.name);
+    setEditDescription(node.description);
+    setEditRevisit(node.revisit);
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!onUpdateNode || !editName.trim()) return;
+    const updatedNode: TechniqueTreeNode = {
+      ...node,
+      name: editName.trim(),
+      description: editDescription.trim(),
+      revisit: editRevisit,
+    };
+    onUpdateNode(updatedNode);
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditName(node.name);
+    setEditDescription(node.description);
+    setEditRevisit(node.revisit);
+    setIsEditing(false);
+  };
+
   const levelColors = [
     'bg-emerald-100 text-emerald-700 border-emerald-300',
     'bg-pool-mid/20 text-pool-dark border-pool-mid/30',
@@ -102,19 +138,95 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
         <span className={`px-3 py-1.5 rounded-lg text-sm font-semibold border ${levelColor}`}>
           Level {node.level}
         </span>
-        {node.revisit && (
+        {!isEditing && node.revisit && (
           <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-amber-100 text-amber-700 border border-amber-200 flex items-center gap-1.5">
             <RefreshCw className="w-3.5 h-3.5" />
             Revisit
           </span>
         )}
+        {/* Edit button */}
+        {!isEditing && onUpdateNode && (
+          <button
+            onClick={handleStartEdit}
+            className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pool-surface text-pool-dark border border-pool-light/50
+              hover:bg-pool-light/50 transition-colors flex items-center gap-1.5"
+          >
+            <Edit3 className="w-3.5 h-3.5" />
+            Edit
+          </button>
+        )}
       </div>
 
-      {/* Name */}
-      <h3 className="text-xl font-bold text-pool-dark mb-2">{node.name}</h3>
+      {/* Name - Editable */}
+      {isEditing ? (
+        <div className="mb-2">
+          <label className="block text-xs font-semibold text-pool-mid mb-1">Name</label>
+          <input
+            type="text"
+            value={editName}
+            onChange={(e) => setEditName(e.target.value)}
+            className="w-full rounded-xl border border-pool-mid/30 px-3 py-2 text-lg font-bold text-pool-dark
+              bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
+          />
+        </div>
+      ) : (
+        <h3 className="text-xl font-bold text-pool-dark mb-2">{node.name}</h3>
+      )}
 
-      {/* Description */}
-      <p className="text-pool-mid mb-4">{node.description}</p>
+      {/* Description - Editable */}
+      {isEditing ? (
+        <div className="mb-4">
+          <label className="block text-xs font-semibold text-pool-mid mb-1">Description</label>
+          <textarea
+            value={editDescription}
+            onChange={(e) => setEditDescription(e.target.value)}
+            rows={3}
+            className="w-full rounded-xl border border-pool-mid/30 px-3 py-2 text-sm text-pool-dark
+              bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none resize-none"
+          />
+        </div>
+      ) : (
+        <p className="text-pool-mid mb-4">{node.description}</p>
+      )}
+
+      {/* Revisit toggle in edit mode */}
+      {isEditing && (
+        <div className="flex items-center gap-3 mb-4">
+          <input
+            type="checkbox"
+            id="editRevisit"
+            checked={editRevisit}
+            onChange={(e) => setEditRevisit(e.target.checked)}
+            className="w-5 h-5 rounded border-pool-mid/30 text-pool-mid focus:ring-pool-mid/20"
+          />
+          <label htmlFor="editRevisit" className="text-sm font-medium text-pool-dark">
+            Mark as revisit (needs regular practice)
+          </label>
+        </div>
+      )}
+
+      {/* Edit Save/Cancel buttons */}
+      {isEditing && (
+        <div className="flex gap-2 mb-4">
+          <button
+            onClick={handleSaveEdit}
+            disabled={!editName.trim()}
+            className="flex-1 flex items-center justify-center gap-2 bg-pool-mid text-white rounded-xl px-4 py-2
+              font-semibold hover:bg-pool-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Save className="w-4 h-4" />
+            Save Changes
+          </button>
+          <button
+            onClick={handleCancelEdit}
+            className="flex items-center justify-center gap-2 bg-pool-surface text-pool-dark rounded-xl px-4 py-2
+              font-semibold hover:bg-pool-light/50 transition-colors border border-pool-light/50"
+          >
+            <X className="w-4 h-4" />
+            Cancel
+          </button>
+        </div>
+      )}
 
       {/* Coaching Tips - AI generated */}
       <div className="mb-4">

@@ -225,6 +225,35 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     }
   };
 
+  // Update existing node
+  const handleUpdateNode = async (updatedNode: TechniqueTreeNode) => {
+    if (!tree) return;
+
+    const updatedTree: TechniqueTree = {
+      ...tree,
+      nodes: tree.nodes.map(n => n.id === updatedNode.id ? updatedNode : n),
+      customized: true,
+    };
+
+    // Save tree via API
+    try {
+      const res = await fetch(`/api/trees/${strokeId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedTree),
+      });
+
+      if (res.ok) {
+        setTree(updatedTree);
+        setSelectedNode(updatedNode);
+        setSuccessMessage(`Updated "${updatedNode.name}"!`);
+        setTimeout(() => setSuccessMessage(null), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to update node:', err);
+    }
+  };
+
   const handleSaveGoals = async () => {
     const today = new Date().toISOString().split('T')[0];
 
@@ -459,6 +488,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             onClose={() => setSelectedNode(null)}
             onExpandNode={handleExpandNode}
             onAddCustomNode={handleAddCustomNode}
+            onUpdateNode={handleUpdateNode}
           />
         </div>
       </main>
