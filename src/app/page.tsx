@@ -3,6 +3,7 @@ import { getNote, createEmptyNote } from '@/lib/data/notes';
 import { getStrokes } from '@/lib/data/config';
 import { DailyNoteFormWrapper } from './DailyNoteFormWrapper';
 import { StrokeCard, MasterTreeCard } from '@/components/StrokeCard';
+import { VideoAnalysisCard } from '@/components/VideoAnalysisCard';
 
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
@@ -72,6 +73,11 @@ export default async function Home() {
           {/* Master Techniques */}
           <div className="mt-5">
             <MasterTreeCard />
+          </div>
+
+          {/* Video Analysis */}
+          <div className="mt-4">
+            <VideoAnalysisCard />
           </div>
         </section>
 
