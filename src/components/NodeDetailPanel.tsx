@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { TechniqueTreeNode, MetricValue } from '@/lib/types';
 import { RefreshCw, Plus, X, Sparkles, Loader2, ChevronDown, Edit3, Check, Save } from 'lucide-react';
 
@@ -23,28 +23,41 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
   const [editDescription, setEditDescription] = useState('');
   const [editRevisit, setEditRevisit] = useState(false);
 
-  // Fetch coaching tips when node changes
+  // Cache tips by node ID to avoid re-fetching
+  const tipsCacheRef = useRef<Record<string, string>>({});
+
+  // Fetch coaching tips when node changes (with caching)
   useEffect(() => {
     if (node) {
-      setLoadingTips(true);
-      setCoachingTips(null);
       setIsEditing(false);
       setEditName(node.name);
       setEditDescription(node.description);
       setEditRevisit(node.revisit);
 
-      fetch('/api/coaching', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node }),
-      })
-        .then(res => res.json())
-        .then(data => setCoachingTips(data.tips))
-        .catch(err => {
-          console.error('Failed to fetch coaching tips:', err);
-          setCoachingTips('Failed to load coaching tips');
+      // Check cache first
+      if (tipsCacheRef.current[node.id]) {
+        setCoachingTips(tipsCacheRef.current[node.id]);
+        setLoadingTips(false);
+      } else {
+        setLoadingTips(true);
+        setCoachingTips(null);
+
+        fetch('/api/coaching', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ node }),
         })
-        .finally(() => setLoadingTips(false));
+          .then(res => res.json())
+          .then(data => {
+            setCoachingTips(data.tips);
+            tipsCacheRef.current[node.id] = data.tips; // Cache for future
+          })
+          .catch(err => {
+            console.error('Failed to fetch coaching tips:', err);
+            setCoachingTips('Failed to load coaching tips');
+          })
+          .finally(() => setLoadingTips(false));
+      }
     } else {
       setCoachingTips(null);
       setIsEditing(false);
@@ -236,6 +249,34 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
               <Sparkles className="w-4 h-4 text-blue-600" />
             </div>
             Coach&apos;s Key Focus Points
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                // Clear cache and refetch
+                if (node) {
+                  tipsCacheRef.current[node.id] = '';
+                  setLoadingTips(true);
+                  fetch('/api/coaching', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ node }),
+                  })
+                    .then(res => res.json())
+                    .then(data => {
+                      setCoachingTips(data.tips);
+                      tipsCacheRef.current[node.id] = data.tips;
+                    })
+                    .catch(err => console.error('Failed to refresh tips:', err))
+                    .finally(() => setLoadingTips(false));
+                }
+              }}
+              disabled={loadingTips}
+              className="ml-2 text-xs text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-1 font-medium transition-colors"
+              title="Refresh tips"
+            >
+              <RefreshCw className={`w-3.5 h-3.5 ${loadingTips ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
             <span className="text-xs text-pool-mid ml-auto font-normal">Click to expand</span>
           </summary>
           <div className="p-3 pt-2 text-sm text-pool-dark whitespace-pre-line border-t border-blue-100">

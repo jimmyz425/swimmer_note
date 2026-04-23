@@ -2,30 +2,8 @@
   "strokeId": "freestyle",
   "name": "Freestyle Technique Tree",
   "generatedAt": "2026-04-22",
-  "customized": false,
+  "customized": true,
   "nodes": [
-    {
-      "id": "free_body",
-      "techniqueId": "body_position",
-      "level": 1,
-      "name": "Horizontal Body Position",
-      "description": "Maintain flat, horizontal body position in water",
-      "revisit": true,
-      "metrics": [{"id": "body_angle", "name": "Body Angle", "unit": "degrees", "description": "Angle from horizontal"}],
-      "prerequisites": [],
-      "children": ["free_stream"]
-    },
-    {
-      "id": "free_stream",
-      "techniqueId": "streamline",
-      "level": 2,
-      "name": "Streamline Off Wall",
-      "description": "Push off wall in tight streamline position",
-      "revisit": true,
-      "metrics": [{"id": "hold_time", "name": "Hold Time", "unit": "seconds", "description": "Time in streamline"}],
-      "prerequisites": ["free_body"],
-      "children": ["free_kick"]
-    },
     {
       "id": "free_kick",
       "techniqueId": "flutter_kick",
@@ -33,9 +11,20 @@
       "name": "Basic Flutter Kick",
       "description": "Continuous alternating up-down kick from hips",
       "revisit": true,
-      "metrics": [{"id": "kick_rate", "name": "Kick Rate", "unit": "kicks/sec", "description": "Kicks per second"}],
-      "prerequisites": ["free_body"],
-      "children": ["free_entry"]
+      "metrics": [
+        {
+          "id": "kick_rate",
+          "name": "Kick Rate",
+          "unit": "kicks/sec",
+          "description": "Kicks per second"
+        }
+      ],
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": [
+        "free_entry"
+      ]
     },
     {
       "id": "free_entry",
@@ -45,19 +34,13 @@
       "description": "Enter hand smoothly, fingertips first, in front of shoulder",
       "revisit": false,
       "metrics": [],
-      "prerequisites": ["free_stream", "free_kick"],
-      "children": ["free_catch"]
-    },
-    {
-      "id": "free_catch",
-      "techniqueId": "catch",
-      "level": 4,
-      "name": "High-Elbow Catch",
-      "description": "Early vertical forearm, catch water with high elbow",
-      "revisit": true,
-      "metrics": [{"id": "catch_depth", "name": "Catch Depth", "unit": "cm", "description": "Depth of catch"}],
-      "prerequisites": ["free_entry"],
-      "children": ["free_pull", "free_breath"]
+      "prerequisites": [
+        "free_stream",
+        "free_kick"
+      ],
+      "children": [
+        "free_catch"
+      ]
     },
     {
       "id": "free_pull",
@@ -67,8 +50,12 @@
       "description": "Powerful pull through with accelerating speed",
       "revisit": false,
       "metrics": [],
-      "prerequisites": ["free_catch"],
-      "children": ["free_finish"]
+      "prerequisites": [
+        "free_catch"
+      ],
+      "children": [
+        "free_finish"
+      ]
     },
     {
       "id": "free_breath",
@@ -77,9 +64,20 @@
       "name": "Bilateral Breathing",
       "description": "Breath every 3 strokes, maintain rhythm",
       "revisit": true,
-      "metrics": [{"id": "breath_count", "name": "Breath Count", "unit": "strokes/breath", "description": "Strokes per breath"}],
-      "prerequisites": ["free_catch"],
-      "children": ["free_finish"]
+      "metrics": [
+        {
+          "id": "breath_count",
+          "name": "Breath Count",
+          "unit": "strokes/breath",
+          "description": "Strokes per breath"
+        }
+      ],
+      "prerequisites": [
+        "free_catch"
+      ],
+      "children": [
+        "free_finish"
+      ]
     },
     {
       "id": "free_finish",
@@ -89,8 +87,13 @@
       "description": "Smooth arm recovery, relaxed hand exit",
       "revisit": false,
       "metrics": [],
-      "prerequisites": ["free_pull", "free_breath"],
-      "children": ["free_turn"]
+      "prerequisites": [
+        "free_pull",
+        "free_breath"
+      ],
+      "children": [
+        "free_turn"
+      ]
     },
     {
       "id": "free_turn",
@@ -99,9 +102,20 @@
       "name": "Flip Turn",
       "description": "Approach wall, flip quickly, push off in streamline",
       "revisit": true,
-      "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Time from approach to push"}],
-      "prerequisites": ["free_finish"],
-      "children": ["free_dolphin"]
+      "metrics": [
+        {
+          "id": "turn_time",
+          "name": "Turn Time",
+          "unit": "seconds",
+          "description": "Time from approach to push"
+        }
+      ],
+      "prerequisites": [
+        "free_finish"
+      ],
+      "children": [
+        "free_dolphin"
+      ]
     },
     {
       "id": "free_dolphin",
@@ -110,10 +124,242 @@
       "name": "Underwater Dolphin Kicks",
       "description": "3-5 dolphin kicks off wall before surfacing",
       "revisit": true,
-      "metrics": [{"id": "kick_count", "name": "Kick Count", "unit": "kicks", "description": "Number of underwater kicks"}],
-      "prerequisites": ["free_turn"],
+      "metrics": [
+        {
+          "id": "kick_count",
+          "name": "Kick Count",
+          "unit": "kicks",
+          "description": "Number of underwater kicks"
+        }
+      ],
+      "prerequisites": [
+        "free_turn"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_stream",
+      "techniqueId": "streamline",
+      "level": 2,
+      "name": "Streamline Off Wall",
+      "description": "Push off wall in tight streamline position",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "hold_time",
+          "name": "Hold Time",
+          "unit": "seconds",
+          "description": "Time in streamline"
+        }
+      ],
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": [
+        "free_kick",
+        "free_stream.1",
+        "free_stream.2",
+        "free_stream.3",
+        "free_stream.4"
+      ]
+    },
+    {
+      "id": "free_stream.1",
+      "techniqueId": "streamline",
+      "level": 3,
+      "name": "Streamline Off Wall: Overhead Arm Lock",
+      "description": "Lock hands together and squeeze biceps tightly against the ears to form the upper body streamline shape; practice dryland or standing in the pool to build muscle memory.",
+      "revisit": true,
+      "prerequisites": [
+        "free_stream"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_stream.2",
+      "techniqueId": "streamline",
+      "level": 3,
+      "name": "Streamline Off Wall: Neutral Head Tuck",
+      "description": "Tuck the chin to look straight down, aligning the head with the spine; practice during short surface floats without pushing off the wall to isolate the head position.",
+      "revisit": true,
+      "prerequisites": [
+        "free_stream"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_stream.3",
+      "techniqueId": "streamline",
+      "level": 3,
+      "name": "Streamline Off Wall: Lower Body Squeeze",
+      "description": "Squeeze legs tightly together from hips to ankles and forcefully point the toes; practice during short subsurface glides focusing entirely on lower body tension.",
+      "revisit": true,
+      "prerequisites": [
+        "free_stream"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_stream.4",
+      "techniqueId": "streamline",
+      "level": 3,
+      "name": "Streamline Off Wall: Horizontal Push-off",
+      "description": "Combine the locked arms, neutral head, and tight legs to push off the wall forcefully while looking down to keep the trajectory perfectly horizontal; practice by pushing off from a dead stop and observing glide depth.",
+      "revisit": false,
+      "prerequisites": [
+        "free_stream"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_body",
+      "techniqueId": "body_position",
+      "level": 1,
+      "name": "Horizontal Body Position",
+      "description": "Maintain flat, horizontal body position in water",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "body_angle",
+          "name": "Body Angle",
+          "unit": "degrees",
+          "description": "Angle from horizontal"
+        }
+      ],
+      "prerequisites": [],
+      "children": [
+        "free_stream",
+        "free_body.1",
+        "free_body.2",
+        "free_body.3",
+        "free_body.4"
+      ]
+    },
+    {
+      "id": "free_body.1",
+      "techniqueId": "body_position",
+      "level": 2,
+      "name": "Horizontal Body Position: Neutral Head Position",
+      "description": "Look straight down with a relaxed neck to establish a horizontal baseline without creating downward leverage.",
+      "revisit": true,
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_body.2",
+      "techniqueId": "body_position",
+      "level": 2,
+      "name": "Horizontal Body Position: Chest Press",
+      "description": "Actively push the chest down into the water to use lung buoyancy as a fulcrum, naturally lifting the hips.",
+      "revisit": true,
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_body.3",
+      "techniqueId": "body_position",
+      "level": 2,
+      "name": "Horizontal Body Position: Continuous Kick",
+      "description": "Maintain a steady, rhythmic flutter kick to generate upward lift for the lower body and prevent sinking legs.",
+      "revisit": false,
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_body.4",
+      "techniqueId": "body_position",
+      "level": 2,
+      "name": "Horizontal Body Position: Low-Profile Breathing",
+      "description": "Rotate the head to the side for air without lifting the forehead forward, preserving the horizontal body line.",
+      "revisit": true,
+      "prerequisites": [
+        "free_body"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_catch",
+      "techniqueId": "catch",
+      "level": 4,
+      "name": "High-Elbow Catch",
+      "description": "Early vertical forearm, catch water with high elbow",
+      "revisit": true,
+      "metrics": [
+        {
+          "id": "catch_depth",
+          "name": "Catch Depth",
+          "unit": "cm",
+          "description": "Depth of catch"
+        }
+      ],
+      "prerequisites": [
+        "free_entry"
+      ],
+      "children": [
+        "free_pull",
+        "free_breath",
+        "free_catch.1",
+        "free_catch.2",
+        "free_catch.3",
+        "free_catch.4"
+      ]
+    },
+    {
+      "id": "free_catch.1",
+      "techniqueId": "catch",
+      "level": 5,
+      "name": "High-Elbow Catch: Maintain elbow-wrist height relationship",
+      "description": "Practice holding your arm in the water with your elbow consistently held higher than your wrist",
+      "revisit": true,
+      "prerequisites": [
+        "free_catch"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_catch.2",
+      "techniqueId": "catch",
+      "level": 5,
+      "name": "High-Elbow Catch: Initiate catch before arm drop",
+      "description": "Practice starting the catch movement as your arm enters the water, before your arm has a chance to drop downward",
+      "revisit": true,
+      "prerequisites": [
+        "free_catch"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_catch.3",
+      "techniqueId": "catch",
+      "level": 5,
+      "name": "High-Elbow Catch: Avoid early elbow locking",
+      "description": "Practice keeping your elbow slightly bent through the initial catch phase, preventing it from locking into a rigid position prematurely",
+      "revisit": true,
+      "prerequisites": [
+        "free_catch"
+      ],
+      "children": []
+    },
+    {
+      "id": "free_catch.4",
+      "techniqueId": "catch",
+      "level": 5,
+      "name": "High-Elbow Catch: Coordinate hip rotation with elbow lift",
+      "description": "Practice rotating your hip to generate movement that lifts your elbow into the correct high position for the catch",
+      "revisit": true,
+      "prerequisites": [
+        "free_catch"
+      ],
       "children": []
     }
   ],
-  "rootNodes": ["free_body"]
+  "rootNodes": [
+    "free_body"
+  ]
 }
