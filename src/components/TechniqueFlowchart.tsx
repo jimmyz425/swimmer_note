@@ -6,7 +6,7 @@ import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types
 import { MermaidDiagram } from '@/lib/mermaid';
 import { treeToMermaid, getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { AlertTriangle, Check, ArrowLeft, Plus, X, Loader2, Edit3, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { AlertTriangle, Check, ArrowLeft, Plus, X, Edit3, PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -29,9 +29,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const [customNodeName, setCustomNodeName] = useState('');
   const [customNodeDescription, setCustomNodeDescription] = useState('');
   const [customNodeRevisit, setCustomNodeRevisit] = useState(false);
-
-  // Expansion loading state
-  const [expandingNode, setExpandingNode] = useState(false);
 
   // Panel width state
   const [panelExpanded, setPanelExpanded] = useState(false);
@@ -125,39 +122,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const handleCancelReplace = () => {
     setPendingGoal(null);
     setWarningMessage(null);
-  };
-
-  // Expand node with LLM
-  const handleExpandNode = async (nodeId: string, coachingTips: string) => {
-    if (!tree) return;
-    setExpandingNode(true);
-
-    try {
-      const res = await fetch('/api/trees/expand', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          strokeId,
-          nodeId,
-          coachingTips,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success) {
-        setTree(data.tree);
-        setSuccessMessage(`Expanded "${data.parentNode.name}" into ${data.newNodes.length} sub-nodes!`);
-        setTimeout(() => setSuccessMessage(null), 3000);
-        // Keep node selected to show new children
-        setSelectedNode(data.parentNode);
-      } else {
-        console.error('Failed to expand:', data.error);
-      }
-    } catch (err) {
-      console.error('Failed to expand node:', err);
-    } finally {
-      setExpandingNode(false);
-    }
   };
 
   // Open custom node modal
@@ -385,17 +349,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         </div>
       )}
 
-      {/* Expansion Loading Overlay */}
-      {expandingNode && (
-        <div className="fixed inset-0 bg-pool-surface/80 flex items-center justify-center z-40">
-          <div className="glass-card rounded-xl p-6 flex flex-col items-center gap-4">
-            <Loader2 className="w-8 h-8 text-pool-mid animate-spin" />
-            <p className="text-pool-dark font-semibold">Expanding node with LLM...</p>
-            <p className="text-pool-mid text-sm">Analyzing coaching tips to create sub-nodes</p>
-          </div>
-        </div>
-      )}
-
       {/* Custom Node Creation Modal */}
       {showCustomNodeModal && customNodeParent && (
         <div className="fixed inset-0 bg-pool-surface/80 flex items-center justify-center z-40">
@@ -508,7 +461,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             strokeId={strokeId}
             onConfirm={handleConfirm}
             onClose={() => setSelectedNode(null)}
-            onExpandNode={handleExpandNode}
             onAddCustomNode={handleAddCustomNode}
             onUpdateNode={handleUpdateNode}
             onNavigateNode={handleNavigateNode}
