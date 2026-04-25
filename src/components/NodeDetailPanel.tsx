@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { TechniqueTreeNode, MetricValue, ParsedTechniqueContent } from '@/lib/types';
-import { Plus, X, Edit3, Save, Target, ChevronLeft, ChevronRight, GripVertical } from 'lucide-react';
+import { Plus, X, Edit3, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface NodeDetailPanelProps {
   node: TechniqueTreeNode | null;
@@ -15,7 +15,7 @@ interface NodeDetailPanelProps {
   isMobile?: boolean;
 }
 
-type TabType = 'keyPoints' | 'mistakes' | 'drills';
+type TabType = 'keyPoints' | 'mistakes' | 'drills' | 'competitiveMetrics';
 
 const tierColors: Record<string, string> = {
   beginner: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -180,7 +180,8 @@ export function NodeDetailPanel({
   const tabs: { id: TabType; label: string; hasContent: boolean }[] = [
     { id: 'keyPoints', label: 'Key Points', hasContent: !!markdownContent?.keyPoints?.length },
     { id: 'mistakes', label: 'Mistakes', hasContent: !!markdownContent?.commonMistakes?.length },
-    { id: 'drills', label: 'Drills', hasContent: !!markdownContent?.competitiveDrills?.length || !!markdownContent?.specificDrills?.length },
+    { id: 'drills', label: 'Drills', hasContent: !!markdownContent?.specificDrills?.length },
+    { id: 'competitiveMetrics', label: 'Metrics', hasContent: !!markdownContent?.competitiveDrills?.length },
   ];
 
   // Mobile layout - full screen card with swipe navigation
@@ -346,90 +347,74 @@ export function NodeDetailPanel({
             </div>
           )}
 
-          {/* Drills */}
-          {activeTab === 'drills' && markdownContent && (
+          {/* Drills - Basic only */}
+          {activeTab === 'drills' && markdownContent?.specificDrills && (
+            <div className="space-y-3 py-4">
+              {markdownContent.specificDrills.map((drill, idx) => (
+                <div
+                  key={idx}
+                  className="p-4 rounded-xl bg-gray-50 border border-gray-100"
+                >
+                  <p className="text-sm font-semibold text-gray-900">{drill.name.replace(/\*\*/g, '')}</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{drill.description}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Competitive Metrics */}
+          {activeTab === 'competitiveMetrics' && markdownContent?.competitiveDrills && (
             <div className="space-y-4 py-4">
-              {/* Basic Drills */}
-              {markdownContent.specificDrills && markdownContent.specificDrills.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                    Basic Drills
-                  </h4>
-                  <div className="space-y-3">
-                    {markdownContent.specificDrills.map((drill, idx) => (
-                      <div
-                        key={idx}
-                        className="p-4 rounded-xl bg-gray-50 border border-gray-100"
-                      >
-                        <p className="text-sm font-semibold text-gray-900">{drill.name.replace(/\*\*/g, '')}</p>
-                        <p className="text-xs text-gray-500 mt-1 leading-relaxed">{drill.description}</p>
-                      </div>
-                    ))}
+              {markdownContent.competitiveDrills.map((drill, idx) => (
+                <div
+                  key={idx}
+                  className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50 to-white overflow-hidden"
+                >
+                  {/* Drill Header */}
+                  <div className="px-4 py-3 bg-blue-100/50 border-b border-blue-100">
+                    <h5 className="text-sm font-bold text-gray-900">{drill.name}</h5>
+                    {drill.selfCheck && (
+                      <p className="text-xs text-blue-600 mt-1">{drill.selfCheck}</p>
+                    )}
                   </div>
-                </div>
-              )}
 
-              {/* Competitive Drills */}
-              {markdownContent.competitiveDrills && markdownContent.competitiveDrills.length > 0 && (
-                <div>
-                  <h4 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <Target className="w-4 h-4" />
-                    Competitive Drills
-                  </h4>
-                  <div className="space-y-4">
-                    {markdownContent.competitiveDrills.map((drill, idx) => (
-                      <div
-                        key={idx}
-                        className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50 to-white overflow-hidden"
-                      >
-                        {/* Drill Header */}
-                        <div className="px-4 py-3 bg-blue-100/50 border-b border-blue-100">
-                          <h5 className="text-sm font-bold text-gray-900">{drill.name}</h5>
-                          {drill.selfCheck && (
-                            <p className="text-xs text-blue-600 mt-1">{drill.selfCheck}</p>
-                          )}
-                        </div>
-
-                        {/* Tiers - always single column on mobile */}
-                        <div className="p-3 space-y-2">
-                          {(['beginner', 'intermediate', 'advanced', 'elite'] as const).map(tier => (
-                            drill.tieredTargets[tier] && (
-                              <div
-                                key={tier}
-                                className={`relative p-3 rounded-lg border ${tierColors[tier]} active:scale-[0.98] transition-transform`}
-                                onClick={() => handleCreateGoalFromTier(drill.name, tier, drill.tieredTargets[tier])}
-                              >
-                                <div className="flex items-center justify-between">
-                                  <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${tierBadgeColors[tier]}`}>
-                                    {tier}
-                                  </span>
-                                  <Plus className="w-4 h-4 text-current opacity-60" />
-                                </div>
-                                <p className="text-sm mt-2 leading-snug">{drill.tieredTargets[tier]}</p>
-                              </div>
-                            )
-                          ))}
-                        </div>
-
-                        {/* Video Checks */}
-                        {drill.videoChecks && drill.videoChecks.length > 0 && (
-                          <div className="px-4 py-3 border-t border-blue-100 bg-gray-50/50">
-                            <p className="text-xs font-semibold text-gray-500 mb-2">Video Check:</p>
-                            <ul className="text-xs text-gray-500 space-y-1">
-                              {drill.videoChecks.map((check, i) => (
-                                <li key={i} className="flex items-start gap-2">
-                                  <span className="text-blue-400 mt-0.5">•</span>
-                                  <span>{check}</span>
-                                </li>
-                              ))}
-                            </ul>
+                  {/* Tiers */}
+                  <div className="p-3 space-y-2">
+                    {(['beginner', 'intermediate', 'advanced', 'elite'] as const).map(tier => (
+                      drill.tieredTargets[tier] && (
+                        <div
+                          key={tier}
+                          className={`relative p-3 rounded-lg border ${tierColors[tier]} active:scale-[0.98] transition-transform`}
+                          onClick={() => handleCreateGoalFromTier(drill.name, tier, drill.tieredTargets[tier])}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className={`px-2 py-1 rounded text-xs font-bold uppercase ${tierBadgeColors[tier]}`}>
+                              {tier}
+                            </span>
+                            <Plus className="w-4 h-4 text-current opacity-60" />
                           </div>
-                        )}
-                      </div>
+                          <p className="text-sm mt-2 leading-snug">{drill.tieredTargets[tier]}</p>
+                        </div>
+                      )
                     ))}
                   </div>
+
+                  {/* Video Checks */}
+                  {drill.videoChecks && drill.videoChecks.length > 0 && (
+                    <div className="px-4 py-3 border-t border-blue-100 bg-gray-50/50">
+                      <p className="text-xs font-semibold text-gray-500 mb-2">Video Check:</p>
+                      <ul className="text-xs text-gray-500 space-y-1">
+                        {drill.videoChecks.map((check, i) => (
+                          <li key={i} className="flex items-start gap-2">
+                            <span className="text-blue-400 mt-0.5">•</span>
+                            <span>{check}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -595,77 +580,65 @@ export function NodeDetailPanel({
           </div>
         )}
 
-        {/* Drills Tab */}
-        {activeTab === 'drills' && markdownContent && (
-          <div className="space-y-4">
-            {markdownContent.specificDrills && markdownContent.specificDrills.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-pool-mid uppercase tracking-wide mb-2">Basic Drills</h4>
-                <div className="space-y-2">
-                  {markdownContent.specificDrills.map((drill, idx) => (
-                    <div key={idx} className="p-3 rounded-lg bg-white/60 border border-pool-light/30 hover:border-pool-mid/30 transition-colors">
-                      <p className="text-sm font-medium text-pool-dark">{drill.name.replace(/\*\*/g, '')}</p>
-                      <p className="text-xs text-pool-mid mt-1 leading-relaxed">{drill.description}</p>
-                    </div>
+        {/* Drills Tab - Basic only */}
+        {activeTab === 'drills' && markdownContent?.specificDrills && (
+          <div className="space-y-2">
+            {markdownContent.specificDrills.map((drill, idx) => (
+              <div key={idx} className="p-3 rounded-lg bg-white/60 border border-pool-light/30 hover:border-pool-mid/30 transition-colors">
+                <p className="text-sm font-medium text-pool-dark">{drill.name.replace(/\*\*/g, '')}</p>
+                <p className="text-xs text-pool-mid mt-1 leading-relaxed">{drill.description}</p>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Competitive Metrics Tab */}
+        {activeTab === 'competitiveMetrics' && markdownContent?.competitiveDrills && (
+          <div className="space-y-3">
+            {markdownContent.competitiveDrills.map((drill, idx) => (
+              <div key={idx} className="rounded-xl border border-blue-100/60 bg-gradient-to-br from-blue-50/40 to-white overflow-hidden">
+                <div className="px-3 py-2 bg-blue-100/30 border-b border-blue-100/40">
+                  <h5 className="text-sm font-semibold text-pool-dark">{drill.name}</h5>
+                  {drill.selfCheck && (
+                    <p className="text-xs text-blue-600 mt-0.5">{drill.selfCheck}</p>
+                  )}
+                </div>
+
+                <div className={`p-2 grid gap-1.5 ${expanded ? 'grid-cols-2' : 'grid-cols-1'}`}>
+                  {(['beginner', 'intermediate', 'advanced', 'elite'] as const).map(tier => (
+                    drill.tieredTargets[tier] && (
+                      <div key={tier} className={`group relative p-2 rounded-lg border ${tierColors[tier]} hover:shadow-sm transition-all`}>
+                        <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold uppercase ${tierBadgeColors[tier]}`}>
+                          {tier}
+                        </span>
+                        <p className="text-xs mt-1 leading-snug">{drill.tieredTargets[tier]}</p>
+                        <button
+                          onClick={() => handleCreateGoalFromTier(drill.name, tier, drill.tieredTargets[tier])}
+                          className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
+                          title="Add as goal"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )
                   ))}
                 </div>
+
+                {drill.videoChecks && drill.videoChecks.length > 0 && (
+                  <div className="px-3 py-2 border-t border-blue-100/40">
+                    <p className="text-xs font-medium text-pool-mid mb-1">Video Check:</p>
+                    <ul className="text-xs text-pool-mid space-y-0.5">
+                      {drill.videoChecks.map((check, i) => (
+                        <li key={i} className="flex items-start gap-1">
+                          <span className="text-blue-400">•</span>
+                          <span>{check}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
               </div>
-            )}
-
-            {markdownContent.competitiveDrills && markdownContent.competitiveDrills.length > 0 && (
-              <div>
-                <h4 className="text-xs font-semibold text-pool-mid uppercase tracking-wide mb-2 flex items-center gap-1.5">
-                  <Target className="w-3.5 h-3.5" />
-                  Competitive Drills
-                </h4>
-                <div className="space-y-3">
-                  {markdownContent.competitiveDrills.map((drill, idx) => (
-                    <div key={idx} className="rounded-xl border border-blue-100/60 bg-gradient-to-br from-blue-50/40 to-white overflow-hidden">
-                      <div className="px-3 py-2 bg-blue-100/30 border-b border-blue-100/40">
-                        <h5 className="text-sm font-semibold text-pool-dark">{drill.name}</h5>
-                        {drill.selfCheck && (
-                          <p className="text-xs text-blue-600 mt-0.5">{drill.selfCheck}</p>
-                        )}
-                      </div>
-
-                      <div className={`p-2 grid gap-1.5 ${expanded ? 'grid-cols-2' : 'grid-cols-1'}`}>
-                        {(['beginner', 'intermediate', 'advanced', 'elite'] as const).map(tier => (
-                          drill.tieredTargets[tier] && (
-                            <div key={tier} className={`group relative p-2 rounded-lg border ${tierColors[tier]} hover:shadow-sm transition-all`}>
-                              <span className={`inline-block px-1.5 py-0.5 rounded text-xs font-semibold uppercase ${tierBadgeColors[tier]}`}>
-                                {tier}
-                              </span>
-                              <p className="text-xs mt-1 leading-snug">{drill.tieredTargets[tier]}</p>
-                              <button
-                                onClick={() => handleCreateGoalFromTier(drill.name, tier, drill.tieredTargets[tier])}
-                                className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
-                                title="Add as goal"
-                              >
-                                <Plus className="w-3 h-3" />
-                              </button>
-                            </div>
-                          )
-                        ))}
-                      </div>
-
-                      {drill.videoChecks && drill.videoChecks.length > 0 && (
-                        <div className="px-3 py-2 border-t border-blue-100/40">
-                          <p className="text-xs font-medium text-pool-mid mb-1">Video Check:</p>
-                          <ul className="text-xs text-pool-mid space-y-0.5">
-                            {drill.videoChecks.map((check, i) => (
-                              <li key={i} className="flex items-start gap-1">
-                                <span className="text-blue-400">•</span>
-                                <span>{check}</span>
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            ))}
           </div>
         )}
       </div>
