@@ -80,16 +80,22 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   };
 
   const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
+    const description = goalFromTier
+      ? goalFromTier.tier
+        ? `${goalFromTier.drillName} (${goalFromTier.tier})`
+        : goalFromTier.target.slice(0, 60) + (goalFromTier.target.length > 60 ? '...' : '')
+      : node.name;
+
     const newGoal: Goal = {
       id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'technique',
       target: node.techniqueId,
       strokeId: strokeId,
-      description: goalFromTier ? `${goalFromTier.drillName} (${goalFromTier.tier})` : node.name,
+      description,
       techniqueNodeId: node.id,
       metrics,
       coachingTips,
-      notes: goalFromTier ? `Target: ${goalFromTier.target}` : undefined,
+      notes: goalFromTier?.target || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
