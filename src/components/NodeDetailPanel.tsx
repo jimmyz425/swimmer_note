@@ -9,13 +9,12 @@ interface NodeDetailPanelProps {
   strokeId: string;
   onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => void;
   onClose: () => void;
-  onAddCustomNode?: (parentNode: TechniqueTreeNode) => void;
   onUpdateNode?: (node: TechniqueTreeNode) => void;
   onNavigateNode?: (filename: string) => void;
   expanded?: boolean;
 }
 
-type TabType = 'overview' | 'keyPoints' | 'mistakes' | 'drills';
+type TabType = 'keyPoints' | 'mistakes' | 'drills';
 
 const tierColors: Record<string, string> = {
   beginner: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -36,17 +35,14 @@ export function NodeDetailPanel({
   strokeId,
   onConfirm,
   onClose,
-  onAddCustomNode,
   onUpdateNode,
   onNavigateNode,
   expanded = false
 }: NodeDetailPanelProps) {
-  const [activeTab, setActiveTab] = useState<TabType>('overview');
-  const [metrics, setMetrics] = useState<Record<string, { actual: number; unit: string }>>({});
+  const [activeTab, setActiveTab] = useState<TabType>('keyPoints');
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDescription, setEditDescription] = useState('');
-  const [editRevisit, setEditRevisit] = useState(false);
 
   // Markdown content state
   const [markdownContent, setMarkdownContent] = useState<ParsedTechniqueContent | null>(null);
@@ -61,8 +57,7 @@ export function NodeDetailPanel({
       setIsEditing(false);
       setEditName(node.name);
       setEditDescription(node.description);
-      setEditRevisit(node.revisit);
-      setActiveTab('overview');
+      setActiveTab('keyPoints');
 
       // Fetch markdown content if sourceFile exists
       if (node.sourceFile) {
@@ -112,22 +107,8 @@ export function NodeDetailPanel({
     );
   }
 
-  const handleMetricChange = (metricId: string, value: number) => {
-    setMetrics(prev => ({
-      ...prev,
-      [metricId]: {
-        actual: value,
-        unit: node.metrics?.find(m => m.id === metricId)?.unit || '',
-      },
-    }));
-  };
-
   const handleConfirm = (goalFromTier?: { drillName: string; tier: string; target: string }) => {
-    const metricValues: Record<string, MetricValue> = {};
-    for (const [id, val] of Object.entries(metrics)) {
-      metricValues[id] = { actual: val.actual, unit: val.unit };
-    }
-    onConfirm(node, metricValues, undefined, goalFromTier);
+    onConfirm(node, {}, undefined, goalFromTier);
   };
 
   const handleCreateGoalFromTier = (drillName: string, tier: string, target: string) => {
@@ -137,7 +118,6 @@ export function NodeDetailPanel({
   const handleStartEdit = () => {
     setEditName(node.name);
     setEditDescription(node.description);
-    setEditRevisit(node.revisit);
     setIsEditing(true);
   };
 
@@ -147,7 +127,6 @@ export function NodeDetailPanel({
       ...node,
       name: editName.trim(),
       description: editDescription.trim(),
-      revisit: editRevisit,
     };
     onUpdateNode(updatedNode);
     setIsEditing(false);
@@ -156,7 +135,6 @@ export function NodeDetailPanel({
   const handleCancelEdit = () => {
     setEditName(node.name);
     setEditDescription(node.description);
-    setEditRevisit(node.revisit);
     setIsEditing(false);
   };
 
@@ -186,7 +164,6 @@ export function NodeDetailPanel({
   };
 
   const tabs: { id: TabType; label: string; hasContent: boolean }[] = [
-    { id: 'overview', label: 'Overview', hasContent: true },
     { id: 'keyPoints', label: 'Key Points', hasContent: !!markdownContent?.keyPoints?.length },
     { id: 'mistakes', label: 'Mistakes', hasContent: !!markdownContent?.commonMistakes?.length },
     { id: 'drills', label: 'Drills', hasContent: !!markdownContent?.competitiveDrills?.length || !!markdownContent?.specificDrills?.length },
@@ -228,11 +205,6 @@ export function NodeDetailPanel({
           <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${levelGradient} shadow-sm`}>
             Lv.{node.level}
           </span>
-          {!isEditing && node.revisit && (
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-              Revisit
-            </span>
-          )}
           {!isEditing && onUpdateNode && (
             <button
               onClick={handleStartEdit}
@@ -269,21 +241,11 @@ export function NodeDetailPanel({
 
         {/* Edit controls */}
         {isEditing && (
-          <div className="flex items-center gap-3">
-            <input
-              type="checkbox"
-              id="editRevisit"
-              checked={editRevisit}
-              onChange={(e) => setEditRevisit(e.target.checked)}
-              className="w-4 h-4 rounded border-pool-mid/30"
-            />
-            <label htmlFor="editRevisit" className="text-xs text-pool-dark">Revisit</label>
-            <div className="flex-1 flex gap-2 justify-end">
-              <button onClick={handleCancelEdit} className="px-3 py-1 text-xs font-medium text-pool-mid hover:text-pool-dark">Cancel</button>
-              <button onClick={handleSaveEdit} disabled={!editName.trim()} className="px-3 py-1 text-xs font-semibold bg-pool-mid text-white rounded-lg hover:bg-pool-deep disabled:opacity-50">
-                <Save className="w-3 h-3 inline mr-1" />Save
-              </button>
-            </div>
+          <div className="flex items-center gap-2 justify-end">
+            <button onClick={handleCancelEdit} className="px-3 py-1 text-xs font-medium text-pool-mid hover:text-pool-dark">Cancel</button>
+            <button onClick={handleSaveEdit} disabled={!editName.trim()} className="px-3 py-1 text-xs font-semibold bg-pool-mid text-white rounded-lg hover:bg-pool-deep disabled:opacity-50">
+              <Save className="w-3 h-3 inline mr-1" />Save
+            </button>
           </div>
         )}
 
@@ -294,13 +256,13 @@ export function NodeDetailPanel({
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                disabled={!tab.hasContent && tab.id !== 'overview'}
+                disabled={!tab.hasContent}
                 className={`flex-1 px-2 py-1 rounded-md text-xs font-medium transition-all
                   ${activeTab === tab.id
                     ? 'bg-pool-mid text-white shadow-sm'
                     : 'text-pool-mid hover:text-pool-dark hover:bg-pool-light/40'
                   }
-                  ${!tab.hasContent && tab.id !== 'overview' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                  ${!tab.hasContent ? 'opacity-40 cursor-not-allowed' : ''}`}
               >
                 {tab.label}
               </button>
@@ -311,46 +273,10 @@ export function NodeDetailPanel({
 
       {/* Scrollable Content Area */}
       <div className="flex-1 overflow-y-auto px-4 pb-4 space-y-3">
-        {loadingMarkdown && activeTab !== 'overview' && (
+        {loadingMarkdown && (
           <div className="flex items-center gap-2 py-4">
             <span className="text-sm text-pool-mid">Loading...</span>
           </div>
-        )}
-
-        {/* Overview Tab */}
-        {activeTab === 'overview' && (
-          <>
-            {/* Add Custom Sub-Node */}
-            {onAddCustomNode && (
-              <button
-                onClick={() => onAddCustomNode(node)}
-                className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium text-pool-dark bg-pool-light/30 hover:bg-pool-light/50 transition-colors"
-              >
-                <Plus className="w-4 h-4" />
-                Add Custom Sub-Node
-              </button>
-            )}
-
-            {/* Metrics */}
-            {node.metrics && node.metrics.length > 0 && (
-              <div className="space-y-2">
-                <h4 className="text-xs font-semibold text-pool-mid uppercase tracking-wide">Metrics</h4>
-                {node.metrics.map(metric => (
-                  <div key={metric.id} className="flex items-center gap-2 bg-pool-surface/40 px-3 py-2 rounded-lg">
-                    <label className="text-sm text-pool-dark flex-1">{metric.name}</label>
-                    <input
-                      type="number"
-                      value={metrics[metric.id]?.actual ?? ''}
-                      onChange={(e) => handleMetricChange(metric.id, parseFloat(e.target.value) || 0)}
-                      placeholder="0"
-                      className="w-16 rounded-md border border-pool-light/40 px-2 py-1 text-sm text-pool-dark bg-white text-center"
-                    />
-                    <span className="text-xs text-pool-mid">{metric.unit}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </>
         )}
 
         {/* Key Points Tab */}
@@ -460,20 +386,6 @@ export function NodeDetailPanel({
           </div>
         )}
       </div>
-
-      {/* Fixed Footer - Add Goal Button */}
-      {activeTab === 'overview' && (
-        <div className="p-4 pt-0">
-          <button
-            onClick={() => handleConfirm()}
-            className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-pool-mid to-pool-deep text-white rounded-xl px-4 py-2.5
-              font-semibold hover:from-pool-deep hover:to-pool-darker transition-all shadow-lg shadow-pool-mid/20"
-          >
-            <Plus className="w-4 h-4" />
-            Add as Today&apos;s Goal
-          </button>
-        </div>
-      )}
     </div>
   );
 }

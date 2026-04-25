@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types';
 import { getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { Check, ArrowLeft, Plus, X, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Check, ArrowLeft, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -30,13 +30,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const [addedGoals, setAddedGoals] = useState<Goal[]>([]);
   const [existingGoals, setExistingGoals] = useState<Goal[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-
-  // Custom node creation state
-  const [showCustomNodeModal, setShowCustomNodeModal] = useState(false);
-  const [customNodeParent, setCustomNodeParent] = useState<TechniqueTreeNode | null>(null);
-  const [customNodeName, setCustomNodeName] = useState('');
-  const [customNodeDescription, setCustomNodeDescription] = useState('');
-  const [customNodeRevisit, setCustomNodeRevisit] = useState(false);
 
   // Left panel state - auto-hide
   const [leftPanelExpanded, setLeftPanelExpanded] = useState(true);
@@ -82,7 +75,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       strokeId: strokeId,
       description: goalFromTier ? `${goalFromTier.drillName} (${goalFromTier.tier})` : node.name,
       techniqueNodeId: node.id,
-      revisit: node.revisit,
       metrics,
       coachingTips,
       notes: goalFromTier ? `Target: ${goalFromTier.target}` : undefined,
@@ -95,74 +87,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     setAddedGoals([...addedGoals, newGoal]);
     setSuccessMessage(`Added "${newGoal.description}" to today's goals!`);
     setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  // Open custom node modal
-  const handleAddCustomNode = (parentNode: TechniqueTreeNode) => {
-    setCustomNodeParent(parentNode);
-    setCustomNodeName('');
-    setCustomNodeDescription('');
-    setCustomNodeRevisit(false);
-    setShowCustomNodeModal(true);
-  };
-
-  // Create custom node
-  const handleCreateCustomNode = async () => {
-    if (!tree || !customNodeParent || !customNodeName.trim()) return;
-
-    // Calculate next dot number based on existing children
-    const existingChildIds = customNodeParent.children
-      .filter(id => id.startsWith(`${customNodeParent.id}.`))
-      .map(id => parseInt(id.split('.')[1] || '0', 10));
-    const nextNumber = existingChildIds.length > 0 ? Math.max(...existingChildIds) + 1 : 1;
-
-    const newNode: TechniqueTreeNode = {
-      id: `${customNodeParent.id}.${nextNumber}`,
-      techniqueId: customNodeParent.techniqueId,
-      level: customNodeParent.level + 1,
-      name: `${customNodeParent.name}: ${customNodeName.trim()}`,
-      description: customNodeDescription.trim() || 'Custom practice focus',
-      revisit: customNodeRevisit,
-      prerequisites: [customNodeParent.id],
-      children: [],
-    };
-
-    // Update parent node (preserve existing children)
-    const updatedParent: TechniqueTreeNode = {
-      ...customNodeParent,
-      children: [...customNodeParent.children, newNode.id],
-    };
-
-    // Update tree
-    const updatedTree: TechniqueTree = {
-      ...tree,
-      nodes: [
-        ...tree.nodes.filter(n => n.id !== customNodeParent.id),
-        updatedParent,
-        newNode,
-      ],
-      customized: true,
-    };
-
-    // Save tree via API
-    try {
-      const res = await fetch(`/api/trees/${strokeId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedTree),
-      });
-
-      if (res.ok) {
-        setTree(updatedTree);
-        setShowCustomNodeModal(false);
-        setCustomNodeParent(null);
-        setSuccessMessage(`Added custom node "${newNode.name}"!`);
-        setTimeout(() => setSuccessMessage(null), 3000);
-        setSelectedNode(updatedParent);
-      }
-    } catch (err) {
-      console.error('Failed to save custom node:', err);
-    }
   };
 
   // Update existing node
@@ -295,93 +219,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         </div>
       )}
 
-      {/* Custom Node Creation Modal */}
-      {showCustomNodeModal && customNodeParent && (
-        <div className="fixed inset-0 bg-pool-surface/80 flex items-center justify-center z-40">
-          <div className="glass-card rounded-xl p-6 max-w-md w-full mx-4 shadow-xl">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold text-pool-dark">Add Custom Sub-Node</h3>
-              <button
-                onClick={() => setShowCustomNodeModal(false)}
-                className="text-pool-mid hover:text-pool-deep transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <p className="text-sm text-pool-mid mb-4">
-              Adding to: <span className="font-semibold text-pool-dark">{customNodeParent.name}</span>
-            </p>
-
-            {customNodeName.trim() && (
-              <div className="bg-pool-mid/10 px-4 py-2 rounded-lg mb-4">
-                <span className="text-xs text-pool-mid">Full name: </span>
-                <span className="text-sm font-semibold text-pool-dark">
-                  {customNodeParent.name}: {customNodeName.trim()}
-                </span>
-              </div>
-            )}
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-pool-dark mb-1.5">Sub-Node Name</label>
-                <input
-                  type="text"
-                  value={customNodeName}
-                  onChange={(e) => setCustomNodeName(e.target.value)}
-                  placeholder="e.g., Shoulder Rotation"
-                  className="w-full rounded-xl border border-pool-light/50 px-4 py-2.5 text-sm font-medium text-pool-dark
-                    bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-semibold text-pool-dark mb-1.5">Description</label>
-                <textarea
-                  value={customNodeDescription}
-                  onChange={(e) => setCustomNodeDescription(e.target.value)}
-                  placeholder="What to focus on for this technique element"
-                  rows={2}
-                  className="w-full rounded-xl border border-pool-light/50 px-4 py-2.5 text-sm text-pool-dark
-                    bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none resize-none"
-                />
-              </div>
-
-              <div className="flex items-center gap-3">
-                <input
-                  type="checkbox"
-                  id="customRevisit"
-                  checked={customNodeRevisit}
-                  onChange={(e) => setCustomNodeRevisit(e.target.checked)}
-                  className="w-5 h-5 rounded border-pool-mid/30 text-pool-mid focus:ring-pool-mid/20"
-                />
-                <label htmlFor="customRevisit" className="text-sm font-medium text-pool-dark">
-                  Mark as revisit
-                </label>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button
-                onClick={handleCreateCustomNode}
-                disabled={!customNodeName.trim()}
-                className="flex-1 flex items-center justify-center gap-2 bg-pool-mid text-white rounded-xl px-4 py-3
-                  font-semibold hover:bg-pool-deep transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                <Plus className="w-4 h-4" />
-                Create Node
-              </button>
-              <button
-                onClick={() => setShowCustomNodeModal(false)}
-                className="px-4 py-3 rounded-xl font-medium text-pool-mid hover:bg-pool-light/50 transition-colors"
-              >
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Main content: Collapsible Left Panel + Detail Panel */}
       <main className="flex-1 flex relative overflow-hidden">
         {/* Left Panel - Technique Cards */}
@@ -428,9 +265,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
                           <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${levelGradient}`}>
                             Lv.{node.level}
                           </span>
-                          {node.revisit && (
-                            <RefreshCw className="w-3 h-3 text-amber-500" />
-                          )}
                         </div>
                         <p className="text-sm font-semibold text-pool-dark leading-tight">{node.name}</p>
                         <p className="text-xs text-pool-mid mt-0.5 line-clamp-1">{node.description}</p>
@@ -475,7 +309,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             strokeId={strokeId}
             onConfirm={handleConfirm}
             onClose={() => setSelectedNode(null)}
-            onAddCustomNode={handleAddCustomNode}
             onUpdateNode={handleUpdateNode}
             onNavigateNode={handleNavigateNode}
             expanded={!leftPanelExpanded}
@@ -492,7 +325,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
               <span key={goal.id} className="bg-pool-mid/20 text-pool-dark px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2">
                 <span className="text-pool-mid">🌊</span>
                 {goal.description}
-                {goal.revisit && <RefreshCw className="w-3 h-3 text-amber-500" />}
               </span>
             ))}
           </div>
