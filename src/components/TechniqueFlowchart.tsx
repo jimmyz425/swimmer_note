@@ -75,9 +75,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const handleNodeClick = (node: TechniqueTreeNode) => {
     setSelectedNode(node);
     if (isMobile) {
-      setShowSheet(false); // Hide sheet, show detail
-    } else {
-      setLeftPanelExpanded(true);
+      setShowSheet(false);
     }
   };
 
@@ -161,14 +159,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       console.error('Failed to save goals:', err);
     }
   };
-
-  // Desktop: Auto-collapse left panel
-  useEffect(() => {
-    if (!isMobile && leftPanelExpanded && selectedNode) {
-      const timer = setTimeout(() => setLeftPanelExpanded(false), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [isMobile, leftPanelExpanded, selectedNode]);
 
   if (loading) {
     return (
@@ -342,7 +332,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         <div
           className={`absolute left-0 top-0 bottom-0 z-10 transition-all duration-300 ease-out
             ${leftPanelExpanded ? 'w-72' : 'w-12'}`}
-          onMouseEnter={() => setLeftPanelExpanded(true)}
         >
           <button
             onClick={() => setLeftPanelExpanded(!leftPanelExpanded)}
