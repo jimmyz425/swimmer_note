@@ -3,14 +3,24 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types';
-import { MermaidDiagram } from '@/lib/mermaid';
-import { treeToMermaid, getNodeById } from '@/lib/treeToMermaid';
+import { getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { AlertTriangle, Check, ArrowLeft, Plus, X, Edit3, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { AlertTriangle, Check, ArrowLeft, Plus, X, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
 }
+
+const levelColors = [
+  'from-emerald-400 to-emerald-500',
+  'from-cyan-400 to-cyan-500',
+  'from-amber-400 to-amber-500',
+  'from-orange-400 to-orange-500',
+  'from-purple-400 to-purple-500',
+  'from-pink-400 to-pink-500',
+  'from-indigo-400 to-indigo-500',
+  'from-red-400 to-red-500',
+];
 
 export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps) {
   const router = useRouter();
@@ -30,8 +40,8 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const [customNodeDescription, setCustomNodeDescription] = useState('');
   const [customNodeRevisit, setCustomNodeRevisit] = useState(false);
 
-  // Panel width state
-  const [panelExpanded, setPanelExpanded] = useState(false);
+  // Left panel state - auto-hide
+  const [leftPanelExpanded, setLeftPanelExpanded] = useState(true);
 
   // Fetch existing goals on mount
   useEffect(() => {
@@ -52,15 +62,19 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       .then(res => res.json())
       .then(data => {
         setTree(data.tree);
+        // Auto-select first node
+        if (data.tree?.nodes?.length > 0) {
+          setSelectedNode(data.tree.nodes[0]);
+        }
       })
       .catch(err => console.error('Failed to load tree:', err))
       .finally(() => setLoading(false));
   }, [strokeId]);
 
-  const handleNodeClick = (nodeId: string) => {
-    if (!tree) return;
-    const node = getNodeById(tree, nodeId);
+  const handleNodeClick = (node: TechniqueTreeNode) => {
     setSelectedNode(node);
+    // Expand left panel briefly to show selection, then auto-collapse
+    setLeftPanelExpanded(true);
   };
 
   // Check if there's already a goal from this stroke
@@ -93,11 +107,9 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       // Show warning - need to replace
       setWarningMessage(`You already have "${existingGoalFromStroke.description}" from this stroke. Replace it with "${node.name}"?`);
       setPendingGoal(newGoal);
-      setSelectedNode(null);
     } else {
       // No existing goal from this stroke - add directly
       setAddedGoals([...addedGoals, newGoal]);
-      setSelectedNode(null);
       setSuccessMessage(`Added "${node.name}" to today's goals!`);
       setTimeout(() => setSuccessMessage(null), 3000);
     }
@@ -185,7 +197,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         setCustomNodeParent(null);
         setSuccessMessage(`Added custom node "${newNode.name}"!`);
         setTimeout(() => setSuccessMessage(null), 3000);
-        // Keep parent selected to show new child
         setSelectedNode(updatedParent);
       }
     } catch (err) {
@@ -259,6 +270,16 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     }
   };
 
+  // Auto-collapse left panel after delay
+  useEffect(() => {
+    if (leftPanelExpanded && selectedNode) {
+      const timer = setTimeout(() => {
+        setLeftPanelExpanded(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [leftPanelExpanded, selectedNode]);
+
   if (loading) {
     return (
       <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light flex items-center justify-center">
@@ -275,11 +296,13 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     );
   }
 
-  const mermaidCode = treeToMermaid(tree);
   const currentGoalFromStroke = hasGoalFromStroke(strokeId);
 
+  // Sort nodes by level
+  const sortedNodes = [...tree.nodes].sort((a, b) => a.level - b.level);
+
   return (
-    <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen">
+    <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen flex flex-col">
       {/* Header */}
       <header className="glass-card shadow-sm px-6 py-4 flex items-center justify-between sticky top-0 z-20">
         <div className="flex items-center gap-4">
@@ -367,7 +390,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
               Adding to: <span className="font-semibold text-pool-dark">{customNodeParent.name}</span>
             </p>
 
-            {/* Preview of full name */}
             {customNodeName.trim() && (
               <div className="bg-pool-mid/10 px-4 py-2 rounded-lg mb-4">
                 <span className="text-xs text-pool-mid">Full name: </span>
@@ -388,7 +410,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
                   className="w-full rounded-xl border border-pool-light/50 px-4 py-2.5 text-sm font-medium text-pool-dark
                     bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
                 />
-                <p className="text-xs text-pool-mid mt-1">Will become "{customNodeParent.name}: [your input]"</p>
               </div>
 
               <div>
@@ -412,7 +433,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
                   className="w-5 h-5 rounded border-pool-mid/30 text-pool-mid focus:ring-pool-mid/20"
                 />
                 <label htmlFor="customRevisit" className="text-sm font-medium text-pool-dark">
-                  Mark as revisit (needs regular practice)
+                  Mark as revisit
                 </label>
               </div>
             </div>
@@ -438,24 +459,94 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         </div>
       )}
 
-      {/* Main content: Flowchart + Side Panel */}
-      <main className="p-6 flex gap-4 h-[calc(100vh-100px)]">
-        {/* Flowchart */}
-        <div className="flex-1 glass-card rounded-xl p-6 overflow-auto transition-all duration-300 ease-out">
-          <MermaidDiagram code={mermaidCode} onNodeClick={handleNodeClick} />
+      {/* Main content: Collapsible Left Panel + Detail Panel */}
+      <main className="flex-1 flex relative overflow-hidden">
+        {/* Left Panel - Technique Cards */}
+        <div
+          className={`absolute left-0 top-0 bottom-0 z-10 transition-all duration-300 ease-out
+            ${leftPanelExpanded ? 'w-72' : 'w-12'}`}
+          onMouseEnter={() => setLeftPanelExpanded(true)}
+        >
+          {/* Collapse Toggle Button */}
+          <button
+            onClick={() => setLeftPanelExpanded(!leftPanelExpanded)}
+            className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-6 h-12 rounded-lg bg-pool-mid/30 hover:bg-pool-mid/50
+              flex items-center justify-center text-pool-dark transition-all shadow-sm"
+          >
+            {leftPanelExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+          </button>
+
+          {/* Panel Content */}
+          <div className="h-full glass-card rounded-r-2xl overflow-hidden">
+            {leftPanelExpanded ? (
+              /* Expanded: Full card list */
+              <div className="h-full flex flex-col">
+                <div className="p-4 pb-2">
+                  <h2 className="text-sm font-bold text-pool-dark uppercase tracking-wide">Techniques</h2>
+                  <p className="text-xs text-pool-mid">{tree.nodes.length} skills</p>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-2 space-y-1.5">
+                  {sortedNodes.map(node => {
+                    const levelGradient = levelColors[Math.min(node.level - 1, levelColors.length - 1)];
+                    const isSelected = selectedNode?.id === node.id;
+
+                    return (
+                      <button
+                        key={node.id}
+                        onClick={() => handleNodeClick(node)}
+                        className={`w-full p-3 rounded-xl transition-all text-left
+                          ${isSelected
+                            ? 'bg-pool-mid/20 border-2 border-pool-mid shadow-sm'
+                            : 'bg-white/60 border border-pool-light/30 hover:bg-white/80 hover:border-pool-mid/30'
+                          }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${levelGradient}`}>
+                            Lv.{node.level}
+                          </span>
+                          {node.revisit && (
+                            <RefreshCw className="w-3 h-3 text-amber-500" />
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-pool-dark leading-tight">{node.name}</p>
+                        <p className="text-xs text-pool-mid mt-0.5 line-clamp-1">{node.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : (
+              /* Collapsed: Level indicators only */
+              <div className="h-full flex flex-col items-center justify-center py-2 space-y-1">
+                {sortedNodes.map(node => {
+                  const levelGradient = levelColors[Math.min(node.level - 1, levelColors.length - 1)];
+                  const isSelected = selectedNode?.id === node.id;
+
+                  return (
+                    <button
+                      key={node.id}
+                      onClick={() => handleNodeClick(node)}
+                      className={`w-8 h-8 rounded-lg flex items-center justify-center transition-all
+                        ${isSelected
+                          ? 'ring-2 ring-pool-mid ring-offset-1'
+                          : 'hover:scale-110'
+                        }`}
+                      style={{ background: isSelected ? `linear-gradient(135deg, ${levelGradient.replace('from-', '').replace('to-', ', ')})` : '#f0f4f8' }}
+                    >
+                      <span className={`text-xs font-bold ${isSelected ? 'text-white' : 'text-pool-mid'}`}>
+                        {node.level}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </div>
 
-        {/* Expandable Side Panel */}
-        <div className={`relative transition-all duration-300 ease-out ${panelExpanded ? 'w-[480px]' : 'w-[400px]'}`}>
-          {/* Toggle button */}
-          <button
-            onClick={() => setPanelExpanded(!panelExpanded)}
-            className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-6 h-12 rounded-lg bg-pool-mid/20 hover:bg-pool-mid/40
-              flex items-center justify-center text-pool-dark hover:text-pool-deep transition-all shadow-sm hover:shadow-md"
-            title={panelExpanded ? 'Collapse panel' : 'Expand panel'}
-          >
-            {panelExpanded ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-          </button>
+        {/* Right Panel - Detail View (takes full width when left collapsed) */}
+        <div className={`flex-1 transition-all duration-300 ease-out ${leftPanelExpanded ? 'ml-72 pl-4' : 'ml-12 pl-4'} p-4`}>
           <NodeDetailPanel
             node={selectedNode}
             strokeId={strokeId}
@@ -464,29 +555,25 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             onAddCustomNode={handleAddCustomNode}
             onUpdateNode={handleUpdateNode}
             onNavigateNode={handleNavigateNode}
-            expanded={panelExpanded}
+            expanded={!leftPanelExpanded}
           />
         </div>
       </main>
 
       {/* Added goals list */}
       {addedGoals.length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 glass-card rounded-xl shadow-lg p-4 z-20">
-          <h3 className="text-sm font-semibold text-pool-dark mb-2">Today&apos;s Focus Goals:</h3>
+        <div className="glass-card shadow-sm px-6 py-3 flex items-center gap-4">
+          <h3 className="text-sm font-semibold text-pool-dark">Added:</h3>
           <div className="flex gap-2 overflow-x-auto">
             {addedGoals.map(goal => (
-              <span key={goal.id} className="bg-pool-mid/20 text-pool-dark px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2">
-                {goal.strokeId === 'master' ? (
-                  <span className="text-amber-500">★</span>
-                ) : (
-                  <span className="text-pool-mid">🌊</span>
-                )}
+              <span key={goal.id} className="bg-pool-mid/20 text-pool-dark px-3 py-1 rounded-lg text-sm font-medium flex items-center gap-2">
+                <span className="text-pool-mid">🌊</span>
                 {goal.description}
-                {goal.revisit && <span className="text-xs text-amber-600">(Revisit)</span>}
+                {goal.revisit && <RefreshCw className="w-3 h-3 text-amber-500" />}
               </span>
             ))}
           </div>
-          <p className="text-xs text-pool-mid mt-2">One goal per stroke for razor-sharp focus</p>
+          <p className="text-xs text-pool-mid ml-auto">One goal per stroke</p>
         </div>
       )}
     </div>
