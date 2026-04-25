@@ -248,12 +248,6 @@ body::after {
     min-width: 44px;
   }
 
-  /* Smaller buttons can have smaller min-height if they have padding */
-  button.py-1, button.py-1.5, button.py-2,
-  a.py-1, a.py-1.5, a.py-2 {
-    min-height: auto;
-  }
-
   /* Prevent zoom on input focus (iOS) */
   input, select, textarea {
     font-size: 16px;
