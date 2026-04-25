@@ -69,17 +69,18 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
            addedGoals.find(g => g.strokeId === stroke);
   };
 
-  const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string) => {
+  const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
     const newGoal: Goal = {
       id: `goal_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type: 'technique',
       target: node.techniqueId,
       strokeId: strokeId,
-      description: node.name,
+      description: goalFromTier ? `${goalFromTier.drillName} (${goalFromTier.tier})` : node.name,
       techniqueNodeId: node.id,
       revisit: node.revisit,
       metrics,
       coachingTips,
+      notes: goalFromTier ? `Target: ${goalFromTier.target}` : undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -251,6 +252,15 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       }
     } catch (err) {
       console.error('Failed to update node:', err);
+    }
+  };
+
+  // Navigate to node by sourceFile
+  const handleNavigateNode = (filename: string) => {
+    if (!tree) return;
+    const node = tree.nodes.find(n => n.sourceFile === filename);
+    if (node) {
+      setSelectedNode(node);
     }
   };
 
@@ -489,6 +499,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             onExpandNode={handleExpandNode}
             onAddCustomNode={handleAddCustomNode}
             onUpdateNode={handleUpdateNode}
+            onNavigateNode={handleNavigateNode}
           />
         </div>
       </main>

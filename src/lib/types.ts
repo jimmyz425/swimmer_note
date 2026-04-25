@@ -100,6 +100,7 @@ export interface TechniqueTreeNode {
   metrics?: MetricDefinition[]; // Metrics for this node
   prerequisites: string[]; // IDs of prerequisite nodes
   children: string[]; // IDs of child nodes (branches)
+  sourceFile?: string; // Markdown filename without .md (e.g., "freestyle-01-body-position")
 }
 
 export interface TechniqueTree {
@@ -109,6 +110,36 @@ export interface TechniqueTree {
   customized: boolean;
   nodes: TechniqueTreeNode[];
   rootNodes: string[]; // IDs of starting nodes
+}
+
+// Markdown content types for technique files
+
+export interface CompetitiveDrill {
+  name: string;
+  selfCheck: string;
+  tieredTargets: {
+    beginner: string;
+    intermediate: string;
+    advanced: string;
+    elite: string;
+  };
+  videoChecks: string[];
+  competitiveImpact: string;
+}
+
+export interface ParsedTechniqueContent {
+  filename: string;
+  title: string;
+  overview: string;
+  difficulty: string;
+  keyPoints: string[];
+  commonMistakes: string[];
+  specificDrills: { name: string; description: string }[];
+  competitiveDrills: CompetitiveDrill[];
+  relatedTechniques: string[];
+  prevFile: string | null;
+  nextFile: string | null;
+  rawContent: string;
 }
 
 export interface TechniqueTreeConfig {

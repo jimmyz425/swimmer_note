@@ -1,20 +1,33 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { TechniqueTreeNode, MetricValue } from '@/lib/types';
-import { RefreshCw, Plus, X, Sparkles, Loader2, ChevronDown, Edit3, Check, Save } from 'lucide-react';
+import { TechniqueTreeNode, MetricValue, ParsedTechniqueContent } from '@/lib/types';
+import { RefreshCw, Plus, X, Sparkles, Loader2, ChevronDown, ChevronUp, Edit3, Check, Save, Target, Lightbulb, AlertTriangle, Dumbbell, ChevronLeft, ChevronRight } from 'lucide-react';
 
 interface NodeDetailPanelProps {
   node: TechniqueTreeNode | null;
   strokeId: string;
-  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string) => void;
+  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => void;
   onClose: () => void;
   onExpandNode?: (nodeId: string, coachingTips: string) => void;
   onAddCustomNode?: (parentNode: TechniqueTreeNode) => void;
   onUpdateNode?: (node: TechniqueTreeNode) => void;
+  onNavigateNode?: (filename: string) => void;
 }
 
-export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNode, onAddCustomNode, onUpdateNode }: NodeDetailPanelProps) {
+type TabType = 'overview' | 'keyPoints' | 'mistakes' | 'drills';
+
+export function NodeDetailPanel({
+  node,
+  strokeId,
+  onConfirm,
+  onClose,
+  onExpandNode,
+  onAddCustomNode,
+  onUpdateNode,
+  onNavigateNode
+}: NodeDetailPanelProps) {
+  const [activeTab, setActiveTab] = useState<TabType>('overview');
   const [metrics, setMetrics] = useState<Record<string, { actual: number; unit: string }>>({});
   const [coachingTips, setCoachingTips] = useState<string | null>(null);
   const [loadingTips, setLoadingTips] = useState(false);
@@ -23,18 +36,24 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
   const [editDescription, setEditDescription] = useState('');
   const [editRevisit, setEditRevisit] = useState(false);
 
+  // Markdown content state
+  const [markdownContent, setMarkdownContent] = useState<ParsedTechniqueContent | null>(null);
+  const [loadingMarkdown, setLoadingMarkdown] = useState(false);
+
   // Cache tips by node ID to avoid re-fetching
   const tipsCacheRef = useRef<Record<string, string>>({});
+  const markdownCacheRef = useRef<Record<string, ParsedTechniqueContent>>({});
 
-  // Fetch coaching tips when node changes (with caching)
+  // Fetch coaching tips and markdown content when node changes
   useEffect(() => {
     if (node) {
       setIsEditing(false);
       setEditName(node.name);
       setEditDescription(node.description);
       setEditRevisit(node.revisit);
+      setActiveTab('overview');
 
-      // Check cache first
+      // Fetch coaching tips
       if (tipsCacheRef.current[node.id]) {
         setCoachingTips(tipsCacheRef.current[node.id]);
         setLoadingTips(false);
@@ -50,7 +69,7 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
           .then(res => res.json())
           .then(data => {
             setCoachingTips(data.tips);
-            tipsCacheRef.current[node.id] = data.tips; // Cache for future
+            tipsCacheRef.current[node.id] = data.tips;
           })
           .catch(err => {
             console.error('Failed to fetch coaching tips:', err);
@@ -58,11 +77,39 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
           })
           .finally(() => setLoadingTips(false));
       }
+
+      // Fetch markdown content if sourceFile exists
+      if (node.sourceFile) {
+        const sourceFile = node.sourceFile;
+        if (markdownCacheRef.current[sourceFile]) {
+          setMarkdownContent(markdownCacheRef.current[sourceFile]);
+          setLoadingMarkdown(false);
+        } else {
+          setLoadingMarkdown(true);
+          setMarkdownContent(null);
+
+          fetch(`/api/markdown/${strokeId}/${sourceFile}`)
+            .then(res => res.json())
+            .then(data => {
+              setMarkdownContent(data);
+              markdownCacheRef.current[sourceFile] = data;
+            })
+            .catch(err => {
+              console.error('Failed to fetch markdown:', err);
+              setMarkdownContent(null);
+            })
+            .finally(() => setLoadingMarkdown(false));
+        }
+      } else {
+        setMarkdownContent(null);
+        setLoadingMarkdown(false);
+      }
     } else {
       setCoachingTips(null);
+      setMarkdownContent(null);
       setIsEditing(false);
     }
-  }, [node]);
+  }, [node, strokeId]);
 
   if (!node) {
     return (
@@ -87,12 +134,16 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
     }));
   };
 
-  const handleConfirm = () => {
+  const handleConfirm = (goalFromTier?: { drillName: string; tier: string; target: string }) => {
     const metricValues: Record<string, MetricValue> = {};
     for (const [id, val] of Object.entries(metrics)) {
       metricValues[id] = { actual: val.actual, unit: val.unit };
     }
-    onConfirm(node, metricValues, coachingTips || undefined);
+    onConfirm(node, metricValues, coachingTips || undefined, goalFromTier);
+  };
+
+  const handleCreateGoalFromTier = (drillName: string, tier: string, target: string) => {
+    handleConfirm({ drillName, tier, target });
   };
 
   const handleStartEdit = () => {
@@ -139,6 +190,25 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
     onExpandNode(node.id, coachingTips);
   };
 
+  const handleNavigatePrev = () => {
+    if (markdownContent?.prevFile && onNavigateNode) {
+      onNavigateNode(markdownContent.prevFile);
+    }
+  };
+
+  const handleNavigateNext = () => {
+    if (markdownContent?.nextFile && onNavigateNode) {
+      onNavigateNode(markdownContent.nextFile);
+    }
+  };
+
+  const tabs: { id: TabType; label: string; icon: React.ReactNode; hasContent: boolean }[] = [
+    { id: 'overview', label: 'Overview', icon: <Sparkles className="w-4 h-4" />, hasContent: true },
+    { id: 'keyPoints', label: 'Key Points', icon: <Lightbulb className="w-4 h-4" />, hasContent: !!markdownContent?.keyPoints?.length },
+    { id: 'mistakes', label: 'Mistakes', icon: <AlertTriangle className="w-4 h-4" />, hasContent: !!markdownContent?.commonMistakes?.length },
+    { id: 'drills', label: 'Drills', icon: <Dumbbell className="w-4 h-4" />, hasContent: !!markdownContent?.competitiveDrills?.length || !!markdownContent?.specificDrills?.length },
+  ];
+
   return (
     <div className="glass-card rounded-xl p-5 h-full flex flex-col overflow-y-auto">
       {/* Close button */}
@@ -157,7 +227,6 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
             Revisit
           </span>
         )}
-        {/* Edit button */}
         {!isEditing && onUpdateNode && (
           <button
             onClick={handleStartEdit}
@@ -169,6 +238,30 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
           </button>
         )}
       </div>
+
+      {/* Navigation buttons */}
+      {markdownContent && (markdownContent.prevFile || markdownContent.nextFile) && (
+        <div className="flex gap-2 mb-3">
+          <button
+            onClick={handleNavigatePrev}
+            disabled={!markdownContent.prevFile || !onNavigateNode}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-pool-surface text-pool-dark border border-pool-light/30
+              hover:bg-pool-light/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Prev
+          </button>
+          <button
+            onClick={handleNavigateNext}
+            disabled={!markdownContent.nextFile || !onNavigateNode}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium bg-pool-surface text-pool-dark border border-pool-light/30
+              hover:bg-pool-light/50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            Next
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+      )}
 
       {/* Name - Editable */}
       {isEditing ? (
@@ -241,61 +334,205 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
         </div>
       )}
 
-      {/* Coaching Tips - AI generated */}
-      <div className="mb-4">
-        <details className="bg-gradient-to-r from-blue-50/80 to-pool-surface/50 rounded-xl border border-blue-100">
-          <summary className="p-3 cursor-pointer text-sm font-bold text-pool-dark flex items-center gap-2.5 hover:bg-blue-50 rounded-xl transition-colors">
-            <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-              <Sparkles className="w-4 h-4 text-blue-600" />
-            </div>
-            Coach&apos;s Key Focus Points
+      {/* Tabs */}
+      {node.sourceFile && (
+        <div className="flex gap-1 mb-4 border-b border-pool-light/30">
+          {tabs.map(tab => (
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                // Clear cache and refetch
-                if (node) {
-                  tipsCacheRef.current[node.id] = '';
-                  setLoadingTips(true);
-                  fetch('/api/coaching', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ node }),
-                  })
-                    .then(res => res.json())
-                    .then(data => {
-                      setCoachingTips(data.tips);
-                      tipsCacheRef.current[node.id] = data.tips;
-                    })
-                    .catch(err => console.error('Failed to refresh tips:', err))
-                    .finally(() => setLoadingTips(false));
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              disabled={!tab.hasContent && tab.id !== 'overview'}
+              className={`flex items-center gap-1.5 px-3 py-2 text-sm font-medium transition-colors rounded-t-lg
+                ${activeTab === tab.id
+                  ? 'bg-pool-mid/10 text-pool-dark border-b-2 border-pool-mid'
+                  : 'text-pool-mid hover:text-pool-dark hover:bg-pool-light/30'
                 }
-              }}
-              disabled={loadingTips}
-              className="ml-2 text-xs text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-1 font-medium transition-colors"
-              title="Refresh tips"
+                ${!tab.hasContent && tab.id !== 'overview' ? 'opacity-50 cursor-not-allowed' : ''}`}
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${loadingTips ? 'animate-spin' : ''}`} />
-              Refresh
+              {tab.icon}
+              {tab.label}
             </button>
-            <span className="text-xs text-pool-mid ml-auto font-normal">Click to expand</span>
-          </summary>
-          <div className="p-3 pt-2 text-sm text-pool-dark whitespace-pre-line border-t border-blue-100">
-            {loadingTips ? (
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 text-pool-mid animate-spin" />
-                <span className="text-pool-mid">Loading coaching tips...</span>
+          ))}
+        </div>
+      )}
+
+      {/* Tab Content */}
+      {loadingMarkdown && activeTab !== 'overview' && (
+        <div className="flex items-center gap-2 mb-4">
+          <Loader2 className="w-4 h-4 text-pool-mid animate-spin" />
+          <span className="text-pool-mid">Loading content...</span>
+        </div>
+      )}
+
+      {/* Overview Tab */}
+      {activeTab === 'overview' && (
+        <div className="mb-4">
+          <details className="bg-gradient-to-r from-blue-50/80 to-pool-surface/50 rounded-xl border border-blue-100">
+            <summary className="p-3 cursor-pointer text-sm font-bold text-pool-dark flex items-center gap-2.5 hover:bg-blue-50 rounded-xl transition-colors">
+              <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
+                <Sparkles className="w-4 h-4 text-blue-600" />
               </div>
-            ) : coachingTips ? (
-              <div>{coachingTips}</div>
-            ) : (
-              <span className="text-pool-mid">Tips not available</span>
-            )}
-          </div>
-        </details>
-      </div>
+              Coach&apos;s Key Focus Points
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (node) {
+                    tipsCacheRef.current[node.id] = '';
+                    setLoadingTips(true);
+                    fetch('/api/coaching', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ node }),
+                    })
+                      .then(res => res.json())
+                      .then(data => {
+                        setCoachingTips(data.tips);
+                        tipsCacheRef.current[node.id] = data.tips;
+                      })
+                      .catch(err => console.error('Failed to refresh tips:', err))
+                      .finally(() => setLoadingTips(false));
+                  }
+                }}
+                disabled={loadingTips}
+                className="ml-2 text-xs text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-1 font-medium transition-colors"
+                title="Refresh tips"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${loadingTips ? 'animate-spin' : ''}`} />
+                Refresh
+              </button>
+              <span className="text-xs text-pool-mid ml-auto font-normal">Click to expand</span>
+            </summary>
+            <div className="p-3 pt-2 text-sm text-pool-dark whitespace-pre-line border-t border-blue-100">
+              {loadingTips ? (
+                <div className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 text-pool-mid animate-spin" />
+                  <span className="text-pool-mid">Loading coaching tips...</span>
+                </div>
+              ) : coachingTips ? (
+                <div>{coachingTips}</div>
+              ) : (
+                <span className="text-pool-mid">Tips not available</span>
+              )}
+            </div>
+          </details>
+        </div>
+      )}
+
+      {/* Key Points Tab */}
+      {activeTab === 'keyPoints' && markdownContent?.keyPoints && (
+        <div className="mb-4 space-y-2">
+          {markdownContent.keyPoints.map((point, idx) => (
+            <div key={idx} className="flex items-start gap-2 bg-emerald-50/50 p-3 rounded-lg border border-emerald-100">
+              <Lightbulb className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-pool-dark">{point}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Mistakes Tab */}
+      {activeTab === 'mistakes' && markdownContent?.commonMistakes && (
+        <div className="mb-4 space-y-2">
+          {markdownContent.commonMistakes.map((mistake, idx) => (
+            <div key={idx} className="flex items-start gap-2 bg-amber-50/50 p-3 rounded-lg border border-amber-100">
+              <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+              <p className="text-sm text-pool-dark">{mistake}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Drills Tab */}
+      {activeTab === 'drills' && markdownContent && (
+        <div className="mb-4 space-y-4">
+          {/* Specific Drills */}
+          {markdownContent.specificDrills && markdownContent.specificDrills.length > 0 && (
+            <div>
+              <h4 className="text-sm font-bold text-pool-dark mb-2 flex items-center gap-2">
+                <Dumbbell className="w-4 h-4" />
+                Basic Drills
+              </h4>
+              <div className="bg-pool-surface/50 rounded-lg border border-pool-light/30 overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-pool-light/30">
+                      <th className="px-3 py-2 text-left font-semibold text-pool-dark">Drill</th>
+                      <th className="px-3 py-2 text-left font-semibold text-pool-dark">Description</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {markdownContent.specificDrills.map((drill, idx) => (
+                      <tr key={idx} className="border-t border-pool-light/20">
+                        <td className="px-3 py-2 font-medium text-pool-dark">{drill.name}</td>
+                        <td className="px-3 py-2 text-pool-mid">{drill.description}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* Competitive Drills with Tiered Targets */}
+          {markdownContent.competitiveDrills && markdownContent.competitiveDrills.length > 0 && (
+            <div>
+              <h4 className="text-sm font-bold text-pool-dark mb-2 flex items-center gap-2">
+                <Target className="w-4 h-4" />
+                Competitive Drills (with Tiered Targets)
+              </h4>
+              <div className="space-y-3">
+                {markdownContent.competitiveDrills.map((drill, idx) => (
+                  <div key={idx} className="bg-blue-50/30 rounded-lg border border-blue-100 p-3">
+                    <h5 className="font-semibold text-pool-dark mb-2">{drill.name}</h5>
+                    {drill.selfCheck && (
+                      <p className="text-xs text-pool-mid mb-2">
+                        <strong>Self-Check:</strong> {drill.selfCheck}
+                      </p>
+                    )}
+
+                    {/* Tiered Targets with Goal Creation */}
+                    <div className="bg-white/80 rounded-lg p-2 mb-2">
+                      <p className="text-xs font-semibold text-pool-dark mb-1">Tiered Targets:</p>
+                      <div className="space-y-1">
+                        {(['beginner', 'intermediate', 'advanced', 'elite'] as const).map(tier => (
+                          drill.tieredTargets[tier] && (
+                            <div key={tier} className="flex items-center justify-between gap-2">
+                              <span className="text-xs text-pool-mid">
+                                <strong className="capitalize text-pool-dark">{tier}:</strong> {drill.tieredTargets[tier]}
+                              </span>
+                              <button
+                                onClick={() => handleCreateGoalFromTier(drill.name, tier, drill.tieredTargets[tier])}
+                                className="text-xs px-2 py-1 bg-pool-mid/20 text-pool-dark rounded hover:bg-pool-mid/30 transition-colors flex items-center gap-1"
+                              >
+                                <Plus className="w-3 h-3" />
+                                Add Goal
+                              </button>
+                            </div>
+                          )
+                        ))}
+                      </div>
+                    </div>
+
+                    {drill.videoChecks && drill.videoChecks.length > 0 && (
+                      <div className="text-xs text-pool-mid">
+                        <strong>Video Check:</strong>
+                        <ul className="list-disc list-inside mt-1">
+                          {drill.videoChecks.map((check, i) => (
+                            <li key={i}>{check}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Expand Node Button */}
-      {onExpandNode && coachingTips && !loadingTips && (
+      {onExpandNode && coachingTips && !loadingTips && activeTab === 'overview' && (
         <button
           onClick={handleExpandNode}
           className="mb-3 flex items-center gap-2.5 text-sm font-semibold text-pool-deep hover:text-accent transition-colors
@@ -310,7 +547,7 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
       )}
 
       {/* Add Custom Node Button */}
-      {onAddCustomNode && (
+      {onAddCustomNode && activeTab === 'overview' && (
         <button
           onClick={() => onAddCustomNode(node)}
           className="mb-3 flex items-center gap-2.5 text-sm font-semibold text-pool-deep hover:text-accent transition-colors
@@ -324,7 +561,7 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
       )}
 
       {/* Metrics */}
-      {node.metrics && node.metrics.length > 0 && (
+      {node.metrics && node.metrics.length > 0 && activeTab === 'overview' && (
         <div className="mb-4">
           <h4 className="text-sm font-bold text-pool-dark mb-2">Track Your Progress</h4>
           <div className="space-y-3">
@@ -347,7 +584,7 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
       )}
 
       {/* Prerequisites */}
-      {node.prerequisites.length > 0 && (
+      {node.prerequisites.length > 0 && activeTab === 'overview' && (
         <div className="mb-4">
           <h4 className="text-sm font-bold text-pool-dark mb-1">Prerequisites</h4>
           <p className="text-xs text-pool-mid">
@@ -357,14 +594,16 @@ export function NodeDetailPanel({ node, strokeId, onConfirm, onClose, onExpandNo
       )}
 
       {/* Confirm Button */}
-      <button
-        onClick={handleConfirm}
-        className="mt-auto flex items-center justify-center gap-2 bg-pool-mid text-white rounded-xl px-6 py-3
-          font-semibold hover:bg-pool-deep transition-colors shadow-lg shadow-pool-mid/20"
-      >
-        <Plus className="w-4 h-4" />
-        Add as Today&apos;s Goal
-      </button>
+      {activeTab === 'overview' && (
+        <button
+          onClick={() => handleConfirm()}
+          className="mt-auto flex items-center justify-center gap-2 bg-pool-mid text-white rounded-xl px-6 py-3
+            font-semibold hover:bg-pool-deep transition-colors shadow-lg shadow-pool-mid/20"
+        >
+          <Plus className="w-4 h-4" />
+          Add as Today&apos;s Goal
+        </button>
+      )}
     </div>
   );
 }

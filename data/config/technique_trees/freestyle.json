@@ -1,365 +1,126 @@
 {
   "strokeId": "freestyle",
   "name": "Freestyle Technique Tree",
-  "generatedAt": "2026-04-22",
-  "customized": true,
+  "generatedAt": "2026-04-25T13:37:07.956Z",
+  "customized": false,
   "nodes": [
     {
-      "id": "free_kick",
-      "techniqueId": "flutter_kick",
-      "level": 2,
-      "name": "Basic Flutter Kick",
-      "description": "Continuous alternating up-down kick from hips",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "kick_rate",
-          "name": "Kick Rate",
-          "unit": "kicks/sec",
-          "description": "Kicks per second"
-        }
-      ],
-      "prerequisites": [
-        "free_body"
-      ],
-      "children": [
-        "free_entry"
-      ]
-    },
-    {
-      "id": "free_entry",
-      "techniqueId": "catch",
-      "level": 3,
-      "name": "Hand Entry",
-      "description": "Enter hand smoothly, fingertips first, in front of shoulder",
-      "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "free_stream",
-        "free_kick"
-      ],
-      "children": [
-        "free_catch"
-      ]
-    },
-    {
-      "id": "free_pull",
-      "techniqueId": "pull",
-      "level": 5,
-      "name": "Pull Phase",
-      "description": "Powerful pull through with accelerating speed",
-      "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "free_catch"
-      ],
-      "children": [
-        "free_finish"
-      ]
-    },
-    {
-      "id": "free_breath",
-      "techniqueId": "breathing",
-      "level": 5,
-      "name": "Bilateral Breathing",
-      "description": "Breath every 3 strokes, maintain rhythm",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "breath_count",
-          "name": "Breath Count",
-          "unit": "strokes/breath",
-          "description": "Strokes per breath"
-        }
-      ],
-      "prerequisites": [
-        "free_catch"
-      ],
-      "children": [
-        "free_finish"
-      ]
-    },
-    {
-      "id": "free_finish",
-      "techniqueId": "recovery",
-      "level": 6,
-      "name": "Recovery & Finish",
-      "description": "Smooth arm recovery, relaxed hand exit",
-      "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "free_pull",
-        "free_breath"
-      ],
-      "children": [
-        "free_turn"
-      ]
-    },
-    {
-      "id": "free_turn",
-      "techniqueId": "flip_turn",
-      "level": 7,
-      "name": "Flip Turn",
-      "description": "Approach wall, flip quickly, push off in streamline",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "turn_time",
-          "name": "Turn Time",
-          "unit": "seconds",
-          "description": "Time from approach to push"
-        }
-      ],
-      "prerequisites": [
-        "free_finish"
-      ],
-      "children": [
-        "free_dolphin"
-      ]
-    },
-    {
-      "id": "free_dolphin",
-      "techniqueId": "dolphin_kicks",
-      "level": 8,
-      "name": "Underwater Dolphin Kicks",
-      "description": "3-5 dolphin kicks off wall before surfacing",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "kick_count",
-          "name": "Kick Count",
-          "unit": "kicks",
-          "description": "Number of underwater kicks"
-        }
-      ],
-      "prerequisites": [
-        "free_turn"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_stream",
-      "techniqueId": "streamline",
-      "level": 2,
-      "name": "Streamline Off Wall",
-      "description": "Push off wall in tight streamline position",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "hold_time",
-          "name": "Hold Time",
-          "unit": "seconds",
-          "description": "Time in streamline"
-        }
-      ],
-      "prerequisites": [
-        "free_body"
-      ],
-      "children": [
-        "free_kick",
-        "free_stream.1",
-        "free_stream.2",
-        "free_stream.3",
-        "free_stream.4"
-      ]
-    },
-    {
-      "id": "free_stream.1",
-      "techniqueId": "streamline",
-      "level": 3,
-      "name": "Streamline Off Wall: Overhead Arm Lock",
-      "description": "Lock hands together and squeeze biceps tightly against the ears to form the upper body streamline shape; practice dryland or standing in the pool to build muscle memory.",
-      "revisit": true,
-      "prerequisites": [
-        "free_stream"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_stream.2",
-      "techniqueId": "streamline",
-      "level": 3,
-      "name": "Streamline Off Wall: Neutral Head Tuck",
-      "description": "Tuck the chin to look straight down, aligning the head with the spine; practice during short surface floats without pushing off the wall to isolate the head position.",
-      "revisit": true,
-      "prerequisites": [
-        "free_stream"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_stream.3",
-      "techniqueId": "streamline",
-      "level": 3,
-      "name": "Streamline Off Wall: Lower Body Squeeze",
-      "description": "Squeeze legs tightly together from hips to ankles and forcefully point the toes; practice during short subsurface glides focusing entirely on lower body tension.",
-      "revisit": true,
-      "prerequisites": [
-        "free_stream"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_stream.4",
-      "techniqueId": "streamline",
-      "level": 3,
-      "name": "Streamline Off Wall: Horizontal Push-off",
-      "description": "Combine the locked arms, neutral head, and tight legs to push off the wall forcefully while looking down to keep the trajectory perfectly horizontal; practice by pushing off from a dead stop and observing glide depth.",
-      "revisit": false,
-      "prerequisites": [
-        "free_stream"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_body",
+      "id": "free_body_position",
       "techniqueId": "body_position",
       "level": 1,
-      "name": "Horizontal Body Position",
-      "description": "Maintain flat, horizontal body position in water",
+      "name": "Body Position & Streamline",
+      "description": "Body position and streamline form the foundation for all other freestyle techniques. A proper body position minimizes drag and allows all subsequent techniques to work efficiently. This is considered the easiest technique to learn but is critical to master first.",
       "revisit": true,
-      "metrics": [
-        {
-          "id": "body_angle",
-          "name": "Body Angle",
-          "unit": "degrees",
-          "description": "Angle from horizontal"
-        }
-      ],
       "prerequisites": [],
       "children": [
-        "free_stream",
-        "free_body.1",
-        "free_body.2",
-        "free_body.3",
-        "free_body.4"
-      ]
-    },
-    {
-      "id": "free_body.1",
-      "techniqueId": "body_position",
-      "level": 2,
-      "name": "Horizontal Body Position: Neutral Head Position",
-      "description": "Look straight down with a relaxed neck to establish a horizontal baseline without creating downward leverage.",
-      "revisit": true,
-      "prerequisites": [
-        "free_body"
+        "free_flutter_kick"
       ],
-      "children": []
+      "sourceFile": "freestyle-01-body-position"
     },
     {
-      "id": "free_body.2",
-      "techniqueId": "body_position",
+      "id": "free_flutter_kick",
+      "techniqueId": "flutter_kick",
       "level": 2,
-      "name": "Horizontal Body Position: Chest Press",
-      "description": "Actively push the chest down into the water to use lung buoyancy as a fulcrum, naturally lifting the hips.",
-      "revisit": true,
-      "prerequisites": [
-        "free_body"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_body.3",
-      "techniqueId": "body_position",
-      "level": 2,
-      "name": "Horizontal Body Position: Continuous Kick",
-      "description": "Maintain a steady, rhythmic flutter kick to generate upward lift for the lower body and prevent sinking legs.",
+      "name": "Flutter Kick",
+      "description": "The flutter kick provides propulsion and helps maintain body position. It originates from the hips with a compact, fast motion. Mastering the flutter kick is essential for both sprint and distance swimming.",
       "revisit": false,
-      "prerequisites": [
-        "free_body"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_body.4",
-      "techniqueId": "body_position",
-      "level": 2,
-      "name": "Horizontal Body Position: Low-Profile Breathing",
-      "description": "Rotate the head to the side for air without lifting the forehead forward, preserving the horizontal body line.",
-      "revisit": true,
-      "prerequisites": [
-        "free_body"
-      ],
-      "children": []
-    },
-    {
-      "id": "free_catch",
-      "techniqueId": "catch",
-      "level": 4,
-      "name": "High-Elbow Catch",
-      "description": "Early vertical forearm, catch water with high elbow",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "catch_depth",
-          "name": "Catch Depth",
-          "unit": "cm",
-          "description": "Depth of catch"
-        }
-      ],
-      "prerequisites": [
-        "free_entry"
-      ],
+      "prerequisites": [],
       "children": [
-        "free_pull",
-        "free_breath",
-        "free_catch.1",
-        "free_catch.2",
-        "free_catch.3",
-        "free_catch.4"
-      ]
+        "free_breathing_technique"
+      ],
+      "sourceFile": "freestyle-02-flutter-kick"
     },
     {
-      "id": "free_catch.1",
-      "techniqueId": "catch",
-      "level": 5,
-      "name": "High-Elbow Catch: Maintain elbow-wrist height relationship",
-      "description": "Practice holding your arm in the water with your elbow consistently held higher than your wrist",
-      "revisit": true,
-      "prerequisites": [
-        "free_catch"
+      "id": "free_breathing_technique",
+      "techniqueId": "breathing",
+      "level": 3,
+      "name": "Breathing Technique",
+      "description": "Proper breathing technique is essential for maintaining body position and rhythm. The key is to rotate the body to bring the mouth to air rather than lifting the head, which causes the hips to drop. Continuous underwater exhalation prevents breath-holding tension.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_body_rotation"
       ],
-      "children": []
+      "sourceFile": "freestyle-03-breathing-technique"
     },
     {
-      "id": "free_catch.2",
-      "techniqueId": "catch",
-      "level": 5,
-      "name": "High-Elbow Catch: Initiate catch before arm drop",
-      "description": "Practice starting the catch movement as your arm enters the water, before your arm has a chance to drop downward",
-      "revisit": true,
-      "prerequisites": [
-        "free_catch"
+      "id": "free_body_rotation",
+      "techniqueId": "body_position",
+      "level": 4,
+      "name": "Body Rotation",
+      "description": "Body rotation is a fundamental freestyle technique where the body rotates around the spine axis (long axis rotation). Proper rotation extends reach, reduces drag, enables breathing, and increases pull power. The body should never stay flat — it should be in continuous, rhythmic rolling motion.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_arm_entry_extension"
       ],
-      "children": []
+      "sourceFile": "freestyle-04-body-rotation"
     },
     {
-      "id": "free_catch.3",
-      "techniqueId": "catch",
+      "id": "free_arm_entry_extension",
+      "techniqueId": "arm_entry_extension",
       "level": 5,
-      "name": "High-Elbow Catch: Avoid early elbow locking",
-      "description": "Practice keeping your elbow slightly bent through the initial catch phase, preventing it from locking into a rigid position prematurely",
-      "revisit": true,
-      "prerequisites": [
-        "free_catch"
+      "name": "Arm Entry & Extension",
+      "description": "Arm entry and extension set up the entire stroke cycle. The hand should enter cleanly in front of the shoulder, fingertips first, and extend fully forward using body rotation to add length to the reach. Proper entry position prevents zigzag swimming patterns and sets up an effective catch.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_arm_recovery"
       ],
-      "children": []
+      "sourceFile": "freestyle-05-arm-entry-extension"
     },
     {
-      "id": "free_catch.4",
-      "techniqueId": "catch",
-      "level": 5,
-      "name": "High-Elbow Catch: Coordinate hip rotation with elbow lift",
-      "description": "Practice rotating your hip to generate movement that lifts your elbow into the correct high position for the catch",
-      "revisit": true,
-      "prerequisites": [
-        "free_catch"
+      "id": "free_arm_recovery",
+      "techniqueId": "recovery",
+      "level": 6,
+      "name": "Arm Recovery",
+      "description": "The arm recovery is the phase where the arm moves through the air from exit to entry. A high elbow recovery with a relaxed hand, kept close to the body line, is most efficient. The recovery path directly determines the entry position for the next stroke.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_stroke_timing_coordination"
       ],
-      "children": []
+      "sourceFile": "freestyle-06-arm-recovery"
+    },
+    {
+      "id": "free_stroke_timing_coordination",
+      "techniqueId": "body_position",
+      "level": 7,
+      "name": "Stroke Timing & Coordination",
+      "description": "Stroke timing and coordination is the master skill that brings all individual techniques together. It involves maintaining a continuous stroke cycle with opposing arm positions, synchronized kick rhythm, and seamless breathing integration. Modern freestyle has minimal glide — the stroke should be continuous and rhythmic.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_catch_evf"
+      ],
+      "sourceFile": "freestyle-07-stroke-timing-coordination"
+    },
+    {
+      "id": "free_catch_evf",
+      "techniqueId": "catch",
+      "level": 8,
+      "name": "The Catch (High Elbow/Early Vertical Forearm - EVF)",
+      "description": "The catch is the most critical technique for propulsion in freestyle. The Early Vertical Forearm (EVF) position sets the hand and forearm as a large propulsive surface that anchors in the water while the body moves past it. Proper catch mechanics immediately follow arm entry with no glide or delay.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "free_pull_phase"
+      ],
+      "sourceFile": "freestyle-08-catch-evf"
+    },
+    {
+      "id": "free_pull_phase",
+      "techniqueId": "pull",
+      "level": 9,
+      "name": "The Pull Phase",
+      "description": "The pull phase is where the majority of propulsion happens in freestyle. After setting the catch, the hand and forearm pull straight back with the body moving past the anchored hand. The pull should accelerate from catch to finish, maintaining a high elbow position throughout, and exit cleanly at hip level.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [],
+      "sourceFile": "freestyle-09-pull-phase"
     }
   ],
   "rootNodes": [
-    "free_body"
+    "free_body_position"
   ]
 }
