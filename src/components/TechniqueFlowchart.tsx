@@ -6,7 +6,7 @@ import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types
 import { MermaidDiagram } from '@/lib/mermaid';
 import { treeToMermaid, getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { AlertTriangle, Check, ArrowLeft, Plus, X, Loader2, Edit3 } from 'lucide-react';
+import { AlertTriangle, Check, ArrowLeft, Plus, X, Loader2, Edit3, PanelRightOpen, PanelRightClose } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -32,6 +32,9 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
 
   // Expansion loading state
   const [expandingNode, setExpandingNode] = useState(false);
+
+  // Panel width state
+  const [panelExpanded, setPanelExpanded] = useState(false);
 
   // Fetch existing goals on mount
   useEffect(() => {
@@ -483,14 +486,23 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       )}
 
       {/* Main content: Flowchart + Side Panel */}
-      <main className="p-6 flex gap-6 h-[calc(100vh-100px)]">
+      <main className="p-6 flex gap-4 h-[calc(100vh-100px)]">
         {/* Flowchart */}
-        <div className="flex-1 glass-card rounded-xl p-6 overflow-auto">
+        <div className="flex-1 glass-card rounded-xl p-6 overflow-auto transition-all duration-300 ease-out">
           <MermaidDiagram code={mermaidCode} onNodeClick={handleNodeClick} />
         </div>
 
-        {/* Side Panel */}
-        <div className="w-80">
+        {/* Expandable Side Panel */}
+        <div className={`relative transition-all duration-300 ease-out ${panelExpanded ? 'w-[480px]' : 'w-[400px]'}`}>
+          {/* Toggle button */}
+          <button
+            onClick={() => setPanelExpanded(!panelExpanded)}
+            className="absolute -left-3 top-1/2 -translate-y-1/2 z-10 w-6 h-12 rounded-lg bg-pool-mid/20 hover:bg-pool-mid/40
+              flex items-center justify-center text-pool-dark hover:text-pool-deep transition-all shadow-sm hover:shadow-md"
+            title={panelExpanded ? 'Collapse panel' : 'Expand panel'}
+          >
+            {panelExpanded ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+          </button>
           <NodeDetailPanel
             node={selectedNode}
             strokeId={strokeId}
@@ -500,6 +512,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             onAddCustomNode={handleAddCustomNode}
             onUpdateNode={handleUpdateNode}
             onNavigateNode={handleNavigateNode}
+            expanded={panelExpanded}
           />
         </div>
       </main>
