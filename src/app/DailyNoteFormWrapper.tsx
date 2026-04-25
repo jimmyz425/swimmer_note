@@ -17,7 +17,7 @@ function goalsContentEqual(a: TrainingNote['goals'], b: TrainingNote['goals']): 
     const ga = a[i];
     const gb = b[i];
     if (ga.id !== gb.id || ga.status !== gb.status || ga.description !== gb.description) return false;
-    if (ga.coachingTips !== gb.coachingTips || ga.notes !== gb.notes) return false;
+    if (ga.notes !== gb.notes) return false;
     // Compare metrics if present
     if (ga.metrics && gb.metrics) {
       const maKeys = Object.keys(ga.metrics);
@@ -143,32 +143,6 @@ export function DailyNoteFormWrapper({ initialNote, strokes = [] }: DailyNoteFor
     setNote({ ...note, goals: updatedGoals });
   };
 
-  const handleGenerateTips = async (goalId: string): Promise<string> => {
-    const goal = note.goals.find(g => g.id === goalId);
-    if (!goal) return 'Goal not found';
-
-    const res = await fetch('/api/goal-tips', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        goalId,
-        date: note.date,
-        techniqueNodeId: goal.techniqueNodeId,
-        goalDescription: goal.description,
-      }),
-    });
-
-    const data = await res.json();
-    return data.tips;
-  };
-
-  const handleUpdateTips = (goalId: string, tips: string) => {
-    const updatedGoals = note.goals.map(g =>
-      g.id === goalId ? { ...g, coachingTips: tips, updatedAt: new Date().toISOString() } : g
-    );
-    setNote({ ...note, goals: updatedGoals });
-  };
-
   const handleNotesChange = (goalId: string, notes: string) => {
     const updatedGoals = note.goals.map(g =>
       g.id === goalId ? { ...g, notes, updatedAt: new Date().toISOString() } : g
@@ -209,8 +183,6 @@ export function DailyNoteFormWrapper({ initialNote, strokes = [] }: DailyNoteFor
         onDelete={handleDeleteGoal}
         onMetricChange={handleMetricChange}
         onNotesChange={handleNotesChange}
-        onGenerateTips={handleGenerateTips}
-        onUpdateTips={handleUpdateTips}
       />
     </div>
   );

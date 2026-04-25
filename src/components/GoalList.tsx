@@ -25,12 +25,9 @@ interface GoalListProps {
   onDelete?: (goalId: string) => void;
   onMetricChange?: (goalId: string, metricId: string, value: number) => void;
   onNotesChange?: (goalId: string, notes: string) => void;
-  onGenerateTips?: (goalId: string) => Promise<string>;
-  onUpdateTips?: (goalId: string, tips: string) => void;
 }
 
-export function GoalList({ goals, strokes, techniques, onStatusChange, onDelete, onMetricChange, onNotesChange, onGenerateTips, onUpdateTips }: GoalListProps) {
-  const [loadingTips, setLoadingTips] = useState<Record<string, boolean>>({});
+export function GoalList({ goals, strokes, techniques, onStatusChange, onDelete, onMetricChange, onNotesChange }: GoalListProps) {
 
   const statusStyles: Record<GoalStatus, { bg: string; text: string; icon: React.ReactNode; ring: string }> = {
     pending: {
@@ -95,20 +92,6 @@ export function GoalList({ goals, strokes, techniques, onStatusChange, onDelete,
     return { id: stroke.id, name: stroke.name, icon: <Waves className="w-3.5 h-3.5" /> };
   };
 
-  const handleGenerateTips = async (goalId: string) => {
-    if (!onGenerateTips || !onUpdateTips) return;
-
-    setLoadingTips(prev => ({ ...prev, [goalId]: true }));
-    try {
-      const tips = await onGenerateTips(goalId);
-      onUpdateTips(goalId, tips);
-    } catch (err) {
-      console.error('Failed to generate tips:', err);
-    } finally {
-      setLoadingTips(prev => ({ ...prev, [goalId]: false }));
-    }
-  };
-
   if (goals.length === 0) {
     return (
       <div className="text-center py-12 glass-card rounded-xl">
@@ -132,7 +115,6 @@ export function GoalList({ goals, strokes, techniques, onStatusChange, onDelete,
       {goals.map((goal, index) => {
         const targetLabel = getTargetLabel(goal);
         const strokeSource = getStrokeSource(goal);
-        const isLoading = loadingTips[goal.id];
         const style = statusStyles[goal.status];
 
         return (
@@ -193,46 +175,6 @@ export function GoalList({ goals, strokes, techniques, onStatusChange, onDelete,
                 <p className="text-base font-semibold text-pool-dark mb-3">
                   {goal.description}
                 </p>
-
-                {/* Coaching Tips */}
-                {goal.coachingTips ? (
-                  <details className="mb-3 bg-gradient-to-r from-blue-50/80 to-pool-surface/50 rounded-xl border border-blue-100">
-                    <summary className="p-3 cursor-pointer text-sm font-bold text-pool-dark flex items-center gap-2.5 hover:bg-blue-50 rounded-xl transition-colors">
-                      <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                        <Sparkles className="w-4 h-4 text-blue-600" />
-                      </div>
-                      Coach&apos;s Tips
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleGenerateTips(goal.id);
-                        }}
-                        disabled={isLoading}
-                        className="ml-2 text-xs text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-1 font-medium transition-colors"
-                        title="Refresh tips"
-                      >
-                        <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
-                        Refresh
-                      </button>
-                      <span className="text-xs text-pool-mid ml-auto font-normal">Click to expand</span>
-                    </summary>
-                    <div className="p-3 pt-2 text-sm text-pool-dark whitespace-pre-line border-t border-blue-100">
-                      {goal.coachingTips}
-                    </div>
-                  </details>
-                ) : onGenerateTips && goal.type === 'technique' && (
-                  <button
-                    onClick={() => handleGenerateTips(goal.id)}
-                    disabled={isLoading}
-                    className="mb-3 text-sm font-semibold text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-2.5
-                      transition-all duration-300 hover:scale-[1.02]"
-                  >
-                    <div className="w-7 h-7 rounded-lg bg-pool-mid/20 flex items-center justify-center transition-colors hover:bg-pool-mid/40">
-                      <Sparkles className="w-4 h-4" />
-                    </div>
-                    {isLoading ? 'Generating tips...' : 'Get coaching tips'}
-                  </button>
-                )}
 
                 {/* Metrics */}
                 {goal.metrics && Object.keys(goal.metrics).length > 0 && onMetricChange && (

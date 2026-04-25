@@ -7,7 +7,7 @@ import { Plus, X, Edit3, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 interface NodeDetailPanelProps {
   node: TechniqueTreeNode | null;
   strokeId: string;
-  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => void;
+  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, _coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => void;
   onClose: () => void;
   onUpdateNode?: (node: TechniqueTreeNode) => void;
   onNavigateNode?: (filename: string) => void;

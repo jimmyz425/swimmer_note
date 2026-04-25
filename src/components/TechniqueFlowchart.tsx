@@ -79,7 +79,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     }
   };
 
-  const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
+  const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, _coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
     const description = goalFromTier
       ? goalFromTier.tier
         ? `${goalFromTier.drillName} (${goalFromTier.tier})`
@@ -94,7 +94,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       description,
       techniqueNodeId: node.id,
       metrics,
-      coachingTips,
       notes: goalFromTier?.target || undefined,
       status: 'pending',
       createdAt: new Date().toISOString(),
