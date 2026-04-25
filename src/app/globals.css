@@ -194,3 +194,87 @@ body::after {
     animation: none;
   }
 }
+
+/* ===== MOBILE OPTIMIZATIONS ===== */
+
+/* Safe Area Insets for iOS */
+.safe-top {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+.pb-safe {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+}
+
+/* Mobile Animation: Slide Down Toast */
+@keyframes slide-down {
+  from {
+    transform: translateY(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.3s ease-out forwards;
+}
+
+/* Touch-friendly: Remove hover states on mobile, use active */
+@media (max-width: 768px) {
+  /* Disable hover effects that don't work well on touch */
+  .group:hover .group-hover:opacity-100 {
+    opacity: 0;
+  }
+
+  /* Show on touch instead */
+  .group:active .group-hover:opacity-100,
+  .group.active .group-hover:opacity-100 {
+    opacity: 1;
+  }
+
+  /* Ensure minimum touch target size (44px) */
+  button, a, input, select, textarea {
+    min-height: 44px;
+  }
+
+  button:has(> svg), a:has(> svg) {
+    min-width: 44px;
+  }
+
+  /* Smaller buttons can have smaller min-height if they have padding */
+  button.py-1, button.py-1.5, button.py-2,
+  a.py-1, a.py-1.5, a.py-2 {
+    min-height: auto;
+  }
+
+  /* Prevent zoom on input focus (iOS) */
+  input, select, textarea {
+    font-size: 16px;
+  }
+
+  /* Smooth scrolling */
+  * {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Remove tap highlight on Android */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Haptic feedback simulation via transform */
+@media (max-width: 768px) {
+  button:active,
+  a:active {
+    transform: scale(0.97);
+    transition: transform 0.1s ease-out;
+  }
+}

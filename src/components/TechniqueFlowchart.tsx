@@ -3,9 +3,8 @@
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types';
-import { getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { Check, ArrowLeft, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Check, ArrowLeft, ChevronRight, ChevronLeft, List, X } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -31,8 +30,20 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const [existingGoals, setExistingGoals] = useState<Goal[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Left panel state - auto-hide
+  // Mobile state
+  const [isMobile, setIsMobile] = useState(false);
+  const [showSheet, setShowSheet] = useState(true);
+
+  // Desktop: Left panel state - auto-hide
   const [leftPanelExpanded, setLeftPanelExpanded] = useState(true);
+
+  // Detect mobile viewport
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   // Fetch existing goals on mount
   useEffect(() => {
@@ -53,7 +64,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       .then(res => res.json())
       .then(data => {
         setTree(data.tree);
-        // Auto-select first node
         if (data.tree?.nodes?.length > 0) {
           setSelectedNode(data.tree.nodes[0]);
         }
@@ -64,7 +74,11 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
 
   const handleNodeClick = (node: TechniqueTreeNode) => {
     setSelectedNode(node);
-    setLeftPanelExpanded(true);
+    if (isMobile) {
+      setShowSheet(false); // Hide sheet, show detail
+    } else {
+      setLeftPanelExpanded(true);
+    }
   };
 
   const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
@@ -83,13 +97,11 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       updatedAt: new Date().toISOString(),
     };
 
-    // Add goal directly - no stroke limitation
     setAddedGoals([...addedGoals, newGoal]);
-    setSuccessMessage(`Added "${newGoal.description}" to today's goals!`);
+    setSuccessMessage(`Added "${newGoal.description}"!`);
     setTimeout(() => setSuccessMessage(null), 3000);
   };
 
-  // Update existing node
   const handleUpdateNode = async (updatedNode: TechniqueTreeNode) => {
     if (!tree) return;
 
@@ -99,7 +111,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       customized: true,
     };
 
-    // Save tree via API
     try {
       const res = await fetch(`/api/trees/${strokeId}`, {
         method: 'POST',
@@ -118,7 +129,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     }
   };
 
-  // Navigate to node by sourceFile
   const handleNavigateNode = (filename: string) => {
     if (!tree) return;
     const node = tree.nodes.find(n => n.sourceFile === filename);
@@ -131,9 +141,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      // Combine existing goals with added goals
       const allGoals = [...existingGoals, ...addedGoals];
-
       const res = await fetch(`/api/notes/${today}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -154,35 +162,171 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     }
   };
 
-  // Auto-collapse left panel after delay
+  // Desktop: Auto-collapse left panel
   useEffect(() => {
-    if (leftPanelExpanded && selectedNode) {
-      const timer = setTimeout(() => {
-        setLeftPanelExpanded(false);
-      }, 3000);
+    if (!isMobile && leftPanelExpanded && selectedNode) {
+      const timer = setTimeout(() => setLeftPanelExpanded(false), 3000);
       return () => clearTimeout(timer);
     }
-  }, [leftPanelExpanded, selectedNode]);
+  }, [isMobile, leftPanelExpanded, selectedNode]);
 
   if (loading) {
     return (
-      <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light flex items-center justify-center">
-        <p className="text-pool-mid font-medium">Loading technique tree...</p>
+      <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light flex items-center justify-center min-h-screen">
+        <p className="text-pool-mid font-medium">Loading...</p>
       </div>
     );
   }
 
   if (!tree) {
     return (
-      <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light flex items-center justify-center">
-        <p className="text-pool-mid">No tree found for this stroke</p>
+      <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light flex items-center justify-center min-h-screen">
+        <p className="text-pool-mid">No tree found</p>
       </div>
     );
   }
 
-  // Sort nodes by level
   const sortedNodes = [...tree.nodes].sort((a, b) => a.level - b.level);
 
+  // ===== MOBILE LAYOUT =====
+  if (isMobile) {
+    return (
+      <div className="fixed inset-0 bg-white flex flex-col">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between safe-top">
+          <button
+            onClick={() => router.push('/')}
+            className="flex items-center gap-2 text-gray-700 font-medium active:opacity-70"
+          >
+            <ArrowLeft className="w-5 h-5" />
+            Back
+          </button>
+          <h1 className="text-base font-bold text-gray-900">{tree.name}</h1>
+          {addedGoals.length > 0 && (
+            <button
+              onClick={handleSaveGoals}
+              className="flex items-center gap-1 bg-pool-mid text-white px-3 py-1.5 rounded-lg text-sm font-semibold active:bg-pool-deep"
+            >
+              <Check className="w-4 h-4" />
+              Save
+            </button>
+          )}
+        </header>
+
+        {/* Success Toast */}
+        {successMessage && (
+          <div className="fixed top-16 left-4 right-4 bg-emerald-500 text-white px-4 py-3 rounded-xl shadow-lg z-50 flex items-center gap-2 animate-slide-down">
+            <Check className="w-5 h-5" />
+            {successMessage}
+          </div>
+        )}
+
+        {/* Main Content: Either Sheet or Detail */}
+        {showSheet ? (
+          /* Technique List Sheet */
+          <div className="flex-1 overflow-y-auto px-4 py-4 pb-safe">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Techniques</h2>
+                <p className="text-xs text-gray-500">{sortedNodes.length} skills</p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {sortedNodes.map(node => {
+                const levelGradient = levelColors[Math.min(node.level - 1, levelColors.length - 1)];
+                const isSelected = selectedNode?.id === node.id;
+
+                return (
+                  <button
+                    key={node.id}
+                    onClick={() => handleNodeClick(node)}
+                    className={`w-full p-4 rounded-xl transition-all text-left active:scale-[0.98]
+                      ${isSelected
+                        ? 'bg-pool-mid/10 border-2 border-pool-mid'
+                        : 'bg-gray-50 border border-gray-100 active:bg-gray-100'
+                      }`}
+                  >
+                    <div className="flex items-center gap-3 mb-1">
+                      <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-bold text-white bg-gradient-to-r ${levelGradient}`}>
+                        {node.level}
+                      </span>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{node.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{node.description}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-400" />
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Goals indicator */}
+            {addedGoals.length > 0 && (
+              <div className="mt-4 p-4 rounded-xl bg-pool-mid/5 border border-pool-mid/20">
+                <p className="text-xs text-gray-500 mb-2">Goals to save:</p>
+                <div className="flex flex-wrap gap-2">
+                  {addedGoals.map(goal => (
+                    <span
+                      key={goal.id}
+                      className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-white border border-gray-200 text-sm text-gray-700"
+                    >
+                      🌊 {goal.description}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          /* Full-screen Detail View */
+          <>
+            <div className="flex-1 overflow-hidden">
+              <NodeDetailPanel
+                node={selectedNode}
+                strokeId={strokeId}
+                onConfirm={handleConfirm}
+                onClose={() => setShowSheet(true)}
+                onUpdateNode={handleUpdateNode}
+                onNavigateNode={handleNavigateNode}
+                isMobile={true}
+              />
+            </div>
+
+            {/* Bottom Action Bar */}
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 safe-bottom">
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowSheet(true)}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium active:bg-gray-200"
+                >
+                  <List className="w-5 h-5" />
+                  View All
+                </button>
+                <button
+                  onClick={() => handleConfirm(selectedNode!, {})}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-pool-mid text-white font-semibold active:bg-pool-deep"
+                >
+                  <Check className="w-5 h-5" />
+                  Add Goal
+                </button>
+              </div>
+
+              {/* Goals count */}
+              {addedGoals.length > 0 && (
+                <p className="text-center text-xs text-gray-500 mt-2">
+                  {addedGoals.length} goals ready to save
+                </p>
+              )}
+            </div>
+          </>
+        )}
+      </div>
+    );
+  }
+
+  // ===== DESKTOP LAYOUT =====
   return (
     <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen flex flex-col">
       {/* Header */}
@@ -219,15 +363,14 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         </div>
       )}
 
-      {/* Main content: Collapsible Left Panel + Detail Panel */}
+      {/* Main content */}
       <main className="flex-1 flex relative overflow-hidden">
-        {/* Left Panel - Technique Cards */}
+        {/* Left Panel */}
         <div
           className={`absolute left-0 top-0 bottom-0 z-10 transition-all duration-300 ease-out
             ${leftPanelExpanded ? 'w-72' : 'w-12'}`}
           onMouseEnter={() => setLeftPanelExpanded(true)}
         >
-          {/* Collapse Toggle Button */}
           <button
             onClick={() => setLeftPanelExpanded(!leftPanelExpanded)}
             className="absolute -right-3 top-1/2 -translate-y-1/2 z-20 w-6 h-12 rounded-lg bg-pool-mid/30 hover:bg-pool-mid/50
@@ -236,10 +379,8 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             {leftPanelExpanded ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           </button>
 
-          {/* Panel Content */}
           <div className="h-full glass-card rounded-r-2xl overflow-hidden">
             {leftPanelExpanded ? (
-              /* Expanded: Full card list */
               <div className="h-full flex flex-col">
                 <div className="p-4 pb-2">
                   <h2 className="text-sm font-bold text-pool-dark uppercase tracking-wide">Techniques</h2>
@@ -274,7 +415,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
                 </div>
               </div>
             ) : (
-              /* Collapsed: Level indicators only */
               <div className="h-full flex flex-col items-center justify-center py-2 space-y-1">
                 {sortedNodes.map(node => {
                   const levelGradient = levelColors[Math.min(node.level - 1, levelColors.length - 1)];
@@ -302,7 +442,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
           </div>
         </div>
 
-        {/* Right Panel - Detail View (takes full width when left collapsed) */}
+        {/* Right Panel */}
         <div className={`flex-1 transition-all duration-300 ease-out ${leftPanelExpanded ? 'ml-72 pl-4' : 'ml-12 pl-4'} p-4`}>
           <NodeDetailPanel
             node={selectedNode}
@@ -312,6 +452,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
             onUpdateNode={handleUpdateNode}
             onNavigateNode={handleNavigateNode}
             expanded={!leftPanelExpanded}
+            isMobile={false}
           />
         </div>
       </main>
