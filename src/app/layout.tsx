@@ -1,19 +1,25 @@
 import type { Metadata } from "next";
-import { Outfit, DM_Sans } from "next/font/google";
+import { Bebas_Neue, Oswald, Manrope } from "next/font/google";
 import "./globals.css";
 import { Navigation } from "@/components/Navigation";
 
-const outfit = Outfit({
-  variable: "--font-outfit",
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
+const bebasNeue = Bebas_Neue({
+  variable: "--font-bebas",
+  weight: "400",
   display: "swap",
 });
 
-const dmSans = DM_Sans({
-  variable: "--font-dm-sans",
+const oswald = Oswald({
+  variable: "--font-oswald",
   subsets: ["latin"],
   weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
+
+const manrope = Manrope({
+  variable: "--font-manrope",
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700", "800"],
   display: "swap",
 });
 
@@ -33,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${outfit.variable} ${dmSans.variable} h-full antialiased`}
+      className={`${bebasNeue.variable} ${oswald.variable} ${manrope.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col relative">
         {/* Bubble particles background */}
@@ -49,8 +55,8 @@ export default function RootLayout({
         </div>
         {/* Navigation */}
         <Navigation />
-        {/* Main content */}
-        <div className="relative z-10 flex-1">
+        {/* Main content - pushed below fixed nav */}
+        <div className="relative z-10 flex-1 safe-content-top">
           {children}
         </div>
       </body>

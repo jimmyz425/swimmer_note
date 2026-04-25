@@ -112,7 +112,7 @@ export function DailyNoteFormWrapper({ initialNote, strokes = [] }: DailyNoteFor
     };
   }, [note.goals, saveNote]);
 
-  const handleStatusChange = async (goalId: string, status: 'pending' | 'in_progress' | 'completed' | 'abandoned') => {
+  const handleStatusChange = async (goalId: string, status: 'planned' | 'in_progress' | 'achieved' | 'unable_to_achieve') => {
     const updatedGoals = note.goals.map(g =>
       g.id === goalId ? { ...g, status, updatedAt: new Date().toISOString() } : g
     );

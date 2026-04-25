@@ -25,46 +25,33 @@ export default async function Home() {
   return (
     <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen">
       <main className="max-w-5xl mx-auto py-8 px-4 md:px-8">
-        {/* Header */}
-        <header className="mb-10">
-          <div className="flex items-center gap-5 mb-3">
-            {/* Water droplet logo */}
-            <div className="relative">
-              <div className="w-16 h-16 water-drop bg-gradient-to-b from-pool-light to-pool-deep flex items-center justify-center shadow-lg shadow-pool-mid/30">
-                <svg className="w-8 h-8 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                  <path d="M2 12C2 6 6 2 12 2C18 2 22 6 22 12C22 18 18 22 12 22C6 22 2 18 2 12Z" strokeLinecap="round"/>
-                  <path d="M8 12C8 10 10 8 12 8C14 8 16 10 16 12" strokeLinecap="round"/>
-                </svg>
-              </div>
-            </div>
-            <div>
-              <h1 className="text-4xl md:text-5xl font-extrabold text-pool-dark tracking-tight">
-                Today&apos;s Training
-              </h1>
-              <p className="text-base text-pool-mid font-medium mt-1.5">
-                {formatDate()}
-              </p>
-            </div>
+        {/* Header - Starting Block */}
+        <header className="mb-12">
+          <div>
+            <h1 className="title-impact text-pool-dark">
+              TODAY&apos;S TRAINING
+            </h1>
+            <p className="text-base text-pool-mid font-medium mt-1 font-body">
+              {formatDate()}
+            </p>
           </div>
+
+          {/* Lane divider under header */}
+          <div className="lane-divider mt-6" />
         </header>
 
         {/* Stroke Selection */}
         <section className="mb-10">
-          <h2 className="text-lg font-bold text-pool-dark mb-5 flex items-center gap-3">
-            <svg className="w-5 h-5 text-pool-mid" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-              <circle cx="12" cy="12" r="10"/>
-              <path d="M8 12h8M12 8v8"/>
-            </svg>
+          <h2 className="font-heading text-xl font-bold text-pool-dark mb-6">
             Select Your Stroke
           </h2>
 
           {/* Stroke cards in responsive grid */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4 md:gap-5">
-            {strokes.map((stroke, index) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
+            {strokes.map((stroke) => (
               <StrokeCard
                 key={stroke.id}
                 {...stroke}
-                laneNumber={index + 1}
               />
             ))}
             <MasterTreeCard />
@@ -73,20 +60,16 @@ export default async function Home() {
 
         {/* Goals Section */}
         <section className="glass-card rounded-2xl p-6 md:p-8">
-          <h2 className="text-xl font-bold text-pool-dark mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-pool-mid/20 flex items-center justify-center">
-              <svg className="w-5 h-5 text-pool-deep" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
-                <path d="M9 12l2 2 4-4"/>
-                <path d="M21 12c0 4.97-4.03 9-9 9s-9-4.03-9-9 4.03-9 9-9c2.12 0 4.07.74 5.61 1.97"/>
-              </svg>
-            </div>
-            Today&apos;s Goals
-            <div className="flex-1 h-1.5 bg-gradient-to-r from-pool-light to-transparent rounded-full" />
+          <h2 className="font-heading text-xl font-bold text-pool-dark mb-6">
+            Today&apos;s Session
           </h2>
 
           <DailyNoteFormWrapper initialNote={note} strokes={strokeLookup} />
         </section>
       </main>
+
+      {/* Lane divider at bottom */}
+      <div className="lane-divider mt-8" />
     </div>
   );
 }

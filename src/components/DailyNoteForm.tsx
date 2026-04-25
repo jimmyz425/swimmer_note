@@ -107,7 +107,7 @@ export function DailyNoteForm({
       techniqueNodeId: node.id,
       revisit: node.revisit,
       metrics: node.metrics ? Object.fromEntries(node.metrics.map(m => [m.id, { unit: m.unit }])) : undefined,
-      status: 'pending',
+      status: 'planned',
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };

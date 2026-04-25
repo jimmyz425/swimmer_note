@@ -13,7 +13,7 @@ export function GoalInput({ strokes, techniques, onAddGoal }: GoalInputProps) {
   const [type, setType] = useState<GoalType>('general');
   const [target, setTarget] = useState<string>('');
   const [description, setDescription] = useState('');
-  const [status, setStatus] = useState<GoalStatus>('pending');
+  const [status, setStatus] = useState<GoalStatus>('planned');
 
   const strokesData = strokes;
   const techniquesData = techniques;
@@ -98,7 +98,7 @@ export function GoalInput({ strokes, techniques, onAddGoal }: GoalInputProps) {
           onChange={(e) => setStatus(e.target.value as GoalStatus)}
           className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
         >
-          <option value="pending">Pending</option>
+          <option value="planned">Planned</option>
           <option value="in_progress">In Progress</option>
         </select>
       </div>

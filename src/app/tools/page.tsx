@@ -6,7 +6,6 @@ import { AnalysisResults } from '@/components/AnalysisResults';
 import { usePoseAnalysis, PoseModelVariant, AnalysisFramerate, FRAMERATE_INFO } from '@/lib/video/poseAnalysis';
 import { VideoAnalysis } from '@/lib/video/storage';
 import { Loader2, Trash2 } from 'lucide-react';
-import { Navigation } from '@/components/Navigation';
 
 export default function ToolsPage() {
   const [modelVariant, setModelVariant] = useState<PoseModelVariant>('lite');
@@ -101,8 +100,6 @@ export default function ToolsPage() {
 
   return (
     <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen">
-      <Navigation />
-
       {/* Analysis progress overlay */}
       {(analyzing || uploading) && (
         <div className="fixed inset-0 bg-pool-surface/80 flex items-center justify-center z-30">
@@ -134,10 +131,12 @@ export default function ToolsPage() {
       {/* Main content */}
       <main className="max-w-5xl mx-auto py-8 px-4 md:px-8">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-pool-dark">Tools</h1>
-          <p className="text-pool-mid text-sm mt-1">Video analysis and other utilities</p>
-        </div>
+        <header className="mb-8">
+          <h1 className="title-impact text-pool-dark">
+            TOOLS
+          </h1>
+          <div className="lane-divider mt-6" />
+        </header>
 
         {/* Video Analysis Section */}
         <section className="mb-8">

@@ -19,7 +19,7 @@ export type TechniqueId =
 
 export type GoalType = 'general' | 'stroke' | 'technique';
 
-export type GoalStatus = 'pending' | 'in_progress' | 'completed' | 'abandoned';
+export type GoalStatus = 'planned' | 'in_progress' | 'achieved' | 'unable_to_achieve';
 
 export interface Stroke {
   id: StrokeId;
@@ -46,6 +46,7 @@ export interface Goal {
   techniqueNodeId?: string; // Reference to technique tree node
   coachingTips?: string; // LLM-generated coaching tips
   notes?: string; // Goal-specific notes from training
+  goalKind?: 'keyPoint' | 'mistake' | 'competitiveMetric'; // Type of goal for contextual guidance
   createdAt: string;
   updatedAt: string;
 }

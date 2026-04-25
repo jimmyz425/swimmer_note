@@ -7,7 +7,7 @@ import { Plus, X, Edit3, Save, ChevronLeft, ChevronRight } from 'lucide-react';
 interface NodeDetailPanelProps {
   node: TechniqueTreeNode | null;
   strokeId: string;
-  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, _coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => void;
+  onConfirm: (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, _coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string; goalKind?: 'keyPoint' | 'mistake' | 'competitiveMetric' }) => void;
   onClose: () => void;
   onUpdateNode?: (node: TechniqueTreeNode) => void;
   onNavigateNode?: (filename: string) => void;
@@ -16,6 +16,17 @@ interface NodeDetailPanelProps {
 }
 
 type TabType = 'keyPoints' | 'mistakes' | 'drills' | 'competitiveMetrics';
+
+const levelClasses = [
+  'level-1',
+  'level-2',
+  'level-3',
+  'level-4',
+  'level-5',
+  'level-6',
+  'level-7',
+  'level-8',
+];
 
 const tierColors: Record<string, string> = {
   beginner: 'bg-emerald-50 border-emerald-200 text-emerald-700',
@@ -110,22 +121,21 @@ export function NodeDetailPanel({
     );
   }
 
-  const handleConfirm = (goalFromTier?: { drillName: string; tier: string; target: string }) => {
+  const handleConfirm = (goalFromTier?: { drillName: string; tier: string; target: string; goalKind?: 'keyPoint' | 'mistake' | 'competitiveMetric' }) => {
     onConfirm(node, {}, undefined, goalFromTier);
   };
 
   const handleCreateGoalFromTier = (drillName: string, tier: string, target: string) => {
-    handleConfirm({ drillName, tier, target });
+    handleConfirm({ drillName, tier, target, goalKind: 'competitiveMetric' });
   };
 
   const handleCreateGoalFromPoint = (type: 'keyPoint' | 'mistake', text: string) => {
-    const description = type === 'keyPoint'
-      ? `Remember: ${text.slice(0, 50)}${text.length > 50 ? '...' : ''}`
-      : `Avoid: ${text.slice(0, 50)}${text.length > 50 ? '...' : ''}`;
+    const cleanText = text.replace(/\*\*/g, '');
     onConfirm(node, {}, undefined, {
       drillName: type === 'keyPoint' ? 'Key Point' : 'Common Mistake',
       tier: '',
-      target: text.replace(/\*\*/g, '')
+      target: cleanText,
+      goalKind: type
     });
   };
 
@@ -152,18 +162,7 @@ export function NodeDetailPanel({
     setIsEditing(false);
   };
 
-  const levelGradients = [
-    'from-emerald-400 to-emerald-500',
-    'from-cyan-400 to-cyan-500',
-    'from-amber-400 to-amber-500',
-    'from-orange-400 to-orange-500',
-    'from-purple-400 to-purple-500',
-    'from-pink-400 to-pink-500',
-    'from-indigo-400 to-indigo-500',
-    'from-red-400 to-red-500',
-  ];
-
-  const levelGradient = levelGradients[Math.min(node.level - 1, levelGradients.length - 1)];
+  const levelClass = levelClasses[Math.min(node.level - 1, levelClasses.length - 1)];
 
   const handleNavigatePrev = () => {
     if (markdownContent?.prevFile && onNavigateNode) {
@@ -190,16 +189,16 @@ export function NodeDetailPanel({
       <div className="h-full flex flex-col bg-white">
         {/* Pull-down indicator */}
         <div className="flex justify-center pt-2 pb-1">
-          <div className="w-12 h-1.5 rounded-full bg-gray-300" />
+          <div className="lane-divider w-24" />
         </div>
 
         {/* Header */}
-        <div className="px-4 py-2 flex items-center justify-between border-b border-gray-100">
+        <div className="px-4 py-2 flex items-center justify-between border-b border-pool-mid/20">
           <button
             onClick={onClose}
-            className="p-2 -ml-2 rounded-lg text-gray-500 active:bg-gray-100"
+            className="lane-badge w-9 h-9 flex items-center justify-center text-xs active:scale-95"
           >
-            <X className="w-5 h-5" />
+            <X className="w-4 h-4" />
           </button>
 
           {/* Navigation arrows */}
@@ -208,16 +207,16 @@ export function NodeDetailPanel({
               <button
                 onClick={handleNavigatePrev}
                 disabled={!markdownContent.prevFile}
-                className="p-2 rounded-lg text-gray-500 active:bg-gray-100 disabled:opacity-30"
+                className="lane-badge w-9 h-9 flex items-center justify-center text-xs disabled:opacity-40 active:scale-95"
               >
-                <ChevronLeft className="w-5 h-5" />
+                <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 onClick={handleNavigateNext}
                 disabled={!markdownContent.nextFile}
-                className="p-2 rounded-lg text-gray-500 active:bg-gray-100 disabled:opacity-30"
+                className="lane-badge w-9 h-9 flex items-center justify-center text-xs disabled:opacity-40 active:scale-95"
               >
-                <ChevronRight className="w-5 h-5" />
+                <ChevronRight className="w-4 h-4" />
               </button>
             </div>
           )}
@@ -226,13 +225,13 @@ export function NodeDetailPanel({
         {/* Level + Title */}
         <div className="px-4 py-3">
           <div className="flex items-center gap-2 mb-2">
-            <span className={`inline-flex items-center px-3 py-1.5 rounded-full text-sm font-bold text-white bg-gradient-to-r ${levelGradient}`}>
+            <span className={`level-badge ${levelClass}`}>
               Level {node.level}
             </span>
             {!isEditing && onUpdateNode && (
               <button
                 onClick={handleStartEdit}
-                className="p-2 rounded-lg text-gray-400 active:bg-gray-100"
+                className="p-2 rounded-lg text-pool-mid active:bg-pool-surface"
               >
                 <Edit3 className="w-4 h-4" />
               </button>
@@ -244,10 +243,10 @@ export function NodeDetailPanel({
               type="text"
               value={editName}
               onChange={(e) => setEditName(e.target.value)}
-              className="w-full rounded-lg border border-gray-200 px-3 py-2 text-xl font-bold bg-white"
+              className="w-full rounded-lg border border-pool-mid/30 px-3 py-2 font-heading text-xl font-bold text-pool-dark bg-white"
             />
           ) : (
-            <h3 className="text-xl font-bold text-gray-900 leading-tight">{node.name}</h3>
+            <h3 className="font-heading text-xl font-bold text-pool-dark leading-tight uppercase tracking-wide">{node.name}</h3>
           )}
 
           {isEditing ? (
@@ -255,26 +254,26 @@ export function NodeDetailPanel({
               value={editDescription}
               onChange={(e) => setEditDescription(e.target.value)}
               rows={2}
-              className="w-full mt-2 rounded-lg border border-gray-200 px-3 py-2 text-sm text-gray-600 bg-white resize-none"
+              className="w-full mt-2 rounded-lg border border-pool-mid/30 px-3 py-2 text-sm text-pool-mid bg-white resize-none font-body"
             />
           ) : (
-            <p className="text-sm text-gray-500 mt-1 leading-relaxed">{node.description}</p>
+            <p className="text-sm text-pool-mid mt-1 leading-relaxed font-body">{node.description}</p>
           )}
 
           {isEditing && (
             <div className="flex gap-2 mt-3 justify-end">
               <button
                 onClick={handleCancelEdit}
-                className="px-4 py-2 text-sm font-medium text-gray-500 active:bg-gray-100"
+                className="btn-lane px-4 py-2 text-sm"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
                 disabled={!editName.trim()}
-                className="px-4 py-2 text-sm font-semibold bg-pool-mid text-white rounded-lg active:bg-pool-deep disabled:opacity-50"
+                className="btn-primary px-4 py-2 text-sm disabled:opacity-50"
               >
-                Save
+                <Save className="w-3 h-3 inline mr-1" />Save
               </button>
             </div>
           )}
@@ -353,10 +352,17 @@ export function NodeDetailPanel({
               {markdownContent.specificDrills.map((drill, idx) => (
                 <div
                   key={idx}
-                  className="p-4 rounded-xl bg-gray-50 border border-gray-100"
+                  className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 border border-gray-100 active:scale-[0.98] transition-transform"
+                  onClick={() => onConfirm(node, {}, undefined, {
+                    drillName: drill.name.replace(/\*\*/g, ''),
+                    tier: '',
+                    target: drill.description,
+                    goalKind: 'competitiveMetric'
+                  })}
                 >
-                  <p className="text-sm font-semibold text-gray-900">{drill.name.replace(/\*\*/g, '')}</p>
-                  <p className="text-xs text-gray-500 mt-1 leading-relaxed">{drill.description}</p>
+                  <p className="text-sm font-semibold text-gray-900 flex-1">{drill.name.replace(/\*\*/g, '')}</p>
+                  <p className="text-xs text-gray-500 leading-relaxed flex-1">{drill.description}</p>
+                  <Plus className="w-5 h-5 text-gray-400 shrink-0" />
                 </div>
               ))}
             </div>
@@ -371,8 +377,32 @@ export function NodeDetailPanel({
                   className="rounded-xl border border-blue-100 bg-gradient-to-b from-blue-50 to-white overflow-hidden"
                 >
                   {/* Drill Header */}
-                  <div className="px-4 py-3 bg-blue-100/50 border-b border-blue-100">
-                    <h5 className="text-sm font-bold text-gray-900">{drill.name}</h5>
+                  <div
+                    className={`px-4 py-3 bg-blue-100/50 border-b border-blue-100 ${
+                      !drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                      !drill.tieredTargets.advanced && !drill.tieredTargets.elite
+                        ? 'active:scale-[0.98] transition-transform cursor-pointer'
+                        : ''
+                    }`}
+                    onClick={() => {
+                      if (!drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                          !drill.tieredTargets.advanced && !drill.tieredTargets.elite) {
+                        onConfirm(node, {}, undefined, {
+                          drillName: drill.name,
+                          tier: '',
+                          target: drill.selfCheck || drill.name,
+                          goalKind: 'competitiveMetric'
+                        });
+                      }
+                    }}
+                  >
+                    <div className="flex items-center justify-between">
+                      <h5 className="text-sm font-bold text-gray-900">{drill.name}</h5>
+                      {!drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                       !drill.tieredTargets.advanced && !drill.tieredTargets.elite && (
+                        <Plus className="w-4 h-4 text-blue-500 opacity-60" />
+                      )}
+                    </div>
                     {drill.selfCheck && (
                       <p className="text-xs text-blue-600 mt-1">{drill.selfCheck}</p>
                     )}
@@ -455,7 +485,7 @@ export function NodeDetailPanel({
 
         {/* Level Badge + Meta */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold text-white bg-gradient-to-r ${levelGradient} shadow-sm`}>
+          <span className={`level-badge ${levelClass}`}>
             Lv.{node.level}
           </span>
           {!isEditing && onUpdateNode && (
@@ -584,9 +614,24 @@ export function NodeDetailPanel({
         {activeTab === 'drills' && markdownContent?.specificDrills && (
           <div className="space-y-2">
             {markdownContent.specificDrills.map((drill, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-white/60 border border-pool-light/30 hover:border-pool-mid/30 transition-colors">
+              <div
+                key={idx}
+                className="group relative p-3 rounded-lg bg-white/60 border border-pool-light/30 hover:border-pool-mid/30 transition-colors cursor-pointer"
+                onClick={() => onConfirm(node, {}, undefined, {
+                  drillName: drill.name.replace(/\*\*/g, ''),
+                  tier: '',
+                  target: drill.description,
+                  goalKind: 'competitiveMetric'
+                })}
+              >
                 <p className="text-sm font-medium text-pool-dark">{drill.name.replace(/\*\*/g, '')}</p>
                 <p className="text-xs text-pool-mid mt-1 leading-relaxed">{drill.description}</p>
+                <button
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
+                  title="Add as goal"
+                >
+                  <Plus className="w-3 h-3 text-pool-mid" />
+                </button>
               </div>
             ))}
           </div>
@@ -597,8 +642,37 @@ export function NodeDetailPanel({
           <div className="space-y-3">
             {markdownContent.competitiveDrills.map((drill, idx) => (
               <div key={idx} className="rounded-xl border border-blue-100/60 bg-gradient-to-br from-blue-50/40 to-white overflow-hidden">
-                <div className="px-3 py-2 bg-blue-100/30 border-b border-blue-100/40">
-                  <h5 className="text-sm font-semibold text-pool-dark">{drill.name}</h5>
+                <div
+                  className={`px-3 py-2 bg-blue-100/30 border-b border-blue-100/40 ${
+                    !drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                    !drill.tieredTargets.advanced && !drill.tieredTargets.elite
+                      ? 'group hover:bg-blue-100/50 cursor-pointer'
+                      : ''
+                  }`}
+                  onClick={() => {
+                    if (!drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                        !drill.tieredTargets.advanced && !drill.tieredTargets.elite) {
+                      onConfirm(node, {}, undefined, {
+                        drillName: drill.name,
+                        tier: '',
+                        target: drill.selfCheck || drill.name,
+                        goalKind: 'competitiveMetric'
+                      });
+                    }
+                  }}
+                >
+                  <div className="flex items-center justify-between">
+                    <h5 className="text-sm font-semibold text-pool-dark">{drill.name}</h5>
+                    {!drill.tieredTargets.beginner && !drill.tieredTargets.intermediate &&
+                     !drill.tieredTargets.advanced && !drill.tieredTargets.elite && (
+                      <button
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
+                        title="Add as goal"
+                      >
+                        <Plus className="w-3 h-3 text-blue-500" />
+                      </button>
+                    )}
+                  </div>
                   {drill.selfCheck && (
                     <p className="text-xs text-blue-600 mt-0.5">{drill.selfCheck}</p>
                   )}
