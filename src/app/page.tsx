@@ -3,7 +3,6 @@ import { getNote, createEmptyNote } from '@/lib/data/notes';
 import { getStrokes } from '@/lib/data/config';
 import { DailyNoteFormWrapper } from './DailyNoteFormWrapper';
 import { StrokeCard, MasterTreeCard } from '@/components/StrokeCard';
-import { VideoAnalysisCard } from '@/components/VideoAnalysisCard';
 
 export default async function Home() {
   const today = new Date().toISOString().split('T')[0];
@@ -24,7 +23,7 @@ export default async function Home() {
   };
 
   return (
-    <div className="flex-1 min-h-screen relative">
+    <div className="flex-1 bg-gradient-to-b from-pool-surface to-pool-light min-h-screen">
       <main className="max-w-5xl mx-auto py-8 px-4 md:px-8">
         {/* Header */}
         <header className="mb-10">
@@ -68,16 +67,7 @@ export default async function Home() {
                 laneNumber={index + 1}
               />
             ))}
-          </div>
-
-          {/* Master Techniques */}
-          <div className="mt-5">
             <MasterTreeCard />
-          </div>
-
-          {/* Video Analysis */}
-          <div className="mt-4">
-            <VideoAnalysisCard />
           </div>
         </section>
 

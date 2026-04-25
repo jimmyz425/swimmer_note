@@ -1,47 +1,52 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { VideoAnalysis } from '@/lib/video/storage';
-import { Waves, Activity, Timer, TrendingUp, CheckCircle2, Loader2, Sparkles, RefreshCw } from 'lucide-react';
+import { PoseLandmark } from '@/lib/video/metrics';
+import { PoseDebugPanel } from './PoseDebugViewer';
+import { VideoSkeletonOverlay } from './VideoSkeletonOverlay';
+import { KickRateGraph, StrokeRateGraph } from './KickRateGraph';
+import { Waves, Activity, Loader2, Bug, Video, Trash2 } from 'lucide-react';
 
 interface AnalysisResultsProps {
   analysis: VideoAnalysis;
-  onGenerateFeedback?: () => void;
-  loadingFeedback?: boolean;
+  onDelete?: () => void;
 }
 
-export function AnalysisResults({ analysis, onGenerateFeedback, loadingFeedback }: AnalysisResultsProps) {
-  const metricGroups = [
-    {
-      title: 'Stroke Metrics',
-      icon: <Activity className="w-5 h-5" />,
-      metrics: [
-        { label: 'Stroke Rate', value: analysis.metrics.strokeRate, unit: 'spm', description: 'Strokes per minute' },
-      ],
-    },
-    {
-      title: 'Kick Metrics',
-      icon: <Waves className="w-5 h-5" />,
-      metrics: [
-        { label: 'Kick Rate', value: analysis.metrics.kickRate, unit: 'kps', description: 'Kicks per second' },
-      ],
-    },
-    {
-      title: 'Body Position',
-      icon: <Timer className="w-5 h-5" />,
-      metrics: [
-        { label: 'Avg Angle', value: analysis.metrics.bodyAngleAvg.toFixed(1), unit: '°', description: 'Degrees from horizontal' },
-        { label: 'Min Angle', value: analysis.metrics.bodyAngleMin.toFixed(1), unit: '°', description: 'Lowest angle' },
-        { label: 'Max Angle', value: analysis.metrics.bodyAngleMax.toFixed(1), unit: '°', description: 'Highest angle' },
-      ],
-    },
-    {
-      title: 'Arm Mechanics',
-      icon: <TrendingUp className="w-5 h-5" />,
-      metrics: [
-        { label: 'Elbow Height', value: analysis.metrics.elbowHeightAvg.toFixed(2), unit: '', description: 'Positive = high elbow catch' },
-      ],
-    },
-  ];
+export function AnalysisResults({ analysis, onDelete }: AnalysisResultsProps) {
+  const [showDebug, setShowDebug] = useState(false);
+  const [landmarksData, setLandmarksData] = useState<{ timestamp: number; landmarks: PoseLandmark[] }[]>([]);
+  const [loadingLandmarks, setLoadingLandmarks] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  // Handle delete
+  const handleDelete = async () => {
+    if (!onDelete) return;
+    setDeleting(true);
+    try {
+      await onDelete();
+    } catch (err) {
+      console.error('Delete failed:', err);
+    } finally {
+      setDeleting(false);
+      setShowDeleteConfirm(false);
+    }
+  };
+
+  // Load landmarks for debug view
+  useEffect(() => {
+    if (showDebug && analysis.rawLandmarks && landmarksData.length === 0) {
+      setLoadingLandmarks(true);
+      fetch(`/api/videos/${analysis.id}/landmarks`)
+        .then(res => res.json())
+        .then(data => {
+          setLandmarksData(data.landmarks || []);
+        })
+        .catch(err => console.error('Failed to load landmarks:', err))
+        .finally(() => setLoadingLandmarks(false));
+    }
+  }, [showDebug, analysis.id, analysis.rawLandmarks, landmarksData.length]);
 
   const strokeLabel = {
     freestyle: 'Freestyle',
@@ -61,90 +66,164 @@ export function AnalysisResults({ analysis, onGenerateFeedback, loadingFeedback 
   const badge = statusBadge[analysis.status];
 
   return (
-    <div className="glass-card rounded-xl p-6">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-3">
-          <h3 className="text-lg font-bold text-pool-dark">Analysis Results</h3>
-          <span className={`px-3 py-1 rounded-lg text-sm font-semibold ${badge.bg} ${badge.text}`}>
+    <div className="glass-card rounded-xl p-4 relative">
+      {/* Delete confirmation overlay */}
+      {showDeleteConfirm && (
+        <div className="absolute inset-0 bg-pool-surface/90 rounded-xl flex items-center justify-center z-10">
+          <div className="bg-white rounded-xl p-4 shadow-lg max-w-sm">
+            <p className="text-pool-dark font-semibold mb-2">Delete this analysis?</p>
+            <p className="text-pool-mid text-sm mb-4">This will remove the video, landmarks data, and all metrics.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 flex items-center justify-center gap-2 bg-red-500 text-white rounded-lg px-4 py-2
+                  font-semibold hover:bg-red-600 transition-colors disabled:opacity-50"
+              >
+                {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+                Delete
+              </button>
+              <button
+                onClick={() => setShowDeleteConfirm(false)}
+                disabled={deleting}
+                className="flex-1 px-4 py-2 rounded-lg font-semibold text-pool-dark bg-pool-surface hover:bg-pool-light transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Header - compact */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2 text-sm">
+          {strokeLabel[analysis.strokeType] && (
+            <span className="px-2 py-0.5 rounded bg-pool-mid/20 text-pool-dark font-semibold">
+              {strokeLabel[analysis.strokeType]}
+            </span>
+          )}
+          <span className="text-pool-mid">{analysis.duration}s • {analysis.framesProcessed} frames</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`px-2 py-0.5 rounded text-xs font-semibold ${badge.bg} ${badge.text}`}>
             {badge.label}
           </span>
+          {onDelete && (
+            <button
+              onClick={() => setShowDeleteConfirm(true)}
+              className="text-pool-mid hover:text-red-500 transition-colors p-1 rounded hover:bg-red-50"
+              title="Delete"
+            >
+              <Trash2 className="w-3.5 h-3.5" />
+            </button>
+          )}
         </div>
-        {strokeLabel[analysis.strokeType] && (
-          <span className="px-3 py-1.5 rounded-lg text-sm font-semibold bg-pool-mid/20 text-pool-dark border border-pool-mid/30">
-            {strokeLabel[analysis.strokeType]}
-          </span>
-        )}
-      </div>
-
-      {/* Video info */}
-      <div className="text-sm text-pool-mid mb-4 flex items-center gap-4">
-        <span>Duration: {analysis.duration}s</span>
-        <span>Frames: {analysis.framesProcessed}</span>
       </div>
 
       {analysis.status === 'completed' && (
         <>
-          {/* Metrics */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            {metricGroups.map((group) => (
-              <div key={group.title} className="bg-pool-surface/50 rounded-xl p-4">
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-pool-mid/20 flex items-center justify-center text-pool-deep">
-                    {group.icon}
-                  </div>
-                  <span className="text-sm font-bold text-pool-dark">{group.title}</span>
+          {/* Main content: Stats left, Graphs right */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+            {/* Stats - compact */}
+            <div className="md:col-span-1 flex flex-col gap-2">
+              {/* Stroke Rate */}
+              <div className="bg-pool-surface/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-pool-deep" />
+                  <span className="text-xs font-semibold text-pool-mid">Stroke Rate</span>
                 </div>
-                <div className="space-y-2">
-                  {group.metrics.map((metric) => (
-                    <div key={metric.label} className="flex items-center justify-between">
-                      <span className="text-xs text-pool-mid">{metric.label}</span>
-                      <div className="flex items-center gap-1">
-                        <span className="text-sm font-bold text-pool-dark">{metric.value}</span>
-                        <span className="text-xs text-pool-mid">{metric.unit}</span>
-                      </div>
-                    </div>
-                  ))}
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-pool-dark">{Math.round(analysis.metrics.strokeRate)}</span>
+                  <span className="text-xs text-pool-mid">spm</span>
+                </div>
+                <div className="mt-1 text-xs text-pool-mid/70">
+                  Peak: {analysis.metrics.strokeRatePeakHz?.toFixed(2) || '0'} Hz
+                  • Valid: {analysis.metrics.strokeRateValidWindows || 0}/{analysis.metrics.strokeRateTotalWindows || 0}
                 </div>
               </div>
-            ))}
+
+              {/* Kick Rate */}
+              <div className="bg-pool-surface/50 rounded-lg p-3">
+                <div className="flex items-center gap-2">
+                  <Waves className="w-4 h-4 text-pool-deep" />
+                  <span className="text-xs font-semibold text-pool-mid">Kick Rate</span>
+                </div>
+                <div className="mt-1 flex items-baseline gap-1">
+                  <span className="text-2xl font-bold text-pool-dark">{Math.round(analysis.metrics.kickRate)}</span>
+                  <span className="text-xs text-pool-mid">kpm</span>
+                </div>
+                <div className="mt-1 text-xs text-pool-mid/70">
+                  Peak: {analysis.metrics.kickRatePeakHz?.toFixed(2) || '0'} Hz
+                  • Valid: {analysis.metrics.kickRateValidWindows || 0}/{analysis.metrics.kickRateTotalWindows || 0}
+                </div>
+              </div>
+            </div>
+
+            {/* Graphs - stacked */}
+            <div className="md:col-span-3 flex flex-col gap-3">
+              {/* Stroke Rate Graph */}
+              {analysis.realtimeStrokeRates && analysis.realtimeStrokeRates.length > 0 ? (
+                <StrokeRateGraph
+                  realtimeStrokeRates={analysis.realtimeStrokeRates}
+                  peakHz={analysis.metrics.strokeRatePeakHz}
+                  minConfidence={1.5}
+                  height={100}
+                />
+              ) : (
+                <div className="bg-pool-surface/30 rounded-lg p-3 text-center text-pool-mid text-xs">
+                  No stroke rate data
+                </div>
+              )}
+
+              {/* Kick Rate Graph */}
+              {analysis.realtimeKickRates && analysis.realtimeKickRates.length > 0 ? (
+                <KickRateGraph
+                  realtimeKickRates={analysis.realtimeKickRates}
+                  peakHz={analysis.metrics.kickRatePeakHz}
+                  minConfidence={1.5}
+                  height={100}
+                />
+              ) : (
+                <div className="bg-pool-surface/30 rounded-lg p-3 text-center text-pool-mid text-xs">
+                  No kick rate data
+                </div>
+              )}
+            </div>
           </div>
 
-          {/* Coaching Feedback */}
-          <div className="bg-gradient-to-r from-blue-50/80 to-pool-surface/50 rounded-xl border border-blue-100">
-            <details open={!!analysis.coachingFeedback}>
-              <summary className="p-3 cursor-pointer text-sm font-bold text-pool-dark flex items-center gap-2.5 hover:bg-blue-50 rounded-xl transition-colors">
-                <div className="w-7 h-7 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Sparkles className="w-4 h-4 text-blue-600" />
-                </div>
-                AI Coaching Feedback
-                {onGenerateFeedback && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onGenerateFeedback();
-                    }}
-                    disabled={loadingFeedback}
-                    className="ml-2 text-xs text-pool-deep hover:text-accent disabled:text-pool-mid/50 flex items-center gap-1 font-medium transition-colors"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${loadingFeedback ? 'animate-spin' : ''}`} />
-                    Generate
-                  </button>
-                )}
-                <span className="text-xs text-pool-mid ml-auto font-normal">
-                  {analysis.coachingFeedback ? 'Click to collapse' : 'Click to generate'}
-                </span>
+          {/* Videos section - collapsed at bottom */}
+          <div className="space-y-2">
+            {/* Video with Skeleton */}
+            <details className="bg-emerald-50/30 rounded-lg">
+              <summary className="p-2 cursor-pointer text-xs font-semibold text-pool-dark flex items-center gap-2 hover:bg-emerald-50/50">
+                <Video className="w-3.5 h-3.5 text-emerald-600" />
+                Video with Skeleton Overlay
               </summary>
-              <div className="p-3 pt-2 text-sm text-pool-dark whitespace-pre-line border-t border-blue-100">
-                {loadingFeedback ? (
-                  <div className="flex items-center gap-2">
+              <div className="p-2 border-t border-emerald-100">
+                <VideoSkeletonOverlay
+                  videoId={analysis.id}
+                  realtimeKickRates={analysis.realtimeKickRates}
+                />
+              </div>
+            </details>
+
+            {/* Pose Debug */}
+            <details className="bg-purple-50/30 rounded-lg" open={showDebug} onToggle={(e) => setShowDebug((e.target as HTMLDetailsElement).open)}>
+              <summary className="p-2 cursor-pointer text-xs font-semibold text-pool-dark flex items-center gap-2 hover:bg-purple-50/50">
+                <Bug className="w-3.5 h-3.5 text-purple-600" />
+                Pose Debug View
+              </summary>
+              <div className="p-2 border-t border-purple-100">
+                {loadingLandmarks ? (
+                  <div className="flex items-center gap-2 py-4 justify-center">
                     <Loader2 className="w-4 h-4 text-pool-mid animate-spin" />
-                    <span className="text-pool-mid">Generating feedback...</span>
+                    <span className="text-xs text-pool-mid">Loading...</span>
                   </div>
-                ) : analysis.coachingFeedback ? (
-                  <div>{analysis.coachingFeedback}</div>
+                ) : landmarksData.length > 0 ? (
+                  <PoseDebugPanel framesData={landmarksData} />
                 ) : (
-                  <span className="text-pool-mid">No feedback generated yet</span>
+                  <p className="text-xs text-pool-mid text-center py-4">No pose data</p>
                 )}
               </div>
             </details>
@@ -153,14 +232,14 @@ export function AnalysisResults({ analysis, onGenerateFeedback, loadingFeedback 
       )}
 
       {analysis.status === 'processing' && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="w-8 h-8 text-pool-mid animate-spin" />
+        <div className="flex items-center justify-center py-6">
+          <Loader2 className="w-6 h-6 text-pool-mid animate-spin" />
         </div>
       )}
 
       {analysis.status === 'failed' && (
-        <div className="text-center py-8 text-red-600">
-          <p>Analysis failed. Please try uploading again.</p>
+        <div className="text-center py-6 text-red-600 text-sm">
+          Analysis failed. Please try uploading again.
         </div>
       )}
     </div>

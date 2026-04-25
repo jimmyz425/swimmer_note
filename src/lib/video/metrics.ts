@@ -1,3 +1,12 @@
+import {
+  computeKickRateInWindow,
+  computeRealtimeKickRates,
+  getAverageKickRate,
+  computeStrokeRateInWindow,
+  computeRealtimeStrokeRates,
+  getAverageStrokeRate
+} from './kickDetection';
+
 // Pose landmark indices (MediaPipe standard)
 export const LANDMARKS = {
   NOSE: 0,
@@ -31,9 +40,35 @@ export interface FrameData {
   landmarks: PoseLandmark[];
 }
 
+export interface RealtimeKickRate {
+  timestamp: number;
+  kickRateHz: number;
+  kickRatePerMin: number;
+  confidence: number;
+}
+
+export interface RealtimeStrokeRate {
+  timestamp: number;
+  strokeRateHz: number;
+  strokeRatePerMin: number;
+  confidence: number;
+  amplitude: number;
+}
+
 export interface AnalysisMetrics {
   strokeRate: number;
+  strokeRateHz: number;
+  strokeRatePeakHz: number;
+  strokeRateValidWindows: number;
+  strokeRateTotalWindows: number;
+  realtimeStrokeRates: RealtimeStrokeRate[];
   kickRate: number;
+  kickRateHz: number;
+  kickRateConfidence: number;
+  kickRatePeakHz: number;
+  kickRateValidWindows: number;
+  kickRateTotalWindows: number;
+  realtimeKickRates: RealtimeKickRate[];
   bodyAngleAvg: number;
   bodyAngleMin: number;
   bodyAngleMax: number;
@@ -63,64 +98,84 @@ function findPeaks(signal: number[], minDistance: number = 5): number[] {
   return peaks;
 }
 
-// Detect stroke rate from wrist position cycles
-export function detectStrokeRate(frames: FrameData[]): number {
-  // Track wrist Y position (vertical movement indicates stroke cycle)
-  const wristYPositions = frames.map(f => {
-    const leftWrist = f.landmarks[LANDMARKS.LEFT_WRIST];
-    const rightWrist = f.landmarks[LANDMARKS.RIGHT_WRIST];
-    // Use average of both wrists, weighted by visibility
-    const leftWeight = leftWrist.visibility || 0;
-    const rightWeight = rightWrist.visibility || 0;
-    const totalWeight = leftWeight + rightWeight;
-    if (totalWeight === 0) return 0.5; // fallback
-    return (leftWrist.y * leftWeight + rightWrist.y * rightWeight) / totalWeight;
-  });
+// Detect stroke rate using FFT analysis of wrist movement
+// Uses 3-second window, filters out small motion periods
+export function detectStrokeRate(frames: FrameData[]): {
+  strokeRateHz: number;
+  strokeRatePerMin: number;
+  peakHz: number;
+  validWindowCount: number;
+  totalWindowCount: number;
+  realtimeStrokeRates: RealtimeStrokeRate[];
+} {
+  if (frames.length < 15) {
+    return {
+      strokeRateHz: 0,
+      strokeRatePerMin: 0,
+      peakHz: 0,
+      validWindowCount: 0,
+      totalWindowCount: 0,
+      realtimeStrokeRates: []
+    };
+  }
 
-  // Find peaks in wrist movement (stroke cycles)
-  const peaks = findPeaks(wristYPositions, 10);
+  // Compute real-time stroke rates using 3-second window
+  const realtimeStrokeRates = computeRealtimeStrokeRates(frames);
 
-  if (peaks.length < 2) return 0;
+  // Get average stroke rate excluding low amplitude/low frequency windows
+  const avgResult = getAverageStrokeRate(realtimeStrokeRates);
 
-  // Calculate average time between strokes
-  const totalTimeMs = frames[frames.length - 1].timestamp - frames[0].timestamp;
-  const strokeCount = peaks.length;
-
-  // strokes per minute = (strokes / total time in seconds) * 60
-  const totalTimeSec = totalTimeMs / 1000;
-  return (strokeCount / totalTimeSec) * 60;
+  return {
+    strokeRateHz: avgResult.averageHz,
+    strokeRatePerMin: avgResult.averagePerMin,
+    peakHz: avgResult.peakHz,
+    validWindowCount: avgResult.validCount,
+    totalWindowCount: avgResult.totalCount,
+    realtimeStrokeRates,
+  };
 }
 
-// Detect kick rate from ankle vertical oscillation
-export function detectKickRate(frames: FrameData[]): number {
-  // Track ankle Y position
-  const ankleYPositions = frames.map(f => {
-    const leftAnkle = f.landmarks[LANDMARKS.LEFT_ANKLE];
-    const rightAnkle = f.landmarks[LANDMARKS.RIGHT_ANKLE];
-    const avgY = (leftAnkle.y + rightAnkle.y) / 2;
-    return avgY;
-  });
+// Detect kick rate using FFT analysis of ankle movement
+// Returns kicks per second (Hz) using frequency analysis
+// Excludes low frequency blocks (below 50% of peak) from statistics
+export function detectKickRate(frames: FrameData[]): {
+  kickRateHz: number;
+  kickRatePerMin: number;
+  confidence: number;
+  peakHz: number;
+  validWindowCount: number;
+  totalWindowCount: number;
+  realtimeKickRates: RealtimeKickRate[];
+} {
+  if (frames.length < 10) {
+    return {
+      kickRateHz: 0,
+      kickRatePerMin: 0,
+      confidence: 0,
+      peakHz: 0,
+      validWindowCount: 0,
+      totalWindowCount: 0,
+      realtimeKickRates: []
+    };
+  }
 
-  // Calculate oscillation amplitude to determine if valid kick data
-  const minY = Math.min(...ankleYPositions);
-  const maxY = Math.max(...ankleYPositions);
-  const amplitude = maxY - minY;
+  // Compute real-time kick rates for all frames
+  const realtimeKickRates = computeRealtimeKickRates(frames);
 
-  // Need at least 5% variation to detect kicks
-  if (amplitude < 0.05) return 0;
+  // Get average kick rate weighted by confidence, excluding low frequency blocks
+  const avgResult = getAverageKickRate(realtimeKickRates);
 
-  // Find peaks in ankle movement (kick cycles)
-  // For flutter kick, peaks should be closer together
-  const peaks = findPeaks(ankleYPositions, 3);
-
-  if (peaks.length < 2) return 0;
-
-  // kicks per second
-  const totalTimeMs = frames[frames.length - 1].timestamp - frames[0].timestamp;
-  const totalTimeSec = totalTimeMs / 1000;
-  const kickCount = peaks.length;
-
-  return kickCount / totalTimeSec;
+  return {
+    kickRateHz: avgResult.averageHz,
+    kickRatePerMin: avgResult.averagePerMin,
+    confidence: realtimeKickRates.length > 0
+      ? realtimeKickRates.reduce((a, b) => a + b.confidence, 0) / realtimeKickRates.length
+      : 0,
+    peakHz: avgResult.peakHz,
+    validWindowCount: avgResult.validCount,
+    totalWindowCount: avgResult.totalCount,
+    realtimeKickRates,
+  };
 }
 
 // Calculate body angle from shoulder-hip alignment
@@ -191,14 +246,27 @@ export function analyzeElbowHeight(frames: FrameData[]): number {
 // Full analysis pipeline
 export function analyzePoseData(frames: FrameData[]): AnalysisMetrics {
   const bodyAngles = analyzeBodyAngles(frames);
+  const kickRateResult = detectKickRate(frames);
+  const strokeRateResult = detectStrokeRate(frames);
 
   return {
-    strokeRate: detectStrokeRate(frames),
-    kickRate: detectKickRate(frames),
+    strokeRate: strokeRateResult.strokeRatePerMin,
+    strokeRateHz: strokeRateResult.strokeRateHz,
+    strokeRatePeakHz: strokeRateResult.peakHz,
+    strokeRateValidWindows: strokeRateResult.validWindowCount,
+    strokeRateTotalWindows: strokeRateResult.totalWindowCount,
+    realtimeStrokeRates: strokeRateResult.realtimeStrokeRates,
+    kickRate: kickRateResult.kickRatePerMin,
+    kickRateHz: kickRateResult.kickRateHz,
+    kickRateConfidence: kickRateResult.confidence,
+    kickRatePeakHz: kickRateResult.peakHz,
+    kickRateValidWindows: kickRateResult.validWindowCount,
+    kickRateTotalWindows: kickRateResult.totalWindowCount,
+    realtimeKickRates: kickRateResult.realtimeKickRates,
     bodyAngleAvg: bodyAngles.avg,
     bodyAngleMin: bodyAngles.min,
     bodyAngleMax: bodyAngles.max,
-    armEntryAngleAvg: 0, // TODO: implement arm entry tracking
+    armEntryAngleAvg: 0,
     elbowHeightAvg: analyzeElbowHeight(frames),
   };
 }

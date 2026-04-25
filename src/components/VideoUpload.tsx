@@ -1,16 +1,27 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Video, X, Loader2, Play, Pause, CheckCircle2 } from 'lucide-react';
+import { Upload, Video, X, Loader2, Play, Pause, CheckCircle2, Cpu, Gauge } from 'lucide-react';
+import { PoseModelVariant, AnalysisFramerate, FRAMERATE_INFO } from '@/lib/video/poseAnalysis';
+
+const MODEL_OPTIONS: { value: PoseModelVariant; label: string; description: string }[] = [
+  { value: 'lite', label: 'Lite (Fast)', description: '2x faster, basic accuracy' },
+  { value: 'full', label: 'Full (Balanced)', description: 'Good accuracy for most poses' },
+  { value: 'heavy', label: 'Heavy (Accurate)', description: 'Highest accuracy, slower processing' },
+];
+
+const FRAMERATE_OPTIONS: AnalysisFramerate[] = [30, 60, 120, 240, 'auto'];
 
 interface VideoUploadProps {
-  onUpload: (file: File, strokeType: string) => Promise<void>;
+  onUpload: (file: File, strokeType: string, modelVariant: PoseModelVariant, framerate: AnalysisFramerate) => Promise<void>;
   disabled?: boolean;
 }
 
 export function VideoUpload({ onUpload, disabled }: VideoUploadProps) {
   const [file, setFile] = useState<File | null>(null);
   const [strokeType, setStrokeType] = useState<string>('freestyle');
+  const [modelVariant, setModelVariant] = useState<PoseModelVariant>('lite');
+  const [framerate, setFramerate] = useState<AnalysisFramerate>('auto');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [dragActive, setDragActive] = useState(false);
@@ -57,7 +68,7 @@ export function VideoUpload({ onUpload, disabled }: VideoUploadProps) {
 
     setUploading(true);
     try {
-      await onUpload(file, strokeType);
+      await onUpload(file, strokeType, modelVariant, framerate);
       // Reset after successful upload
       if (previewUrl) URL.revokeObjectURL(previewUrl);
       setFile(null);
@@ -67,7 +78,7 @@ export function VideoUpload({ onUpload, disabled }: VideoUploadProps) {
     } finally {
       setUploading(false);
     }
-  }, [file, strokeType, uploading, disabled, onUpload, previewUrl]);
+  }, [file, strokeType, modelVariant, framerate, uploading, disabled, onUpload, previewUrl]);
 
   const handleClear = useCallback(() => {
     if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -131,22 +142,74 @@ export function VideoUpload({ onUpload, disabled }: VideoUploadProps) {
 
       {/* Stroke type selector */}
       {file && (
-        <div className="mt-4">
-          <label className="block text-sm font-semibold text-pool-dark mb-2">
-            Stroke Type
-          </label>
-          <select
-            value={strokeType}
-            onChange={(e) => setStrokeType(e.target.value)}
-            className="w-full rounded-xl border border-pool-light/50 px-4 py-3 text-sm font-semibold text-pool-dark
-              bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
-          >
-            <option value="freestyle">Freestyle</option>
-            <option value="backstroke">Backstroke</option>
-            <option value="breaststroke">Breaststroke</option>
-            <option value="butterfly">Butterfly</option>
-            <option value="im">Individual Medley</option>
-          </select>
+        <div className="mt-4 grid grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm font-semibold text-pool-dark mb-2">
+              Stroke Type
+            </label>
+            <select
+              value={strokeType}
+              onChange={(e) => setStrokeType(e.target.value)}
+              className="w-full rounded-xl border border-pool-light/50 px-4 py-3 text-sm font-semibold text-pool-dark
+                bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
+            >
+              <option value="freestyle">Freestyle</option>
+              <option value="backstroke">Backstroke</option>
+              <option value="breaststroke">Breaststroke</option>
+              <option value="butterfly">Butterfly</option>
+            </select>
+          </div>
+
+          {/* Model variant selector */}
+          <div>
+            <label className="block text-sm font-semibold text-pool-dark mb-2 flex items-center gap-2">
+              <Cpu className="w-4 h-4" />
+              Model
+            </label>
+            <select
+              value={modelVariant}
+              onChange={(e) => setModelVariant(e.target.value as PoseModelVariant)}
+              className="w-full rounded-xl border border-pool-light/50 px-4 py-3 text-sm font-semibold text-pool-dark
+                bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
+            >
+              {MODEL_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Framerate selector */}
+          <div>
+            <label className="block text-sm font-semibold text-pool-dark mb-2 flex items-center gap-2">
+              <Gauge className="w-4 h-4" />
+              Framerate
+            </label>
+            <select
+              value={framerate.toString()}
+              onChange={(e) => {
+                const val = e.target.value;
+                setFramerate(val === 'auto' ? 'auto' : parseInt(val) as AnalysisFramerate);
+              }}
+              className="w-full rounded-xl border border-pool-light/50 px-4 py-3 text-sm font-semibold text-pool-dark
+                bg-white/80 focus:border-pool-mid focus:ring-2 focus:ring-pool-mid/20 outline-none"
+            >
+              {FRAMERATE_OPTIONS.map((fps) => (
+                <option key={fps.toString()} value={fps.toString()}>
+                  {FRAMERATE_INFO[fps].label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
+      {/* Settings description */}
+      {file && (
+        <div className="mt-2 text-xs text-pool-mid flex gap-4">
+          <span>Model: {MODEL_OPTIONS.find(o => o.value === modelVariant)?.description}</span>
+          <span>FPS: {FRAMERATE_INFO[framerate].description}</span>
         </div>
       )}
 

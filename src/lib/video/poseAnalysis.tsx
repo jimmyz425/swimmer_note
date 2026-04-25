@@ -4,20 +4,56 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
 import { LANDMARKS, PoseLandmark, FrameData, analyzePoseData } from './metrics';
 
+// Model variants: lite (fastest), full (balanced), heavy (most accurate)
+export type PoseModelVariant = 'lite' | 'full' | 'heavy';
+
+// Framerate options for analysis - can use preset or detect from video
+export type AnalysisFramerate = 30 | 60 | 120 | 240 | 'auto';
+
+const FRAMERATE_INFO: Record<AnalysisFramerate, { label: string; description: string }> = {
+  30: { label: '30 FPS', description: 'Standard, balanced speed' },
+  60: { label: '60 FPS', description: 'Good for fast movements' },
+  120: { label: '120 FPS', description: 'High detail, slower processing' },
+  240: { label: '240 FPS', description: 'Maximum detail, very slow' },
+  'auto': { label: 'Auto (Video FPS)', description: 'Use video\'s native framerate' },
+};
+
+const MODEL_PATHS: Record<PoseModelVariant, string> = {
+  lite: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+  full: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/latest/pose_landmarker_full.task',
+  heavy: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/latest/pose_landmarker_heavy.task',
+};
+
+const MODEL_INFO: Record<PoseModelVariant, { name: string; speed: string; accuracy: string }> = {
+  lite: { name: 'Lite', speed: '~2x faster', accuracy: 'Basic pose detection' },
+  full: { name: 'Full', speed: 'Balanced', accuracy: 'Good accuracy for most poses' },
+  heavy: { name: 'Heavy', speed: '~2x slower', accuracy: 'Highest accuracy, best for complex poses' },
+};
+
 interface PoseAnalysisResult {
   frames: FrameData[];
   metrics: ReturnType<typeof analyzePoseData>;
 }
 
-export function usePoseAnalysis() {
+export function usePoseAnalysis(modelVariant: PoseModelVariant = 'lite') {
   const [loading, setLoading] = useState(false);
   const [progress, setProgress] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const [modelLoaded, setModelLoaded] = useState<PoseModelVariant | null>(null);
   const poseLandmarkerRef = useRef<PoseLandmarker | null>(null);
 
   // Initialize MediaPipe Pose Landmarker
-  const initPoseLandmarker = useCallback(async () => {
-    if (poseLandmarkerRef.current) return poseLandmarkerRef.current;
+  const initPoseLandmarker = useCallback(async (variant: PoseModelVariant) => {
+    // Re-initialize if model variant changes
+    if (poseLandmarkerRef.current && modelLoaded === variant) {
+      return poseLandmarkerRef.current;
+    }
+
+    // Close existing landmarker if switching models
+    if (poseLandmarkerRef.current && modelLoaded !== variant) {
+      poseLandmarkerRef.current.close();
+      poseLandmarkerRef.current = null;
+    }
 
     try {
       const vision = await FilesetResolver.forVisionTasks(
@@ -26,7 +62,7 @@ export function usePoseAnalysis() {
 
       const poseLandmarker = await PoseLandmarker.createFromOptions(vision, {
         baseOptions: {
-          modelAssetPath: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/latest/pose_landmarker_lite.task',
+          modelAssetPath: MODEL_PATHS[variant],
           delegate: 'GPU',
         },
         runningMode: 'VIDEO',
@@ -34,21 +70,22 @@ export function usePoseAnalysis() {
       });
 
       poseLandmarkerRef.current = poseLandmarker;
+      setModelLoaded(variant);
       return poseLandmarker;
     } catch (err) {
       console.error('Failed to init PoseLandmarker:', err);
       throw err;
     }
-  }, []);
+  }, [modelLoaded]);
 
   // Analyze video file
-  const analyzeVideo = useCallback(async (videoFile: File): Promise<PoseAnalysisResult | null> => {
+  const analyzeVideo = useCallback(async (videoFile: File, framerate: AnalysisFramerate = 30): Promise<PoseAnalysisResult | null> => {
     setLoading(true);
     setError(null);
     setProgress(0);
 
     try {
-      const poseLandmarker = await initPoseLandmarker();
+      const poseLandmarker = await initPoseLandmarker(modelVariant);
 
       // Create video element to process frames
       const video = document.createElement('video');
@@ -65,7 +102,23 @@ export function usePoseAnalysis() {
       });
 
       const frames: FrameData[] = [];
-      const fps = 30; // Process at 30 fps
+
+      // Determine FPS to use
+      let fps: number;
+      if (framerate === 'auto') {
+        // Try to detect video's native framerate
+        // Most browsers don't expose this directly, so we estimate
+        // Check if requestVideoFrameCallback API is available (indicates modern browser)
+        const hasModernApi = 'requestVideoFrameCallback' in HTMLVideoElement.prototype;
+        // Common video framerates: 24, 30, 60, 120, 240
+        const detectedFps = hasModernApi ? 60 : 30;
+
+        // Cap at 240 to prevent extremely slow processing
+        fps = Math.min(detectedFps, 240);
+      } else {
+        fps = framerate;
+      }
+
       const duration = video.duration * 1000; // ms
       const frameInterval = 1000 / fps;
       const totalFrames = Math.floor(video.duration * fps);
@@ -113,15 +166,21 @@ export function usePoseAnalysis() {
       setLoading(false);
       return null;
     }
-  }, [initPoseLandmarker]);
+  }, [initPoseLandmarker, modelVariant]);
 
   return {
     analyzeVideo,
     loading,
     progress,
     error,
+    modelVariant,
+    modelLoaded,
+    modelInfo: MODEL_INFO[modelVariant],
+    framerateOptions: FRAMERATE_INFO,
   };
 }
+
+export { FRAMERATE_INFO };
 
 // Component for drawing pose overlay on video
 export function PoseOverlay({

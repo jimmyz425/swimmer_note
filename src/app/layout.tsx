@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Outfit, DM_Sans } from "next/font/google";
 import "./globals.css";
+import { Navigation } from "@/components/Navigation";
 
 const outfit = Outfit({
   variable: "--font-outfit",
@@ -46,6 +47,8 @@ export default function RootLayout({
           <div className="absolute w-2 h-2 bg-white/35 rounded-full top-[60%] right-[20%] animate-[bubble-float_3s_ease-in-out_infinite_1.5s]" />
           <div className="absolute w-4 h-4 bg-white/20 rounded-full top-[85%] left-[40%] animate-[bubble-float_5s_ease-in-out_infinite_3s]" />
         </div>
+        {/* Navigation */}
+        <Navigation />
         {/* Main content */}
         <div className="relative z-10 flex-1">
           {children}

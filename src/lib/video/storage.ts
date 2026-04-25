@@ -11,15 +11,38 @@ export interface VideoAnalysis {
   strokeType: 'freestyle' | 'backstroke' | 'breaststroke' | 'butterfly' | 'im';
   duration: number; // seconds
   framesProcessed: number;
+  framerate: number; // fps used for analysis
   metrics: {
     strokeRate: number; // strokes per minute
-    kickRate: number; // kicks per second
+    strokeRateHz: number; // strokes per second
+    strokeRatePeakHz: number; // peak frequency detected
+    strokeRateValidWindows: number; // windows above threshold
+    strokeRateTotalWindows: number; // total windows analyzed
+    kickRate: number; // kicks per minute
+    kickRateHz: number; // kicks per second
+    kickRateConfidence: number; // FFT confidence score
+    kickRatePeakHz: number; // peak frequency detected
+    kickRateValidWindows: number; // windows above 50% threshold
+    kickRateTotalWindows: number; // total windows analyzed
     bodyAngleAvg: number; // degrees from horizontal
     bodyAngleMin: number;
     bodyAngleMax: number;
     armEntryAngleAvg: number;
     elbowHeightAvg: number;
   };
+  realtimeStrokeRates?: Array<{
+    timestamp: number;
+    strokeRateHz: number;
+    strokeRatePerMin: number;
+    confidence: number;
+    amplitude: number;
+  }>;
+  realtimeKickRates?: Array<{
+    timestamp: number;
+    kickRateHz: number;
+    kickRatePerMin: number;
+    confidence: number;
+  }>;
   rawLandmarks: string; // path to JSON with all pose landmarks
   status: 'pending' | 'processing' | 'completed' | 'failed';
   coachingFeedback?: string;
@@ -67,11 +90,19 @@ export function getAnalysis(id: string): VideoAnalysis | null {
 
 export function listAnalyses(): VideoAnalysis[] {
   ensureVideosDir();
-  const files = fs.readdirSync(VIDEOS_DIR).filter(f => f.endsWith('.json'));
+  const files = fs.readdirSync(VIDEOS_DIR).filter(f => f.endsWith('.json') && !f.includes('_landmarks'));
   return files.map(f => {
     const content = fs.readFileSync(path.join(VIDEOS_DIR, f), 'utf-8');
     return JSON.parse(content) as VideoAnalysis;
-  }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  }).filter(a => a && a.id && a.createdAt).sort((a, b) => {
+    // Handle invalid dates gracefully
+    const aTime = new Date(a.createdAt).getTime();
+    const bTime = new Date(b.createdAt).getTime();
+    // If either is invalid (NaN), treat as 0
+    const aValid = isNaN(aTime) ? 0 : aTime;
+    const bValid = isNaN(bTime) ? 0 : bTime;
+    return bValid - aValid;
+  });
 }
 
 export function deleteVideo(id: string): boolean {

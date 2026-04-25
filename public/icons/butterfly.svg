@@ -1,0 +1,16 @@
+<svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Butterfly - both arms forward simultaneously, dolphin kick -->
+  <!-- Head -->
+  <circle cx="16" cy="20" r="8" fill="currentColor"/>
+  <!-- Body -->
+  <ellipse cx="32" cy="26" rx="16" ry="5" fill="currentColor"/>
+  <!-- Both arms reaching forward together -->
+  <path d="M8 24 L2 14 L6 12 L12 22" fill="currentColor"/>
+  <path d="M8 26 L0 16 L4 14 L10 24" fill="currentColor"/>
+  <!-- Dolphin kick - legs together -->
+  <path d="M48 28 L56 40 L58 38 L50 26" fill="currentColor"/>
+  <path d="M56 40 L60 48 L58 50 L54 42" fill="currentColor"/>
+  <!-- Water waves -->
+  <path d="M0 52 Q16 48 32 52 Q48 56 64 52" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"/>
+  <path d="M0 56 Q16 60 32 56 Q48 52 64 56" stroke="currentColor" stroke-width="2" fill="none" opacity="0.3"/>
+</svg>

@@ -4,17 +4,21 @@
   "techniqueFocus": [],
   "goals": [
     {
-      "id": "test_goal_1",
+      "id": "goal_1776953335351_u00e1b83v",
       "type": "technique",
+      "target": "body_position",
       "strokeId": "freestyle",
-      "description": "Test Goal",
-      "coachingTips": "• Tip one\n• Tip two\n• Tip three",
+      "description": "Horizontal Body Position",
+      "techniqueNodeId": "free_body",
+      "revisit": true,
+      "metrics": {},
+      "coachingTips": "• Keep hips high in water\n• Avoid dropping your legs\n• Align head with spine\n• Don’t lift your chest up",
       "status": "pending",
-      "createdAt": "2026-04-23T11:31:29.864Z",
-      "updatedAt": "2026-04-23T11:31:29.864Z"
+      "createdAt": "2026-04-23T14:08:55.351Z",
+      "updatedAt": "2026-04-23T15:51:23.359Z"
     }
   ],
   "notes": "",
   "createdAt": "2026-04-23T11:31:29.864Z",
-  "updatedAt": "2026-04-23T11:31:29.864Z"
+  "updatedAt": "2026-04-23T15:51:23.359Z"
 }
