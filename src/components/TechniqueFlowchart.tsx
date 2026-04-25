@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { Check, ArrowLeft, ChevronRight, ChevronLeft, List, X } from 'lucide-react';
+import { Check, ArrowLeft, ChevronRight, ChevronLeft } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -292,33 +292,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
                 onNavigateNode={handleNavigateNode}
                 isMobile={true}
               />
-            </div>
-
-            {/* Bottom Action Bar */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 px-4 py-3 safe-bottom">
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowSheet(true)}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 text-gray-700 font-medium active:bg-gray-200"
-                >
-                  <List className="w-5 h-5" />
-                  View All
-                </button>
-                <button
-                  onClick={() => handleConfirm(selectedNode!, {})}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-pool-mid text-white font-semibold active:bg-pool-deep"
-                >
-                  <Check className="w-5 h-5" />
-                  Add Goal
-                </button>
-              </div>
-
-              {/* Goals count */}
-              {addedGoals.length > 0 && (
-                <p className="text-center text-xs text-gray-500 mt-2">
-                  {addedGoals.length} goals ready to save
-                </p>
-              )}
             </div>
           </>
         )}

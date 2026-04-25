@@ -118,6 +118,17 @@ export function NodeDetailPanel({
     handleConfirm({ drillName, tier, target });
   };
 
+  const handleCreateGoalFromPoint = (type: 'keyPoint' | 'mistake', text: string) => {
+    const description = type === 'keyPoint'
+      ? `Remember: ${text.slice(0, 50)}${text.length > 50 ? '...' : ''}`
+      : `Avoid: ${text.slice(0, 50)}${text.length > 50 ? '...' : ''}`;
+    onConfirm(node, {}, undefined, {
+      drillName: type === 'keyPoint' ? 'Key Point' : 'Common Mistake',
+      tier: '',
+      target: text.replace(/\*\*/g, '')
+    });
+  };
+
   const handleStartEdit = () => {
     setEditName(node.name);
     setEditDescription(node.description);
@@ -303,12 +314,14 @@ export function NodeDetailPanel({
               {markdownContent.keyPoints.map((point, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100"
+                  className="relative flex items-start gap-3 p-4 rounded-xl bg-emerald-50 border border-emerald-100 active:scale-[0.98] transition-transform"
+                  onClick={() => handleCreateGoalFromPoint('keyPoint', point)}
                 >
                   <div className="w-6 h-6 rounded-lg bg-emerald-200 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-emerald-700">{idx + 1}</span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{point.replace(/\*\*/g, '')}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{point.replace(/\*\*/g, '')}</p>
+                  <Plus className="w-5 h-5 text-emerald-500 shrink-0" />
                 </div>
               ))}
             </div>
@@ -320,12 +333,14 @@ export function NodeDetailPanel({
               {markdownContent.commonMistakes.map((mistake, idx) => (
                 <div
                   key={idx}
-                  className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-100"
+                  className="relative flex items-start gap-3 p-4 rounded-xl bg-amber-50 border border-amber-100 active:scale-[0.98] transition-transform"
+                  onClick={() => handleCreateGoalFromPoint('mistake', mistake)}
                 >
                   <div className="w-6 h-6 rounded-lg bg-amber-200 flex items-center justify-center shrink-0">
                     <span className="text-sm font-bold text-amber-700">!</span>
                   </div>
-                  <p className="text-sm text-gray-700 leading-relaxed">{mistake}</p>
+                  <p className="text-sm text-gray-700 leading-relaxed flex-1">{mistake}</p>
+                  <Plus className="w-5 h-5 text-amber-500 shrink-0" />
                 </div>
               ))}
             </div>
@@ -536,11 +551,21 @@ export function NodeDetailPanel({
         {activeTab === 'keyPoints' && markdownContent?.keyPoints && (
           <div className="space-y-2">
             {markdownContent.keyPoints.map((point, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 p-3 rounded-lg bg-emerald-50/60 border border-emerald-100/60">
+              <div
+                key={idx}
+                className="group relative flex items-start gap-2.5 p-3 rounded-lg bg-emerald-50/60 border border-emerald-100/60 hover:border-emerald-200 transition-colors"
+              >
                 <div className="w-5 h-5 rounded-md bg-emerald-100 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-xs font-bold text-emerald-600">{idx + 1}</span>
                 </div>
-                <p className="text-sm text-pool-dark leading-relaxed">{point.replace(/\*\*/g, '')}</p>
+                <p className="text-sm text-pool-dark leading-relaxed flex-1">{point.replace(/\*\*/g, '')}</p>
+                <button
+                  onClick={() => handleCreateGoalFromPoint('keyPoint', point)}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
+                  title="Add as goal"
+                >
+                  <Plus className="w-3 h-3 text-emerald-600" />
+                </button>
               </div>
             ))}
           </div>
@@ -550,11 +575,21 @@ export function NodeDetailPanel({
         {activeTab === 'mistakes' && markdownContent?.commonMistakes && (
           <div className="space-y-2">
             {markdownContent.commonMistakes.map((mistake, idx) => (
-              <div key={idx} className="flex items-start gap-2.5 p-3 rounded-lg bg-amber-50/60 border border-amber-100/60">
+              <div
+                key={idx}
+                className="group relative flex items-start gap-2.5 p-3 rounded-lg bg-amber-50/60 border border-amber-100/60 hover:border-amber-200 transition-colors"
+              >
                 <div className="w-5 h-5 rounded-md bg-amber-100 flex items-center justify-center shrink-0 mt-0.5">
                   <span className="text-xs font-bold text-amber-600">!</span>
                 </div>
-                <p className="text-sm text-pool-dark leading-relaxed">{mistake}</p>
+                <p className="text-sm text-pool-dark leading-relaxed flex-1">{mistake}</p>
+                <button
+                  onClick={() => handleCreateGoalFromPoint('mistake', mistake)}
+                  className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-white/80 rounded hover:bg-white shadow-sm"
+                  title="Add as goal"
+                >
+                  <Plus className="w-3 h-3 text-amber-600" />
+                </button>
               </div>
             ))}
           </div>
