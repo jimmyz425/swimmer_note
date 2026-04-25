@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { TechniqueTree, TechniqueTreeNode, Goal, MetricValue } from '@/lib/types';
 import { getNodeById } from '@/lib/treeToMermaid';
 import { NodeDetailPanel } from '@/components/NodeDetailPanel';
-import { AlertTriangle, Check, ArrowLeft, Plus, X, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
+import { Check, ArrowLeft, Plus, X, ChevronRight, ChevronLeft, RefreshCw } from 'lucide-react';
 
 interface TechniqueFlowchartPageProps {
   strokeId: string;
@@ -30,8 +30,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
   const [addedGoals, setAddedGoals] = useState<Goal[]>([]);
   const [existingGoals, setExistingGoals] = useState<Goal[]>([]);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
-  const [warningMessage, setWarningMessage] = useState<string | null>(null);
-  const [pendingGoal, setPendingGoal] = useState<Goal | null>(null);
 
   // Custom node creation state
   const [showCustomNodeModal, setShowCustomNodeModal] = useState(false);
@@ -73,14 +71,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
 
   const handleNodeClick = (node: TechniqueTreeNode) => {
     setSelectedNode(node);
-    // Expand left panel briefly to show selection, then auto-collapse
     setLeftPanelExpanded(true);
-  };
-
-  // Check if there's already a goal from this stroke
-  const hasGoalFromStroke = (stroke: string): Goal | undefined => {
-    return existingGoals.find(g => g.strokeId === stroke) ||
-           addedGoals.find(g => g.strokeId === stroke);
   };
 
   const handleConfirm = (node: TechniqueTreeNode, metrics: Record<string, MetricValue>, coachingTips?: string, goalFromTier?: { drillName: string; tier: string; target: string }) => {
@@ -100,40 +91,10 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
       updatedAt: new Date().toISOString(),
     };
 
-    // Check if there's already a goal from this stroke
-    const existingGoalFromStroke = hasGoalFromStroke(strokeId);
-
-    if (existingGoalFromStroke) {
-      // Show warning - need to replace
-      setWarningMessage(`You already have "${existingGoalFromStroke.description}" from this stroke. Replace it with "${node.name}"?`);
-      setPendingGoal(newGoal);
-    } else {
-      // No existing goal from this stroke - add directly
-      setAddedGoals([...addedGoals, newGoal]);
-      setSuccessMessage(`Added "${node.name}" to today's goals!`);
-      setTimeout(() => setSuccessMessage(null), 3000);
-    }
-  };
-
-  const handleConfirmReplace = () => {
-    if (!pendingGoal) return;
-
-    // Remove the existing goal from this stroke
-    const filteredExisting = existingGoals.filter(g => g.strokeId !== strokeId);
-    const filteredAdded = addedGoals.filter(g => g.strokeId !== strokeId);
-
-    // Add the new goal
-    setExistingGoals(filteredExisting);
-    setAddedGoals([...filteredAdded, pendingGoal]);
-    setPendingGoal(null);
-    setWarningMessage(null);
-    setSuccessMessage(`Replaced with "${pendingGoal.description}"!`);
+    // Add goal directly - no stroke limitation
+    setAddedGoals([...addedGoals, newGoal]);
+    setSuccessMessage(`Added "${newGoal.description}" to today's goals!`);
     setTimeout(() => setSuccessMessage(null), 3000);
-  };
-
-  const handleCancelReplace = () => {
-    setPendingGoal(null);
-    setWarningMessage(null);
   };
 
   // Open custom node modal
@@ -246,9 +207,8 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     const today = new Date().toISOString().split('T')[0];
 
     try {
-      // Combine existing goals (filtered to remove any replaced ones) with added goals
-      const filteredExisting = existingGoals.filter(g => !addedGoals.some(ag => ag.strokeId === g.strokeId));
-      const allGoals = [...filteredExisting, ...addedGoals];
+      // Combine existing goals with added goals
+      const allGoals = [...existingGoals, ...addedGoals];
 
       const res = await fetch(`/api/notes/${today}`, {
         method: 'POST',
@@ -296,8 +256,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
     );
   }
 
-  const currentGoalFromStroke = hasGoalFromStroke(strokeId);
-
   // Sort nodes by level
   const sortedNodes = [...tree.nodes].sort((a, b) => a.level - b.level);
 
@@ -317,14 +275,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Show current focus limit */}
-          {currentGoalFromStroke && (
-            <div className="flex items-center gap-2 bg-amber-100 text-amber-700 px-3 py-1.5 rounded-lg text-sm font-medium">
-              <AlertTriangle className="w-4 h-4" />
-              <span>Current focus: {currentGoalFromStroke.description}</span>
-            </div>
-          )}
-
           {addedGoals.length > 0 && (
             <button
               onClick={handleSaveGoals}
@@ -342,33 +292,6 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
         <div className="fixed top-20 left-1/2 -translate-x-1/2 bg-emerald-100 text-emerald-700 px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 z-30">
           <Check className="w-5 h-5" />
           {successMessage}
-        </div>
-      )}
-
-      {/* Warning message - Replace confirmation */}
-      {warningMessage && (
-        <div className="fixed inset-x-4 top-20 mx-auto max-w-md bg-amber-50 border-2 border-amber-200 rounded-xl shadow-lg p-4 z-30">
-          <div className="flex items-start gap-3">
-            <AlertTriangle className="w-6 h-6 text-amber-500 flex-shrink-0" />
-            <div className="flex-1">
-              <p className="text-amber-800 font-semibold mb-3">{warningMessage}</p>
-              <div className="flex gap-3">
-                <button
-                  onClick={handleConfirmReplace}
-                  className="flex items-center gap-2 bg-amber-500 text-white px-4 py-2 rounded-lg font-medium hover:bg-amber-600 transition-colors"
-                >
-                  <Plus className="w-4 h-4" />
-                  Replace
-                </button>
-                <button
-                  onClick={handleCancelReplace}
-                  className="text-amber-700 px-4 py-2 rounded-lg font-medium hover:bg-amber-100 transition-colors"
-                >
-                  Keep Current
-                </button>
-              </div>
-            </div>
-          </div>
         </div>
       )}
 
@@ -573,7 +496,7 @@ export function TechniqueFlowchartPage({ strokeId }: TechniqueFlowchartPageProps
               </span>
             ))}
           </div>
-          <p className="text-xs text-pool-mid ml-auto">One goal per stroke</p>
+          <p className="text-xs text-pool-mid ml-auto">{addedGoals.length} goals added</p>
         </div>
       )}
     </div>
