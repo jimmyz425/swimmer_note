@@ -1,5 +1,7 @@
 
 
+# Butterfly — Body Position & Horizontal Alignment
+
 > Part of [[areas/swimming-strokes|Swimming Strokes Research]]
 > Stroke guide: [[swimming-strokes/butterfly]]
 > Next: [[swimming-strokes/butterfly-02-dolphin-kick-mechanics]] →

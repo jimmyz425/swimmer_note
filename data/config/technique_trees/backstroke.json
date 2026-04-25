@@ -1,263 +1,152 @@
 {
   "strokeId": "backstroke",
   "name": "Backstroke Technique Tree",
-  "generatedAt": "2026-04-22",
-  "customized": true,
+  "generatedAt": "2026-04-25T13:53:57.405Z",
+  "customized": false,
   "nodes": [
     {
-      "id": "back_body",
+      "id": "back_body_position",
       "techniqueId": "body_position",
       "level": 1,
-      "name": "Flat Back Position",
-      "description": "Float on back, head neutral, hips high",
+      "name": "Body Position",
+      "description": "Body position is the foundation for all other backstroke techniques. A flat, horizontal body with hips riding high reduces drag and improves efficiency. This is the easiest technique to master and serves as the base upon which everything else is built.",
       "revisit": true,
-      "metrics": [
-        {
-          "id": "hip_depth",
-          "name": "Hip Depth",
-          "unit": "cm",
-          "description": "How deep hips sit"
-        }
-      ],
       "prerequisites": [],
       "children": [
-        "back_stream",
-        "back_kick"
-      ]
+        "back_head_position"
+      ],
+      "sourceFile": "backstroke-01-body-position"
     },
     {
-      "id": "back_stream",
-      "techniqueId": "streamline",
+      "id": "back_head_position",
+      "techniqueId": "head_position",
       "level": 2,
-      "name": "Backstroke Streamline",
-      "description": "Push off on back in tight streamline",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "hold_time",
-          "name": "Hold Time",
-          "unit": "seconds",
-          "description": "Time in streamline"
-        }
-      ],
-      "prerequisites": [
-        "back_body"
-      ],
+      "name": "Head Position",
+      "description": "Head position in backstroke is critical because it directly controls body and hip position. The head should rest with the water line at ear level, looking straight up at the ceiling or sky. A stable, neutral head position keeps the hips high and maintains a streamlined body line.",
+      "revisit": false,
+      "prerequisites": [],
       "children": [
-        "back_entry"
-      ]
+        "back_flutter_kick"
+      ],
+      "sourceFile": "backstroke-02-head-position"
     },
     {
-      "id": "back_kick",
+      "id": "back_flutter_kick",
       "techniqueId": "flutter_kick",
-      "level": 2,
-      "name": "Back Flutter Kick",
-      "description": "Continuous flutter kick, toes pointed, from hips",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "kick_rate",
-          "name": "Kick Rate",
-          "unit": "kicks/sec",
-          "description": "Kicks per second"
-        }
-      ],
-      "prerequisites": [
-        "back_body"
-      ],
-      "children": [
-        "back_entry"
-      ]
-    },
-    {
-      "id": "back_catch",
-      "techniqueId": "catch",
-      "level": 4,
-      "name": "Backstroke Catch",
-      "description": "Catch water with hand slightly pinky-down",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "catch_angle",
-          "name": "Catch Angle",
-          "unit": "degrees",
-          "description": "Hand angle at catch"
-        }
-      ],
-      "prerequisites": [
-        "back_entry"
-      ],
-      "children": [
-        "back_pull"
-      ]
-    },
-    {
-      "id": "back_pull",
-      "techniqueId": "pull",
-      "level": 5,
-      "name": "Pull Pattern",
-      "description": "S-shaped pull, finish past hip",
-      "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "back_catch"
-      ],
-      "children": [
-        "back_recovery"
-      ]
-    },
-    {
-      "id": "back_turn",
-      "techniqueId": "flip_turn",
-      "level": 7,
-      "name": "Backstroke Flip Turn",
-      "description": "Roll to stomach one stroke before wall, flip turn",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "turn_time",
-          "name": "Turn Time",
-          "unit": "seconds",
-          "description": "Turn completion time"
-        }
-      ],
-      "prerequisites": [
-        "back_recovery"
-      ],
-      "children": [
-        "back_dolphin"
-      ]
-    },
-    {
-      "id": "back_dolphin",
-      "techniqueId": "dolphin_kicks",
-      "level": 8,
-      "name": "Underwater Dolphin Kicks",
-      "description": "3-5 dolphin kicks on back off wall",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "kick_count",
-          "name": "Kick Count",
-          "unit": "kicks",
-          "description": "Number of underwater kicks"
-        }
-      ],
-      "prerequisites": [
-        "back_turn"
-      ],
-      "children": []
-    },
-    {
-      "id": "back_entry",
-      "techniqueId": "catch",
       "level": 3,
-      "name": "Arm Entry",
-      "description": "Enter arm straight, hand landing outside shoulder",
+      "name": "Flutter Kick",
+      "description": "The flutter kick in backstroke is a hip-driven, continuous motion that provides propulsion and helps maintain body position. A compact kick with relaxed ankles and proper rhythm is essential for both sprint and distance backstroke events.",
       "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "back_stream",
-        "back_kick"
-      ],
+      "prerequisites": [],
       "children": [
-        "back_entry_sub_1776874405315_0",
-        "back_entry_sub_1776874405315_1",
-        "back_entry_sub_1776874405315_2"
-      ]
+        "back_breathing"
+      ],
+      "sourceFile": "backstroke-03-flutter-kick"
     },
     {
-      "id": "back_entry_sub_1776874405315_0",
-      "techniqueId": "catch",
+      "id": "back_breathing",
+      "techniqueId": "breathing",
       "level": 4,
-      "name": "Shoulder-Width Entry Alignment",
-      "description": "Practice landing fingertips directly outside or in line with each shoulder to eliminate midline crossing, using stationary or kickboard-supported hand-placement drills.",
+      "name": "Breathing",
+      "description": "Breathing in backstroke is fundamentally different from other strokes because the face is always above water. Natural, rhythmic breathing without breath-holding helps maintain relaxation and efficient stroke mechanics throughout the race.",
       "revisit": false,
-      "prerequisites": [
-        "back_entry"
-      ],
-      "children": []
-    },
-    {
-      "id": "back_entry_sub_1776874405315_1",
-      "techniqueId": "catch",
-      "level": 5,
-      "name": "Hip Stability Maintenance",
-      "description": "Isolate core engagement to keep the hip line flat and level during the recovery phase, preventing excessive lateral roll that disrupts entry alignment.",
-      "revisit": true,
-      "prerequisites": [
-        "back_entry"
-      ],
-      "children": []
-    },
-    {
-      "id": "back_entry_sub_1776874405315_2",
-      "techniqueId": "catch",
-      "level": 6,
-      "name": "Full-Extension Timing Coordination",
-      "description": "Synchronize hand entry with complete forward arm extension, ensuring fingers break the water surface and stretch before the elbow bends to initiate the catch.",
-      "revisit": true,
-      "prerequisites": [
-        "back_entry"
-      ],
-      "children": []
-    },
-    {
-      "id": "back_recovery",
-      "techniqueId": "recovery",
-      "level": 6,
-      "name": "Straight Arm Recovery",
-      "description": "Lift arm straight, thumb up first",
-      "revisit": false,
-      "metrics": [],
-      "prerequisites": [
-        "back_pull"
-      ],
+      "prerequisites": [],
       "children": [
-        "back_turn",
-        "back_recovery.1",
-        "back_recovery.2",
-        "back_recovery.3"
-      ]
+        "back_body_rotation"
+      ],
+      "sourceFile": "backstroke-04-breathing"
     },
     {
-      "id": "back_recovery.1",
-      "techniqueId": "recovery",
-      "level": 7,
-      "name": "Straight Arm Recovery: Midline Path Control",
-      "description": "Isolate the recovery arm to track strictly outside shoulder width, practicing spatial awareness to prevent crossing the body's center line.",
-      "revisit": true,
-      "prerequisites": [
-        "back_recovery"
+      "id": "back_body_rotation",
+      "techniqueId": "body_position",
+      "level": 5,
+      "name": "Body Rotation",
+      "description": "Body rotation in backstroke involves rolling 30-45 degrees (research range: 30-60 degrees) around the spine axis. Shoulders and hips rotate together as a unit, which extends arm reach, adds pull power, and reduces frontal drag compared to swimming flat.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_arm_stroke_entry"
       ],
-      "children": []
+      "sourceFile": "backstroke-05-body-rotation"
     },
     {
-      "id": "back_recovery.2",
-      "techniqueId": "recovery",
-      "level": 7,
-      "name": "Straight Arm Recovery: Torso Stabilization",
-      "description": "Engage the core and glutes to maintain a flat torso while executing the recovery, independently resisting excessive shoulder and hip roll.",
-      "revisit": true,
-      "prerequisites": [
-        "back_recovery"
+      "id": "back_arm_stroke_entry",
+      "techniqueId": "arm_stroke_entry",
+      "level": 6,
+      "name": "Arm Stroke Entry",
+      "description": "Arm stroke entry in backstroke sets up the entire pull phase. The pinky finger enters first at slightly outside shoulder width with the arm fully extended. A clean, pinky-first entry with minimal splash ensures proper catch position and avoids creating unnecessary drag.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_arm_stroke_recovery"
       ],
-      "children": []
+      "sourceFile": "backstroke-06-arm-stroke-entry"
     },
     {
-      "id": "back_recovery.3",
+      "id": "back_arm_stroke_recovery",
       "techniqueId": "recovery",
       "level": 7,
-      "name": "Straight Arm Recovery: Opposite-Entry Timing Sync",
-      "description": "Coordinate stroke rhythm by timing the highest point of the straight recovery to coincide precisely with the opposite hand's water entry.",
-      "revisit": true,
-      "prerequisites": [
-        "back_recovery"
+      "name": "Arm Stroke Recovery",
+      "description": "The arm recovery in backstroke uses a bent-arm motion where the elbow leads and the hand trails below. The thumb exits the water first, the hand rotates during recovery, and the pinky leads entry. A relaxed recovery path close to the body line is efficient and conserves energy.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_arm_stroke_catch"
       ],
-      "children": []
+      "sourceFile": "backstroke-07-arm-stroke-recovery"
+    },
+    {
+      "id": "back_arm_stroke_catch",
+      "techniqueId": "catch",
+      "level": 8,
+      "name": "Arm Stroke Catch",
+      "description": "The catch is the initial phase where the hand anchors on the water immediately after entry. A high-elbow, early vertical forearm (EVF) position creates maximum leverage by using the entire forearm as a propulsive surface. This is one of the most impactful technique improvements a swimmer can make.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_arm_stroke_pull_push"
+      ],
+      "sourceFile": "backstroke-08-arm-stroke-catch"
+    },
+    {
+      "id": "back_arm_stroke_pull_push",
+      "techniqueId": "pull",
+      "level": 9,
+      "name": "Arm Stroke Pull/Push",
+      "description": "The pull/push phase is where most propulsion is generated in backstroke. A relatively straight hand path (with minor lateral adjustments of 5-15cm) combined with high elbow and acceleration through to the hip finish creates maximum forward thrust. Pull contributes approximately 70-85% of race propulsion in sprint events.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_stroke_timing_coordination"
+      ],
+      "sourceFile": "backstroke-09-arm-stroke-pull-push"
+    },
+    {
+      "id": "back_stroke_timing_coordination",
+      "techniqueId": "body_position",
+      "level": 10,
+      "name": "Stroke Timing & Coordination",
+      "description": "Stroke timing and coordination integrate all other backstroke techniques into a unified, continuous motion. Arms move in opposition (when one enters, the other pulls), the kick rhythm synchronizes with the stroke cycle, and body rotation peaks at entry. Mastering timing is what separates good swimmers from great ones.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "back_starts_turns"
+      ],
+      "sourceFile": "backstroke-10-stroke-timing-coordination"
+    },
+    {
+      "id": "back_starts_turns",
+      "techniqueId": "start",
+      "level": 11,
+      "name": "Starts and Turns",
+      "description": "Starts and turns are the most technically complex elements of backstroke. They involve launching backward from the wall, executing underwater dolphin kicks within the 15m limit, counting strokes to know when to rotate for the flip turn, and pushing off in a tight streamline. Mastery of starts and turns provides significant time advantages, particularly in short course pools.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [],
+      "sourceFile": "backstroke-11-starts-turns"
     }
   ],
   "rootNodes": [
-    "back_body"
+    "back_body_position"
   ]
 }

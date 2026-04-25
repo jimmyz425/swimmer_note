@@ -1,108 +1,113 @@
 {
   "strokeId": "butterfly",
   "name": "Butterfly Technique Tree",
-  "generatedAt": "2026-04-22",
+  "generatedAt": "2026-04-25T13:55:14.399Z",
   "customized": false,
   "nodes": [
     {
-      "id": "fly_body",
+      "id": "fly_body_position_horizontal_alignment",
       "techniqueId": "body_position",
       "level": 1,
-      "name": "Butterfly Body Motion",
-      "description": "Undulating body motion, chest press and hip snap",
+      "name": "Body Position & Horizontal Alignment",
+      "description": "Maintaining a flat, horizontal body position on the water surface is the foundation of efficient butterfly swimming. The chest press initiates the undulation motion, and proper head position keeps the hips high. This is the easiest technique to learn but critical for all subsequent skills.",
       "revisit": true,
-      "metrics": [{"id": "undulation", "name": "Undulation", "unit": "rating", "description": "Body undulation 1-5"}],
       "prerequisites": [],
-      "children": ["fly_dolphin"]
+      "children": [
+        "fly_dolphin_kick_mechanics"
+      ],
+      "sourceFile": "butterfly-01-body-position-horizontal-alignment"
     },
     {
-      "id": "fly_dolphin",
+      "id": "fly_dolphin_kick_mechanics",
       "techniqueId": "dolphin_kicks",
       "level": 2,
-      "name": "Dolphin Kick Basics",
-      "description": "Continuous dolphin kick from core",
-      "revisit": true,
-      "metrics": [{"id": "kick_count", "name": "Kick Count", "unit": "kicks/stroke", "description": "Kicks per arm stroke"}],
-      "prerequisites": ["fly_body"],
-      "children": ["fly_stream", "fly_entry"]
+      "name": "Dolphin Kick Mechanics",
+      "description": "The dolphin kick originates from the hips and core using a whipping motion with both legs simultaneously. Two kicks occur per stroke cycle -- a smaller first kick and a larger, more powerful second kick. Flexible ankles and hip-driven undulation are essential for maximum propulsion.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "fly_arm_entry_catch"
+      ],
+      "sourceFile": "butterfly-02-dolphin-kick-mechanics"
     },
     {
-      "id": "fly_stream",
-      "techniqueId": "streamline",
-      "level": 2,
-      "name": "Fly Streamline",
-      "description": "Push off streamline with dolphin kicks",
-      "revisit": true,
-      "metrics": [{"id": "kick_count_wall", "name": "Wall Kicks", "unit": "kicks", "description": "Kicks off wall"}],
-      "prerequisites": ["fly_dolphin"],
-      "children": ["fly_entry"]
-    },
-    {
-      "id": "fly_entry",
+      "id": "fly_arm_entry_catch",
       "techniqueId": "catch",
       "level": 3,
-      "name": "Butterfly Entry",
-      "description": "Enter hands together, wide, in front",
+      "name": "Arm Entry & Catch Phase",
+      "description": "The arm entry and catch phase sets up the entire underwater pull. Hands enter shoulder-width apart, fingertips first, establishing a high elbow catch position quickly. Proper entry prevents shoulder stress and maximizes the water anchoring that drives propulsion.",
       "revisit": false,
-      "metrics": [],
-      "prerequisites": ["fly_stream", "fly_dolphin"],
-      "children": ["fly_catch"]
+      "prerequisites": [],
+      "children": [
+        "fly_arm_pull_push"
+      ],
+      "sourceFile": "butterfly-03-arm-entry-catch"
     },
     {
-      "id": "fly_catch",
-      "techniqueId": "catch",
-      "level": 4,
-      "name": "Fly Catch",
-      "description": "Catch water, press outward then inward",
-      "revisit": true,
-      "metrics": [{"id": "catch_width", "name": "Catch Width", "unit": "cm", "description": "Width of catch"}],
-      "prerequisites": ["fly_entry"],
-      "children": ["fly_pull"]
-    },
-    {
-      "id": "fly_pull",
+      "id": "fly_arm_pull_push",
       "techniqueId": "pull",
-      "level": 5,
-      "name": "Fly Pull Pattern",
-      "description": "Keyhole pull, press out, in, then back",
+      "level": 4,
+      "name": "Arm Pull & Push Phase",
+      "description": "The pull and push phase generates 70-80% of butterfly propulsion. Hands follow a keyhole or S-shaped pattern underwater, accelerating throughout. Power comes from the back muscles (lats), and hands should be fastest at the end of the push phase, finishing past the hips.",
       "revisit": false,
-      "metrics": [],
-      "prerequisites": ["fly_catch"],
-      "children": ["fly_breath"]
+      "prerequisites": [],
+      "children": [
+        "fly_arm_recovery"
+      ],
+      "sourceFile": "butterfly-04-arm-pull-push"
     },
     {
-      "id": "fly_breath",
+      "id": "fly_arm_recovery",
+      "techniqueId": "recovery",
+      "level": 5,
+      "name": "Arm Recovery Phase",
+      "description": "The arm recovery sweeps arms low over the water surface with relaxed, slightly bent arms leading with thumbs. A quick but controlled recovery sets the stroke tempo while minimizing drag and energy waste. Tension or high recovery during this phase causes fatigue and slows the stroke.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "fly_breathing_timing"
+      ],
+      "sourceFile": "butterfly-05-arm-recovery"
+    },
+    {
+      "id": "fly_breathing_timing",
       "techniqueId": "breathing",
       "level": 6,
-      "name": "Fly Breathing",
-      "description": "Breathe during pull, head down before recovery",
-      "revisit": true,
-      "metrics": [{"id": "breath_freq", "name": "Breath Frequency", "unit": "strokes/breath", "description": "Strokes per breath"}],
-      "prerequisites": ["fly_pull"],
-      "children": ["fly_recovery"]
-    },
-    {
-      "id": "fly_recovery",
-      "techniqueId": "recovery",
-      "level": 7,
-      "name": "Fly Recovery",
-      "description": "Throw arms forward, low and wide",
+      "name": "Breathing Timing",
+      "description": "Breathing in butterfly occurs during the push phase of the arm stroke, lifting the chin just above the water while keeping the head low. A quick inhale followed by continuous underwater exhale maintains body alignment. Poor breathing timing disrupts the undulation rhythm and causes the hips to drop.",
       "revisit": false,
-      "metrics": [],
-      "prerequisites": ["fly_breath"],
-      "children": ["fly_turn"]
+      "prerequisites": [],
+      "children": [
+        "fly_timing_rhythm_two_kick"
+      ],
+      "sourceFile": "butterfly-06-breathing-timing"
     },
     {
-      "id": "fly_turn",
-      "techniqueId": "open_turn",
+      "id": "fly_timing_rhythm_two_kick",
+      "techniqueId": "body_position",
+      "level": 7,
+      "name": "Timing & Rhythm (Two-Kick Cycle)",
+      "description": "Two kicks per complete arm cycle form the core rhythm of butterfly: a smaller first kick timed with arm entry/catch, and a larger, more powerful second kick timed with the arm push phase. The rhythm should feel like a continuous wave flowing through the body with no pauses between phases.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "fly_whole_body_coordination"
+      ],
+      "sourceFile": "butterfly-07-timing-rhythm-two-kick"
+    },
+    {
+      "id": "fly_whole_body_coordination",
+      "techniqueId": "body_position",
       "level": 8,
-      "name": "Fly Turn",
-      "description": "Two-hand touch, pivot, streamline exit",
-      "revisit": true,
-      "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Turn duration"}],
-      "prerequisites": ["fly_recovery"],
-      "children": []
+      "name": "Whole-Body Coordination",
+      "description": "Whole-body coordination unites all butterfly techniques into a single, continuous wave motion. The body undulation initiates from the chest and core, connecting arms, body, and legs as one unit. Relaxation during recovery and power during pull and kick create the seamless flow that distinguishes efficient butterfly from disjointed effort.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [],
+      "sourceFile": "butterfly-08-whole-body-coordination"
     }
   ],
-  "rootNodes": ["fly_body"]
+  "rootNodes": [
+    "fly_body_position_horizontal_alignment"
+  ]
 }

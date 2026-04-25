@@ -1,224 +1,74 @@
 {
   "strokeId": "breaststroke",
   "name": "Breaststroke Technique Tree",
-  "generatedAt": "2026-04-22",
-  "customized": true,
+  "generatedAt": "2026-04-25T13:53:57.449Z",
+  "customized": false,
   "nodes": [
     {
-      "id": "breast_body",
+      "id": "breast_body_position",
       "techniqueId": "body_position",
       "level": 1,
-      "name": "Breaststroke Body Position",
-      "description": "Float prone, head neutral between breaths",
+      "name": "Body Position",
+      "description": "Proper body position is the foundation of breaststroke technique. The goal is to keep the body flat and streamlined at the water surface during the glide phase, with the head looking down at the pool bottom. The wave-style undulation used in elite technique lifts the body slightly during the pull phase and \"dives\" the upper body forward during kick and glide, creating wave-like motion that reduces drag compared to traditional flat style. Body position accounts for approximately 20% of the breaststroke learning challenge.",
       "revisit": true,
-      "metrics": [
-        {
-          "id": "body_flat",
-          "name": "Flatness",
-          "unit": "rating",
-          "description": "Body flatness 1-5"
-        }
-      ],
       "prerequisites": [],
       "children": [
-        "breast_stream",
-        "breast_kick"
-      ]
+        "breast_arm_pull_phases"
+      ],
+      "sourceFile": "breaststroke-01-body-position"
     },
     {
-      "id": "breast_stream",
-      "techniqueId": "streamline",
+      "id": "breast_arm_pull_phases",
+      "techniqueId": "pull",
       "level": 2,
-      "name": "Breaststroke Streamline",
-      "description": "Push off in streamline, arms extended",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "hold_time",
-          "name": "Glide Time",
-          "unit": "seconds",
-          "description": "Glide duration off wall"
-        }
-      ],
-      "prerequisites": [
-        "breast_body"
-      ],
-      "children": [
-        "breast_kick"
-      ]
-    },
-    {
-      "id": "breast_pull",
-      "techniqueId": "pull",
-      "level": 4,
-      "name": "Breaststroke Pull",
-      "description": "Small outsweep, catch, insweep to chin",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "pull_width",
-          "name": "Pull Width",
-          "unit": "cm",
-          "description": "Width of outsweep"
-        }
-      ],
-      "prerequisites": [
-        "breast_kick"
-      ],
-      "children": [
-        "breast_breath"
-      ]
-    },
-    {
-      "id": "breast_breath",
-      "techniqueId": "breathing",
-      "level": 5,
-      "name": "Breaststroke Breath Timing",
-      "description": "Breathe during insweep, head down during kick",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "breath_timing",
-          "name": "Timing",
-          "unit": "rating",
-          "description": "Breath timing 1-5"
-        }
-      ],
-      "prerequisites": [
-        "breast_pull"
-      ],
-      "children": [
-        "breast_glide"
-      ]
-    },
-    {
-      "id": "breast_glide",
-      "techniqueId": "streamline",
-      "level": 6,
-      "name": "Glide Phase",
-      "description": "Streamline glide between strokes",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "stroke_rate",
-          "name": "Stroke Rate",
-          "unit": "strokes/min",
-          "description": "Strokes per minute"
-        }
-      ],
-      "prerequisites": [
-        "breast_breath"
-      ],
-      "children": [
-        "breast_turn"
-      ]
-    },
-    {
-      "id": "breast_turn",
-      "techniqueId": "open_turn",
-      "level": 7,
-      "name": "Breaststroke Turn",
-      "description": "Touch both hands, pivot, push off streamline",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "turn_time",
-          "name": "Turn Time",
-          "unit": "seconds",
-          "description": "Turn duration"
-        }
-      ],
-      "prerequisites": [
-        "breast_glide"
-      ],
-      "children": [
-        "breast_pullout"
-      ]
-    },
-    {
-      "id": "breast_pullout",
-      "techniqueId": "pull",
-      "level": 8,
-      "name": "Breaststroke Pullout",
-      "description": "One pull, one kick, streamline to surface",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "pullout_dist",
-          "name": "Pullout Distance",
-          "unit": "meters",
-          "description": "Distance before surfacing"
-        }
-      ],
-      "prerequisites": [
-        "breast_turn"
-      ],
-      "children": []
-    },
-    {
-      "id": "breast_kick",
-      "techniqueId": "breaststroke_kick",
-      "level": 3,
-      "name": "Whip Kick Basics",
-      "description": "Bring heels to bum, whip out and together",
-      "revisit": true,
-      "metrics": [
-        {
-          "id": "kick_width",
-          "name": "Kick Width",
-          "unit": "cm",
-          "description": "Width of kick"
-        }
-      ],
-      "prerequisites": [
-        "breast_body",
-        "breast_stream"
-      ],
-      "children": [
-        "breast_pull",
-        "breast_kick.1",
-        "breast_kick.2",
-        "breast_kick.3"
-      ]
-    },
-    {
-      "id": "breast_kick.1",
-      "techniqueId": "breaststroke_kick",
-      "level": 4,
-      "name": "Whip Kick Basics: Surface-Level Hip Alignment",
-      "description": "Maintain a flat, horizontal body line with hips positioned at or just below the water surface throughout the entire kick cycle.",
-      "revisit": true,
-      "prerequisites": [
-        "breast_kick"
-      ],
-      "children": []
-    },
-    {
-      "id": "breast_kick.2",
-      "techniqueId": "breaststroke_kick",
-      "level": 5,
-      "name": "Whip Kick Basics: Elevated Knee Recovery",
-      "description": "Draw heels toward glutes while actively keeping knees pointed downward and maintained at or above hip height to prevent lower-body drag.",
-      "revisit": true,
-      "prerequisites": [
-        "breast_kick"
-      ],
-      "children": []
-    },
-    {
-      "id": "breast_kick.3",
-      "techniqueId": "breaststroke_kick",
-      "level": 6,
-      "name": "Whip Kick Basics: Strategic Pause Timing",
-      "description": "Hold the fully flexed leg position for a distinct one-second beat before initiating the outward and backward leg extension to optimize catch and rhythm.",
+      "name": "Arm Pull Phases",
+      "description": "The breaststroke arm pull consists of four distinct phases: Catch, Outsweep, Insweep, and Recovery/Shoot. The pull should be kept narrow and efficient — pulling too wide wastes energy, while pulling too deep sinks the hips. Elbows must stay higher than hands during the insweep (power phase), and the recovery shoots arms forward quickly back to streamlined position. The entire motion should be smooth and continuous with no pausing between phases.",
       "revisit": false,
-      "prerequisites": [
-        "breast_kick"
+      "prerequisites": [],
+      "children": [
+        "breast_breathing_coordination"
       ],
-      "children": []
+      "sourceFile": "breaststroke-02-arm-pull-phases"
+    },
+    {
+      "id": "breast_breathing_coordination",
+      "techniqueId": "breathing",
+      "level": 3,
+      "name": "Breathing Coordination",
+      "description": "Breathing in breaststroke must be tightly coordinated with the arm pull and kick cycle. The breath is taken during the insweep phase, letting the head rise naturally with the upper body lift from the pull. A quick inhale is followed by the face returning to the water before the kick completes. The standard pattern is to breathe every stroke for most distances, though sprint events (50-100m) may use every-other-stroke breathing to maintain a lower profile.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "breast_timing_gliding"
+      ],
+      "sourceFile": "breaststroke-03-breathing-coordination"
+    },
+    {
+      "id": "breast_timing_gliding",
+      "techniqueId": "body_position",
+      "level": 4,
+      "name": "Timing & Gliding",
+      "description": "Timing is the heart of breaststroke coordination. The essential sequence — PULL → BREATHE → KICK → GLIDE — must never be violated. The kick starts when the hands begin recovery forward (passing chest/shoulders is the trigger point), and the head should be down before the kick finishes. The glide phase should be held until momentum begins to slow, not for a fixed time count. Total stroke cycle is approximately 0.8-1.8 seconds, with glide phase percentage varying significantly by event distance.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [
+        "breast_kick_mechanics_whip_kick"
+      ],
+      "sourceFile": "breaststroke-04-timing-gliding"
+    },
+    {
+      "id": "breast_kick_mechanics_whip_kick",
+      "techniqueId": "breaststroke_kick",
+      "level": 5,
+      "name": "Kick Mechanics / Whip Kick",
+      "description": "The whip kick is widely considered the most challenging component of breaststroke, accounting for approximately 40% of the learning challenge. It is also the primary propulsion source. The kick involves a specific sequence: heels recover toward the buttocks (not knees to chest), feet turn outward, and a circular whip motion generates thrust culminating in a powerful snap as the feet come together. Proper ankle flexibility is essential, and the kick must comply with World Aquatics rules requiring outward foot position.",
+      "revisit": false,
+      "prerequisites": [],
+      "children": [],
+      "sourceFile": "breaststroke-05-kick-mechanics-whip-kick"
     }
   ],
   "rootNodes": [
-    "breast_body"
+    "breast_body_position"
   ]
 }
