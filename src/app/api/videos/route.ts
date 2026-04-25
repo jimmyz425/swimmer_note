@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { saveVideoFile, saveAnalysis, listAnalyses, VideoAnalysis } from '@/lib/video/storage';
+import { saveVideoFile, saveAnalysis, listAnalyses, saveLandmarks, VideoAnalysis } from '@/lib/video/storage';
 
 export async function GET() {
   const analyses = listAnalyses();
@@ -93,11 +93,7 @@ export async function POST(request: NextRequest) {
       analysis.rawLandmarks = `${id}_landmarks.json`;
 
       // Save landmarks to separate file
-      const landmarksPath = `${id}_landmarks.json`;
-      const fs = require('fs');
-      const path = require('path');
-      const VIDEOS_DIR = path.join(process.cwd(), 'data', 'videos');
-      fs.writeFileSync(path.join(VIDEOS_DIR, landmarksPath), JSON.stringify(landmarks, null, 2));
+      saveLandmarks(id, landmarks);
     }
 
     // Save analysis

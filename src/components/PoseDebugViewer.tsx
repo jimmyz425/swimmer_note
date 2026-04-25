@@ -1,18 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { PoseLandmark } from '@/lib/video/metrics';
+import { PoseLandmark, CONNECTIONS } from '@/lib/video/metrics';
 import { Play, Pause, ChevronLeft, ChevronRight, Gauge, SkipBack, SkipForward } from 'lucide-react';
-
-const LANDMARKS = {
-  NOSE: 0,
-  LEFT_SHOULDER: 11, RIGHT_SHOULDER: 12,
-  LEFT_ELBOW: 13, RIGHT_ELBOW: 14,
-  LEFT_WRIST: 15, RIGHT_WRIST: 16,
-  LEFT_HIP: 23, RIGHT_HIP: 24,
-  LEFT_KNEE: 25, RIGHT_KNEE: 26,
-  LEFT_ANKLE: 27, RIGHT_ANKLE: 28,
-};
 
 const LANDMARK_NAMES: Record<number, string> = {
   0: 'Nose',
@@ -48,29 +38,13 @@ export function PoseDebugViewer({ landmarks, width, height }: PoseDebugViewerPro
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, width, height);
 
-    // Connections (skeleton lines)
-    const connections = [
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.RIGHT_SHOULDER],
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.LEFT_ELBOW],
-      [LANDMARKS.LEFT_ELBOW, LANDMARKS.LEFT_WRIST],
-      [LANDMARKS.RIGHT_SHOULDER, LANDMARKS.RIGHT_ELBOW],
-      [LANDMARKS.RIGHT_ELBOW, LANDMARKS.RIGHT_WRIST],
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.LEFT_HIP],
-      [LANDMARKS.RIGHT_SHOULDER, LANDMARKS.RIGHT_HIP],
-      [LANDMARKS.LEFT_HIP, LANDMARKS.RIGHT_HIP],
-      [LANDMARKS.LEFT_HIP, LANDMARKS.LEFT_KNEE],
-      [LANDMARKS.LEFT_KNEE, LANDMARKS.LEFT_ANKLE],
-      [LANDMARKS.RIGHT_HIP, LANDMARKS.RIGHT_KNEE],
-      [LANDMARKS.RIGHT_KNEE, LANDMARKS.RIGHT_ANKLE],
-    ];
-
     // Draw skeleton lines with glow
     ctx.strokeStyle = '#00FF00';
     ctx.lineWidth = 3;
     ctx.shadowColor = '#00FF00';
     ctx.shadowBlur = 4;
 
-    for (const [start, end] of connections) {
+    for (const [start, end] of CONNECTIONS) {
       const startLm = landmarks[start];
       const endLm = landmarks[end];
       if (startLm.visibility > 0.5 && endLm.visibility > 0.5) {

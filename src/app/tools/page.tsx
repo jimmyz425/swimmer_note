@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useCallback, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
 import { VideoUpload } from '@/components/VideoUpload';
 import { AnalysisResults } from '@/components/AnalysisResults';
 import { usePoseAnalysis, PoseModelVariant, AnalysisFramerate, FRAMERATE_INFO } from '@/lib/video/poseAnalysis';
@@ -10,27 +9,22 @@ import { Loader2, Trash2 } from 'lucide-react';
 import { Navigation } from '@/components/Navigation';
 
 export default function ToolsPage() {
-  const router = useRouter();
   const [modelVariant, setModelVariant] = useState<PoseModelVariant>('lite');
   const [framerate, setFramerate] = useState<AnalysisFramerate>('auto');
   const { analyzeVideo, loading: analyzing, progress, error: analysisError, modelInfo } = usePoseAnalysis(modelVariant);
   const [analyses, setAnalyses] = useState<VideoAnalysis[]>([]);
   const [selectedAnalysis, setSelectedAnalysis] = useState<VideoAnalysis | null>(null);
-  const [loadingAnalyses, setLoadingAnalyses] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [deleting, setDeleting] = useState<string | null>(null);
 
   // Fetch existing analyses
   const fetchAnalyses = useCallback(async () => {
-    setLoadingAnalyses(true);
     try {
       const res = await fetch('/api/videos');
       const data = await res.json();
       setAnalyses(data.analyses || []);
     } catch (err) {
       console.error('Failed to fetch analyses:', err);
-    } finally {
-      setLoadingAnalyses(false);
     }
   }, []);
 

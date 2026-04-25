@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useCallback } from 'react';
-import { Upload, Video, X, Loader2, Play, Pause, CheckCircle2, Cpu, Gauge } from 'lucide-react';
+import { Upload, Video, X, Loader2, Cpu, Gauge } from 'lucide-react';
 import { PoseModelVariant, AnalysisFramerate, FRAMERATE_INFO } from '@/lib/video/poseAnalysis';
 
 const MODEL_OPTIONS: { value: PoseModelVariant; label: string; description: string }[] = [

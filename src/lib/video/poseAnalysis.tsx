@@ -1,8 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { PoseLandmarker, FilesetResolver, DrawingUtils } from '@mediapipe/tasks-vision';
-import { LANDMARKS, PoseLandmark, FrameData, analyzePoseData } from './metrics';
+import { PoseLandmarker, FilesetResolver } from '@mediapipe/tasks-vision';
+import { LANDMARKS, PoseLandmark, FrameData, analyzePoseData, CONNECTIONS } from './metrics';
 
 // Model variants: lite (fastest), full (balanced), heavy (most accurate)
 export type PoseModelVariant = 'lite' | 'full' | 'heavy';
@@ -202,30 +202,11 @@ export function PoseOverlay({
 
     ctx.clearRect(0, 0, width, height);
 
-    // Define connections to draw
-    const connections = [
-      // Torso
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.RIGHT_SHOULDER],
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.LEFT_HIP],
-      [LANDMARKS.RIGHT_SHOULDER, LANDMARKS.RIGHT_HIP],
-      [LANDMARKS.LEFT_HIP, LANDMARKS.RIGHT_HIP],
-      // Arms
-      [LANDMARKS.LEFT_SHOULDER, LANDMARKS.LEFT_ELBOW],
-      [LANDMARKS.LEFT_ELBOW, LANDMARKS.LEFT_WRIST],
-      [LANDMARKS.RIGHT_SHOULDER, LANDMARKS.RIGHT_ELBOW],
-      [LANDMARKS.RIGHT_ELBOW, LANDMARKS.RIGHT_WRIST],
-      // Legs
-      [LANDMARKS.LEFT_HIP, LANDMARKS.LEFT_KNEE],
-      [LANDMARKS.LEFT_KNEE, LANDMARKS.LEFT_ANKLE],
-      [LANDMARKS.RIGHT_HIP, LANDMARKS.RIGHT_KNEE],
-      [LANDMARKS.RIGHT_KNEE, LANDMARKS.RIGHT_ANKLE],
-    ];
-
     // Draw connections
     ctx.strokeStyle = '#00FF00';
     ctx.lineWidth = 3;
 
-    for (const [start, end] of connections) {
+    for (const [start, end] of CONNECTIONS) {
       const startLm = landmarks[start];
       const endLm = landmarks[end];
 

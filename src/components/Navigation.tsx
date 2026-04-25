@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, History, Wrench, Video } from 'lucide-react';
+import { Home, History, Wrench } from 'lucide-react';
 
 export function Navigation() {
   const pathname = usePathname();
