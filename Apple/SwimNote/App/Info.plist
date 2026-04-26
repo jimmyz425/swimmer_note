@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>SwimNote</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.swimnote.app</string>
+	<key>CFBundleName</key>
+	<string>SwimNote</string>
+	<key>CFBundleShortVersionString</key>
+	<string>0.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>SwimNote imports swim videos you choose so it can show playback and analyze technique on device.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>SwimNote can record swim videos when you choose to capture footage for technique analysis.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>SwimNote may preserve audio in videos you choose to record or import.</string>
+	<key>NSUbiquitousContainers</key>
+	<dict>
+		<key>iCloud.com.swimnote.app</key>
+		<dict>
+			<key>NSUbiquitousContainerIsDocumentScopePublic</key>
+			<false/>
+			<key>NSUbiquitousContainerName</key>
+			<string>SwimNote</string>
+			<key>NSUbiquitousContainerSupportedFolderLevels</key>
+			<string>Any</string>
+		</dict>
+	</dict>
+</dict>
+</plist>

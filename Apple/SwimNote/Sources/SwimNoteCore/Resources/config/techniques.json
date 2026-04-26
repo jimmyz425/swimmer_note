@@ -1,0 +1,17 @@
+{
+  "techniques": [
+    { "id": "start", "name": "Start", "category": "starts", "description": "Jump start / dive entry" },
+    { "id": "dolphin_kicks", "name": "Dolphin Kicks", "category": "kicks", "description": "Undulating kick motion" },
+    { "id": "flutter_kick", "name": "Flutter Kick", "category": "kicks", "description": "Alternating up-down kick" },
+    { "id": "breaststroke_kick", "name": "Breaststroke Kick", "category": "kicks", "description": "Whip kick motion" },
+    { "id": "flip_turn", "name": "Flip Turn", "category": "turns", "description": "Somersault turn at wall" },
+    { "id": "open_turn", "name": "Open Turn", "category": "turns", "description": "Touch and turn" },
+    { "id": "streamline", "name": "Streamline", "category": "body_position", "description": "Tight body position off wall" },
+    { "id": "breathing", "name": "Breathing Pattern", "category": "breathing", "description": "Timing and rhythm of breaths" },
+    { "id": "catch", "name": "Catch", "category": "stroke_mechanics", "description": "Initial hand entry and grip" },
+    { "id": "pull", "name": "Pull Phase", "category": "stroke_mechanics", "description": "Power phase of stroke" },
+    { "id": "recovery", "name": "Recovery", "category": "stroke_mechanics", "description": "Arm return phase" },
+    { "id": "body_position", "name": "Body Position", "category": "body_position", "description": "Horizontal alignment in water" },
+    { "id": "finish", "name": "Finish", "category": "race_skills", "description": "Final approach to wall" }
+  ]
+}
