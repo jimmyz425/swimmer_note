@@ -1,0 +1,134 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<model type="com.apple.IDECoreDataModeler.Model.CDModel" documentVersion="1.0" lastSavedToolsVersion="1" systemVersion="1" minimumToolsVersion="Automatic" sourceLanguageType="Swift" userDefinedModelVersionIdentifier="">
+    <elements>
+        <!-- UserProfile Entity -->
+        <element name="UserProfile" position="-1" customClassName="UserProfileEntity" representedClassName="UserProfileEntity" syncable="YES">
+            <attribute name="id" optional="NO" attributeType="String"/>
+            <attribute name="name" optional="NO" attributeType="String"/>
+            <attribute name="birthday" optional="NO" attributeType="String"/>
+            <attribute name="sexRaw" optional="NO" attributeType="String"/>
+            <attribute name="skillLevelRaw" optional="NO" attributeType="String"/>
+            <attribute name="weeklySessionTarget" optional="NO" attributeType="Integer 32" defaultValueString="3"/>
+            <attribute name="preferredStrokesRaw" optional="YES" attributeType="String"/>
+            <attribute name="mainStrokeRaw" optional="YES" attributeType="String"/>
+            <attribute name="distancePreferenceRaw" optional="YES" attributeType="String" defaultValueString="na"/>
+            <attribute name="preferredDistanceUnitRaw" optional="NO" attributeType="String" defaultValueString="meters"/>
+            <attribute name="profileIconTypeRaw" optional="NO" attributeType="String" defaultValueString="letter"/>
+            <attribute name="profileImageData" optional="YES" attributeType="Binary"/>
+            <attribute name="profileIconName" optional="YES" attributeType="String"/>
+            <attribute name="personalBestsJSON" optional="YES" attributeType="String"/>
+            <attribute name="cssHistoryJSON" optional="YES" attributeType="String"/>
+            <attribute name="trainingGoalsJSON" optional="YES" attributeType="String"/>
+            <attribute name="limitationsJSON" optional="YES" attributeType="String"/>
+            <attribute name="createdAt" optional="NO" attributeType="String"/>
+            <attribute name="updatedAt" optional="NO" attributeType="String"/>
+            <uniquenessConstraints>
+                <uniquenessConstraint>
+                    <constraintValue value="id"/>
+                </uniquenessConstraint>
+            </uniquenessConstraints>
+        </element>
+
+        <!-- TrainingNote Entity -->
+        <element name="TrainingNote" position="-1" customClassName="TrainingNoteEntity" representedClassName="TrainingNoteEntity" syncable="YES">
+            <attribute name="userId" optional="NO" attributeType="String"/>
+            <attribute name="date" optional="NO" attributeType="String"/>
+            <attribute name="strokeFocusRaw" optional="YES" attributeType="String"/>
+            <attribute name="techniqueFocusRaw" optional="YES" attributeType="String"/>
+            <attribute name="notes" optional="YES" attributeType="String"/>
+            <attribute name="llmInsights" optional="YES" attributeType="String"/>
+            <attribute name="createdAt" optional="NO" attributeType="String"/>
+            <attribute name="updatedAt" optional="NO" attributeType="String"/>
+            <relationship name="goals" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="Goal" inverseName="trainingNote" inverseEntity="Goal"/>
+            <compoundIndexPaths>
+                <compoundIndexPath pathElement="userId"/>
+                <compoundIndexPath pathElement="date"/>
+            </compoundIndexPaths>
+        </element>
+
+        <!-- Goal Entity -->
+        <element name="Goal" position="-1" customClassName="GoalEntity" representedClassName="GoalEntity" syncable="YES">
+            <attribute name="id" optional="NO" attributeType="String"/>
+            <attribute name="typeRaw" optional="NO" attributeType="String"/>
+            <attribute name="target" optional="YES" attributeType="String"/>
+            <attribute name="strokeIdRaw" optional="YES" attributeType="String"/>
+            <attribute name="description" optional="NO" attributeType="String"/>
+            <attribute name="statusRaw" optional="NO" attributeType="String"/>
+            <attribute name="revisit" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
+            <attribute name="metricsJSON" optional="YES" attributeType="String"/>
+            <attribute name="techniqueNodeId" optional="YES" attributeType="String"/>
+            <attribute name="coachingTips" optional="YES" attributeType="String"/>
+            <attribute name="goalNotes" optional="YES" attributeType="String"/>
+            <attribute name="goalKindRaw" optional="YES" attributeType="String"/>
+            <attribute name="competitiveDrillSnapshotJSON" optional="YES" attributeType="String"/>
+            <attribute name="createdAt" optional="NO" attributeType="String"/>
+            <attribute name="updatedAt" optional="NO" attributeType="String"/>
+            <relationship name="trainingNote" optional="YES" toOne="YES" deletionRule="Nullify" destinationEntity="TrainingNote" inverseName="goals" inverseEntity="TrainingNote"/>
+            <uniquenessConstraints>
+                <uniquenessConstraint>
+                    <constraintValue value="id"/>
+                </uniquenessConstraint>
+            </uniquenessConstraints>
+        </element>
+
+        <!-- WeeklyTrainingPlan Entity -->
+        <element name="WeeklyTrainingPlan" position="-1" customClassName="WeeklyTrainingPlanEntity" representedClassName="WeeklyTrainingPlanEntity" syncable="YES">
+            <attribute name="id" optional="NO" attributeType="String"/>
+            <attribute name="userId" optional="NO" attributeType="String"/>
+            <attribute name="weekStartingDate" optional="YES" attributeType="Date"/>
+            <attribute name="overviewJSON" optional="YES" attributeType="String"/>
+            <attribute name="scheduleJSON" optional="YES" attributeType="String"/>
+            <attribute name="weeklyGoalsJSON" optional="YES" attributeType="String"/>
+            <attribute name="techniqueProgressPlanJSON" optional="YES" attributeType="String"/>
+            <attribute name="notes" optional="YES" attributeType="String"/>
+            <attribute name="poolTypeRaw" optional="YES" attributeType="String"/>
+            <relationship name="detailedSessions" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DetailedSession" inverseName="weeklyPlan" inverseEntity="DetailedSession"/>
+            <relationship name="dryLandProgram" optional="YES" toMany="YES" deletionRule="Cascade" destinationEntity="DryLandExercisePlan" inverseName="weeklyPlan" inverseEntity="DryLandExercisePlan"/>
+            <compoundIndexPaths>
+                <compoundIndexPath pathElement="userId"/>
+                <compoundIndexPath pathElement="weekStartingDate"/>
+            </compoundIndexPaths>
+        </element>
+
+        <!-- DetailedSession Entity -->
+        <element name="DetailedSession" position="-1" customClassName="DetailedSessionEntity" representedClassName="DetailedSessionEntity" syncable="YES">
+            <attribute name="id" optional="NO" attributeType="String"/>
+            <attribute name="sessionNumber" optional="NO" attributeType="Integer 32" defaultValueString="1"/>
+            <attribute name="focus" optional="NO" attributeType="String"/>
+            <attribute name="warmUpJSON" optional="YES" attributeType="String"/>
+            <attribute name="drillSetJSON" optional="YES" attributeType="String"/>
+            <attribute name="mainSetJSON" optional="YES" attributeType="String"/>
+            <attribute name="secondarySetJSON" optional="YES" attributeType="String"/>
+            <attribute name="coolDownJSON" optional="YES" attributeType="String"/>
+            <attribute name="techniqueFocus" optional="YES" attributeType="String"/>
+            <attribute name="techniqueFileRef" optional="YES" attributeType="String"/>
+            <attribute name="addressesGoal" optional="YES" attributeType="String"/>
+            <attribute name="sessionType" optional="YES" attributeType="String"/>
+            <attribute name="progressionRationale" optional="YES" attributeType="String"/>
+            <attribute name="sessionNotes" optional="YES" attributeType="String"/>
+            <attribute name="scheduledDate" optional="YES" attributeType="Date"/>
+            <attribute name="isCompleted" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
+            <attribute name="isAssigned" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
+            <relationship name="weeklyPlan" optional="YES" toOne="YES" deletionRule="Nullify" destinationEntity="WeeklyTrainingPlan" inverseName="detailedSessions" inverseEntity="WeeklyTrainingPlan"/>
+            <fetchIndex name="scheduledDateIndex">
+                <fetchIndexElement property="scheduledDate" type="Binary" order="ascending"/>
+            </fetchIndex>
+        </element>
+
+        <!-- DryLandExercisePlan Entity -->
+        <element name="DryLandExercisePlan" position="-1" customClassName="DryLandExercisePlanEntity" representedClassName="DryLandExercisePlanEntity" syncable="YES">
+            <attribute name="id" optional="NO" attributeType="String"/>
+            <attribute name="exercise" optional="NO" attributeType="String"/>
+            <attribute name="setsReps" optional="NO" attributeType="String"/>
+            <attribute name="focus" optional="YES" attributeType="String"/>
+            <attribute name="techniqueSupport" optional="YES" attributeType="String"/>
+            <attribute name="scheduledDate" optional="YES" attributeType="Date"/>
+            <attribute name="isAssigned" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
+            <attribute name="isCompleted" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
+            <relationship name="weeklyPlan" optional="YES" toOne="YES" deletionRule="Nullify" destinationEntity="WeeklyTrainingPlan" inverseName="dryLandProgram" inverseEntity="WeeklyTrainingPlan"/>
+            <fetchIndex name="dryLandScheduledDateIndex">
+                <fetchIndexElement property="scheduledDate" type="Binary" order="ascending"/>
+            </fetchIndex>
+        </element>
+    </elements>
+</model>

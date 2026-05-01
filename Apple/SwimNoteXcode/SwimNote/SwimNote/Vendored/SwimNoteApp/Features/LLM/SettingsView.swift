@@ -108,7 +108,7 @@ struct SettingsView: View {
 
     private var iCloudSection: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text("iCloud Sync")
+            Text("Data Storage")
                 .font(.title3.bold())
 
             let readiness = CloudKitPersistenceReadiness()
@@ -141,6 +141,11 @@ struct SettingsView: View {
                         .foregroundStyle(readiness.usesRemoteChangeNotifications ? .green : PoolTheme.smoke)
                 }
             }
+
+            // Note about efficiency improvements
+            Text("Calendar lookups are now cached for faster performance")
+                .font(.caption)
+                .foregroundStyle(.green)
         }
         .poolCard()
     }

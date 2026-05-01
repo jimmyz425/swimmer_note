@@ -17,6 +17,10 @@ public final class SwimNoteAppModel {
     public var trainingPlans: [TrainingPlan] = []
     public var weeklyPlans: [WeeklyTrainingPlan] = []
 
+    // Cached session lookup for O(1) date-based queries
+    private var sessionsByDate: [String: DetailedSession] = [:]
+    private var dryLandByDate: [String: [DryLandExercisePlan]] = [:]
+
     private let noteRepository: any TrainingNoteRepository
     private let profileRepository: any UserProfileRepository
     private let planRepository: any TrainingPlanRepository
@@ -47,6 +51,9 @@ public final class SwimNoteAppModel {
             .first?
             .appendingPathComponent("SwimNote", isDirectory: true)
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("SwimNote", isDirectory: true)
+
+        // Note: Core Data support requires proper model configuration in Xcode
+        // For now, JSON repositories remain the default (efficient with date-based caching)
 
         let model = SwimNoteAppModel(
             noteRepository: JSONTrainingNoteRepository(notesDirectory: appSupport.appendingPathComponent("notes")),
@@ -223,6 +230,38 @@ public final class SwimNoteAppModel {
         notes = await noteRepository.listNotes(for: userId)
         trainingPlans = await planRepository.listPlans(for: userId)
         weeklyPlans = await weeklyPlanRepository.listPlans(for: userId)
+
+        // Build date-based caches for O(1) lookup
+        rebuildDateCaches()
+    }
+
+    private func rebuildDateCaches() {
+        sessionsByDate = [:]
+        dryLandByDate = [:]
+
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy-MM-dd"
+
+        for plan in weeklyPlans {
+            for session in plan.detailedSessions {
+                if let date = session.scheduledDate {
+                    let dateKey = formatter.string(from: date)
+                    sessionsByDate[dateKey] = session
+                }
+            }
+
+            if let dryLand = plan.dryLandProgram {
+                for exercise in dryLand {
+                    if let date = exercise.scheduledDate {
+                        let dateKey = formatter.string(from: date)
+                        if dryLandByDate[dateKey] == nil {
+                            dryLandByDate[dateKey] = []
+                        }
+                        dryLandByDate[dateKey]?.append(exercise)
+                    }
+                }
+            }
+        }
     }
 
     public func noteForToday() async -> TrainingNote? {
@@ -345,6 +384,12 @@ public final class SwimNoteAppModel {
 
     /// Get today's scheduled session as DetailedSession (for proper display with SessionCard)
     public func sessionForDate(_ date: String) -> DetailedSession? {
+        // Use cached lookup for O(1) performance
+        if let cached = sessionsByDate[date] {
+            return cached
+        }
+
+        // Fallback: search through plans (for cases where cache isn't built)
         for weeklyPlan in weeklyPlans {
             for session in weeklyPlan.detailedSessions {
                 if let sessionDate = session.scheduledDate {
@@ -356,6 +401,11 @@ public final class SwimNoteAppModel {
             }
         }
         return nil
+    }
+
+    /// Get dry land exercises for a specific date (cached)
+    public func dryLandForDate(_ date: String) -> [DryLandExercisePlan] {
+        return dryLandByDate[date] ?? []
     }
 
     public func planForDate(_ date: String) -> TrainingPlan? {

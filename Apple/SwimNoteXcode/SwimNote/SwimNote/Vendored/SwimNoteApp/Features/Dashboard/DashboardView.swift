@@ -16,7 +16,8 @@ struct DashboardView: View {
     @State private var expandedGoals: Set<String> = []
     @State private var showingAddGeneralGoal = false
     @State private var newGeneralGoalText = ""
-    @FocusState private var isNotesFieldFocused: Bool
+    @State private var showingSessionNotes = false
+    @State private var sessionNotesText = ""
 
     private var todayPlan: TrainingPlan? {
         appModel.planForDate(SwimNoteDateFormatting.todayShort())
@@ -150,15 +151,8 @@ struct DashboardView: View {
             .sheet(isPresented: $showingAddGeneralGoal) {
                 addGeneralGoalSheet
             }
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .keyboard) {
-                Spacer()
-                Button("Done") {
-                    isNotesFieldFocused = false
-                }
-                .font(.headline)
-                .foregroundStyle(PoolTheme.mid)
+            .sheet(isPresented: $showingSessionNotes) {
+                sessionNotesSheet
             }
         }
     }
@@ -465,19 +459,39 @@ struct DashboardView: View {
                 .font(.subheadline.bold())
                 .foregroundStyle(PoolTheme.smoke)
 
-            if let noteBinding = Binding($note) {
-                TextField("How did the session feel? Overall observations...", text: noteBinding.notes, axis: .vertical)
-                    .lineLimit(2...4)
-                    .textFieldStyle(.roundedBorder)
-                    .focused($isNotesFieldFocused)
-                    .onChange(of: noteBinding.wrappedValue) { _, newValue in
-                        Task { await appModel.saveNote(newValue) }
+            Button {
+                sessionNotesText = note?.notes ?? ""
+                showingSessionNotes = true
+            } label: {
+                HStack(alignment: .top, spacing: 12) {
+                    Image(systemName: "note.text")
+                        .font(.title3)
+                        .foregroundStyle(PoolTheme.mid)
+
+                    if let notes = note?.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.deep)
+                            .lineLimit(2...4)
+                    } else {
+                        Text("Tap to add session notes...")
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.smoke)
                     }
-            } else {
-                Text("No active profile")
-                    .font(.caption)
-                    .foregroundStyle(PoolTheme.smoke)
+
+                    Spacer()
+
+                    Image(systemName: "pencil.circle")
+                        .font(.title3)
+                        .foregroundStyle(PoolTheme.light)
+                }
+                .padding(12)
+                .background(
+                    RoundedRectangle(cornerRadius: 8)
+                        .fill(PoolTheme.light.opacity(0.08))
+                )
             }
+            .buttonStyle(.plain)
         }
     }
 
@@ -509,6 +523,38 @@ struct DashboardView: View {
                         Task { await appModel.saveNote(updatedNote) }
                         showingGoalNotes = nil
                         goalNotesText = ""
+                    }
+                }
+            }
+        }
+        .presentationDetents([.medium])
+    }
+
+    private var sessionNotesSheet: some View {
+        NavigationStack {
+            Form {
+                Section("Session Notes") {
+                    TextField("How did the session feel? Overall observations...", text: $sessionNotesText, axis: .vertical)
+                        .lineLimit(3...8)
+                }
+            }
+            .navigationTitle("Notes")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        showingSessionNotes = false
+                        sessionNotesText = ""
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Save") {
+                        guard var updatedNote = note else { return }
+                        updatedNote.notes = sessionNotesText
+                        note = updatedNote
+                        Task { await appModel.saveNote(updatedNote) }
+                        showingSessionNotes = false
+                        sessionNotesText = ""
                     }
                 }
             }
