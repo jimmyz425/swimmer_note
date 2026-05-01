@@ -1,0 +1,190 @@
+{
+  "overview": {
+    "swimmerSummary": "Alex, age 8, Intermediate level. Focus: Freestyle & Backstroke. PB: 50m Free 38.5s, 50m Back 42.0s",
+    "pastMonthAnalysis": "Completed 8 sessions in past 30 days. Achieved 2 goals (body position, streamline). 1 goal pending (flip turn timing). Main focus was freestyle (60%).",
+    "weekFocus": "Freestyle sprint technique with backstroke recovery",
+    "technicalObjective": "Reduce stroke count from 18 to 16 per 25m",
+    "physicalObjective": "Build endurance for 200m continuous swims",
+    "totalDistance": "~2,400m",
+    "sessionCount": 3,
+    "poolType": "25m"
+  },
+  "schedule": [
+    {
+      "id": "sched-1",
+      "sessionNumber": 1,
+      "poolSession": "Freestyle Sprint Focus",
+      "duration": "60 min",
+      "focus": "Sprint technique, high elbow catch",
+      "dryLand": "Core workout"
+    },
+    {
+      "id": "sched-2",
+      "sessionNumber": 2,
+      "poolSession": "Backstroke + IM Mix",
+      "duration": "45 min",
+      "focus": "Backstroke timing, recovery",
+      "dryLand": "Flexibility stretches"
+    },
+    {
+      "id": "sched-3",
+      "sessionNumber": 3,
+      "poolSession": "Endurance + Flip Turns",
+      "duration": "75 min",
+      "focus": "200m swims, flip turn practice",
+      "dryLand": "Rest"
+    }
+  ],
+  "detailedSessions": [
+    {
+      "id": "session-1",
+      "sessionNumber": 1,
+      "focus": "Freestyle Sprint Technique",
+      "warmUp": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 50, "item": "easy freestyle", "notes": "smooth tempo"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "backstroke", "notes": "easy pace"},
+          {"repeatCount": 2, "distancePerRep": 25, "item": "streamline glide off wall", "notes": "perfect form"}
+        ]
+      },
+      "drillSet": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 25, "item": "catch-up drill", "notes": "wait for hand entry"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "single arm freestyle", "notes": "right arm only"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "single arm freestyle", "notes": "left arm only"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "6-beat kick timing drill", "notes": "fast kick"}
+        ]
+      },
+      "mainSet": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 50, "item": "freestyle sprint", "notes": "on 60s rest"},
+          {"repeatCount": 8, "distancePerRep": 25, "item": "pace swim", "notes": "on 30s rest"},
+          {"repeatCount": 2, "distancePerRep": 100, "item": "freestyle moderate", "notes": "smooth stroke"}
+        ]
+      },
+      "coolDown": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 50, "item": "easy choice stroke", "notes": "relaxed"}
+        ]
+      },
+      "techniqueFocus": "High elbow early vertical forearm for efficient propulsion",
+      "techniqueFileRef": "freestyle-08-catch-evf",
+      "addressesGoal": "Reduce stroke count goal",
+      "sessionType": "sprint"
+    },
+    {
+      "id": "session-2",
+      "sessionNumber": 2,
+      "focus": "Backstroke Timing Recovery",
+      "warmUp": {
+        "sets": [
+          {"repeatCount": 3, "distancePerRep": 50, "item": "easy backstroke", "notes": "steady tempo"},
+          {"repeatCount": 3, "distancePerRep": 50, "item": "easy freestyle", "notes": "smooth"}
+        ]
+      },
+      "drillSet": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 25, "item": "single arm backstroke", "notes": "right arm"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "single arm backstroke", "notes": "left arm"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "6-3-6 rotation drill", "notes": "6 kicks on side"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "pause at hip drill", "notes": "hold at hip"}
+        ]
+      },
+      "mainSet": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 100, "item": "backstroke swim", "notes": "on 1:30"},
+          {"repeatCount": 4, "distancePerRep": 50, "item": "IM order", "notes": "fly-back-breast-free"}
+        ]
+      },
+      "coolDown": {
+        "sets": [
+          {"repeatCount": 3, "distancePerRep": 50, "item": "easy choice stroke", "notes": "long strokes"}
+        ]
+      },
+      "techniqueFocus": "Continuous arm rotation with stable body position",
+      "techniqueFileRef": "backstroke-02-head-position",
+      "addressesGoal": "Backstroke timing improvement",
+      "sessionType": "technique"
+    },
+    {
+      "id": "session-3",
+      "sessionNumber": 3,
+      "focus": "Endurance Building + Flip Turns",
+      "warmUp": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 50, "item": "freestyle build", "notes": "easy to moderate"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "somersault practice", "notes": "in water"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "streamline push-off", "notes": "tight streamline"}
+        ]
+      },
+      "drillSet": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 25, "item": "approach timing drill", "notes": "count strokes to wall"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "tuck tight somersault", "notes": "fast rotation"},
+          {"repeatCount": 4, "distancePerRep": 25, "item": "flip turn full execution", "notes": "approach + turn + push"}
+        ]
+      },
+      "mainSet": {
+        "sets": [
+          {"repeatCount": 2, "distancePerRep": 200, "item": "freestyle continuous", "notes": "smooth pace"},
+          {"repeatCount": 4, "distancePerRep": 100, "item": "pull buoy swim", "notes": "no kick"},
+          {"repeatCount": 8, "distancePerRep": 50, "item": "freestyle with flip turns", "notes": "on 45s"}
+        ]
+      },
+      "coolDown": {
+        "sets": [
+          {"repeatCount": 5, "distancePerRep": 50, "item": "easy swim long strokes", "notes": "relaxed"}
+        ]
+      },
+      "techniqueFocus": "Flip turn timing and efficient wall approach",
+      "techniqueFileRef": "freestyle-01-body-position",
+      "addressesGoal": "Flip turn timing (pending goal)",
+      "sessionType": "endurance"
+    }
+  ],
+  "dryLandProgram": [
+    {
+      "id": "dryland-1",
+      "exercise": "Plank holds",
+      "setsReps": "3x30 seconds",
+      "focus": "Core",
+      "techniqueSupport": "Body position stability"
+    },
+    {
+      "id": "dryland-2",
+      "exercise": "Superman holds",
+      "setsReps": "3x20 seconds",
+      "focus": "Core",
+      "techniqueSupport": "Streamline position"
+    },
+    {
+      "id": "dryland-3",
+      "exercise": "Shoulder band external rotation",
+      "setsReps": "3x12 reps",
+      "focus": "Shoulder stability",
+      "techniqueSupport": "High elbow catch"
+    },
+    {
+      "id": "dryland-4",
+      "exercise": "Dynamic arm swings",
+      "setsReps": "2x15 each direction",
+      "focus": "Flexibility",
+      "techniqueSupport": "Backstroke arm rotation"
+    }
+  ],
+  "goalProgressPlan": {
+    "continueGoals": [
+      "Freestyle body position - continue refining streamline holds",
+      "Backstroke timing - working on continuous arm rotation"
+    ],
+    "achievedGoalsNextLevel": [
+      "Streamline holds achieved - now target 5-second holds off each wall"
+    ],
+    "revisitGoals": [],
+    "newGoals": [
+      "Flip turn approach speed - new focus this week",
+      "200m endurance swim - building distance capability"
+    ]
+  },
+  "notes": "Week 5 of training cycle. Alex has shown good progress on technique. Keep sprint sessions fun with variety. Focus on flip turn timing as pending goal. Age-appropriate intensity - plenty of rest between sprint efforts."
+}

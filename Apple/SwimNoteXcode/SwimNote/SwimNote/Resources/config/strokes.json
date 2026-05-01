@@ -1,0 +1,8 @@
+{
+  "strokes": [
+    { "id": "freestyle", "name": "Freestyle", "aliases": ["free", "front crawl"] },
+    { "id": "backstroke", "name": "Backstroke", "aliases": ["back"] },
+    { "id": "breaststroke", "name": "Breaststroke", "aliases": ["breast"] },
+    { "id": "butterfly", "name": "Butterfly", "aliases": ["fly"] }
+  ]
+}
