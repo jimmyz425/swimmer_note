@@ -9,7 +9,11 @@ public struct RootView: View {
 
     public var body: some View {
         Group {
-            if appModel.activeProfile != nil {
+            if !appModel.isInitialized {
+                // Show loading state while Core Data initializes
+                ProgressView("Loading...")
+                    .tint(PoolTheme.mid)
+            } else if appModel.activeProfile != nil {
                 mainTabs
             } else if appModel.needsSetup && appModel.showingUserSetup {
                 UserSetupView(appModel: appModel)
@@ -20,9 +24,6 @@ public struct RootView: View {
             }
         }
         .tint(PoolTheme.mid)
-        .task {
-            await appModel.loadProfiles()
-        }
     }
 
     private var mainTabs: some View {

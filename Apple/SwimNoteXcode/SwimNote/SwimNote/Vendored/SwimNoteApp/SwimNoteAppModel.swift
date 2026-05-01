@@ -16,6 +16,7 @@ public final class SwimNoteAppModel {
     public var videoRecords: [VideoAnalysisRecord] = []
     public var trainingPlans: [TrainingPlan] = []
     public var weeklyPlans: [WeeklyTrainingPlan] = []
+    public var isInitialized: Bool = false  // Track initialization state
 
     // Cached session lookup for O(1) date-based queries
     private var sessionsByDate: [String: DetailedSession] = [:]
@@ -52,16 +53,34 @@ public final class SwimNoteAppModel {
             .appendingPathComponent("SwimNote", isDirectory: true)
             ?? FileManager.default.temporaryDirectory.appendingPathComponent("SwimNote", isDirectory: true)
 
-        // Note: Core Data support requires proper model configuration in Xcode
-        // For now, JSON repositories remain the default (efficient with date-based caching)
+        // Core Data persistence (local only, no CloudKit)
+        let coreDataURL = appSupport.appendingPathComponent("SwimNote.sqlite")
+        let controller = CoreDataPersistenceController(modelName: "SwimNote", storageURL: coreDataURL)
 
+        // Use Core Data repositories
         let model = SwimNoteAppModel(
-            noteRepository: JSONTrainingNoteRepository(notesDirectory: appSupport.appendingPathComponent("notes")),
-            profileRepository: JSONUserProfileRepository(configDirectory: appSupport.appendingPathComponent("config")),
+            noteRepository: CoreDataTrainingNoteRepository(controller: controller),
+            profileRepository: CoreDataUserProfileRepository(controller: controller),
             planRepository: JSONTrainingPlanRepository(plansDirectory: appSupport.appendingPathComponent("plans")),
-            weeklyPlanRepository: JSONWeeklyPlanRepository(plansDirectory: appSupport.appendingPathComponent("weekly-plans")),
+            weeklyPlanRepository: CoreDataWeeklyPlanRepository(controller: controller),
             contentLoader: loader
         )
+
+        // Initialize Core Data synchronously on main thread before any operations
+        Task { @MainActor in
+            // Load Core Data store
+            try? await controller.load()
+
+            // Run migration from JSON if needed (only runs once)
+            if CoreDataMigration.needsMigration() {
+                let migration = CoreDataMigration(controller: controller, appSupportURL: appSupport)
+                try? await migration.migrateAll()
+            }
+
+            // Now load profiles from Core Data
+            await model.loadProfiles()
+        }
+
         model.loadBundledContent()
         model.llmConfiguration = model.llmConfigurationStore.load()
         return model
@@ -73,6 +92,7 @@ public final class SwimNoteAppModel {
             activeProfile = profiles.first { $0.id == activeId }
         }
         needsSetup = profiles.isEmpty
+        isInitialized = true  // Mark as initialized after loading
         if let profile = activeProfile {
             await reloadNotes(userId: profile.id)
 
@@ -301,12 +321,11 @@ public final class SwimNoteAppModel {
             planToSave.weekStartingDate = Date()
         }
 
-        // Save to disk
+        // Save to Core Data
         try await weeklyPlanRepository.save(planToSave, for: userId)
 
-        // Don't reload from disk - we already have the correct state in memory
-        // The in-memory weeklyPlans array was already updated before calling this function
-        // Reloading would overwrite runtime state like isCompleted with stale disk data
+        // Reload from repository to ensure in-memory state matches Core Data
+        await reloadNotes(userId: userId)
     }
 
     /// Find session scheduled for a specific date
