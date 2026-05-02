@@ -57,6 +57,23 @@ struct DashboardView: View {
         return exercises
     }
 
+    private var todayTrainingCompletionStat: String {
+        var total = 0
+        var completed = 0
+
+        if let session = todaySession {
+            total += 1
+            if session.isCompleted { completed += 1 }
+        }
+
+        for exercise in todayDryLandExercises {
+            total += 1
+            if exercise.isCompleted { completed += 1 }
+        }
+
+        return total > 0 ? "\(completed)/\(total)" : ""
+    }
+
     private var goalsForSelectedStroke: [Goal] {
         guard let note else { return [] }
         if selectedStrokeTab == nil {
@@ -503,6 +520,7 @@ struct DashboardView: View {
                 Section("Notes for this focus") {
                     TextField("Add coaching tips, observations...", text: $goalNotesText, axis: .vertical)
                         .lineLimit(3...6)
+                        .submitLabel(.done)
                 }
             }
             .navigationTitle(goal.description)
@@ -525,6 +543,13 @@ struct DashboardView: View {
                         goalNotesText = ""
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
         .presentationDetents([.medium])
@@ -536,6 +561,7 @@ struct DashboardView: View {
                 Section("Session Notes") {
                     TextField("How did the session feel? Overall observations...", text: $sessionNotesText, axis: .vertical)
                         .lineLimit(3...8)
+                        .submitLabel(.done)
                 }
             }
             .navigationTitle("Notes")
@@ -557,6 +583,13 @@ struct DashboardView: View {
                         sessionNotesText = ""
                     }
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
         }
         .presentationDetents([.medium])
@@ -568,6 +601,7 @@ struct DashboardView: View {
                 Section("Add Focus Area") {
                     TextField("What are you working on?", text: $newGeneralGoalText, axis: .vertical)
                         .lineLimit(2...4)
+                        .submitLabel(.done)
                 }
             }
             .navigationTitle("General Focus")
@@ -584,6 +618,13 @@ struct DashboardView: View {
                         addGeneralGoal()
                     }
                     .disabled(newGeneralGoalText.trimmingCharacters(in: .whitespaces).isEmpty)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
         }
@@ -629,6 +670,18 @@ struct DashboardView: View {
                     .foregroundStyle(PoolTheme.deep)
 
                 Spacer()
+
+                if !todayTrainingCompletionStat.isEmpty {
+                    Text(todayTrainingCompletionStat)
+                        .font(.system(size: 15, weight: .semibold, design: .rounded))
+                        .foregroundStyle(PoolTheme.smoke)
+                        .padding(.horizontal, 10)
+                        .padding(.vertical, 4)
+                        .background(
+                            Capsule()
+                                .fill(PoolTheme.light.opacity(0.2))
+                        )
+                }
             }
 
             // Priority: show today's session from weekly plan

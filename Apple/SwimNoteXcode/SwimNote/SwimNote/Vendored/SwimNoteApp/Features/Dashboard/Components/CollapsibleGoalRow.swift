@@ -1,13 +1,22 @@
 import SwiftUI
 
 /// Collapsible goal row that shows simple goals inline and competitive goals as expandable
-struct CollapsibleGoalRow: View {
+/// Equatable: skips re-renders when goal visual state unchanged
+struct CollapsibleGoalRow: View, Equatable {
     let goal: Goal
     let isExpanded: Bool
     let onToggleExpand: () -> Void
     let onUpdateStatus: (GoalStatus) -> Void
     let onDelete: () -> Void
     let onEditNotes: () -> Void
+
+    // Equatable: compare goal visual state only
+    static func == (lhs: CollapsibleGoalRow, rhs: CollapsibleGoalRow) -> Bool {
+        lhs.goal.id == rhs.goal.id &&
+        lhs.goal.status == rhs.goal.status &&
+        lhs.goal.notes == rhs.goal.notes &&
+        lhs.isExpanded == rhs.isExpanded
+    }
 
     var body: some View {
         if let snapshot = goal.competitiveDrillSnapshot {
@@ -32,11 +41,18 @@ struct CollapsibleGoalRow: View {
 }
 
 /// Simple goal row for key points, mistakes, and basic text goals
-struct SimpleGoalRow: View {
+/// Equatable: skips re-renders when goal state unchanged
+struct SimpleGoalRow: View, Equatable {
     let goal: Goal
     let onUpdateStatus: (GoalStatus) -> Void
     let onDelete: () -> Void
     let onEditNotes: () -> Void
+
+    static func == (lhs: SimpleGoalRow, rhs: SimpleGoalRow) -> Bool {
+        lhs.goal.id == rhs.goal.id &&
+        lhs.goal.status == rhs.goal.status &&
+        lhs.goal.notes == rhs.goal.notes
+    }
 
     var body: some View {
         HStack(alignment: .center, spacing: 12) {
@@ -123,7 +139,8 @@ struct SimpleGoalRow: View {
 }
 
 /// Expandable goal row for competitive drill goals with tier targets
-struct CompetitiveGoalRow: View {
+/// Equatable: skips re-renders when goal and snapshot state unchanged
+struct CompetitiveGoalRow: View, Equatable {
     let goal: Goal
     let snapshot: CompetitiveDrillSnapshot
     let isExpanded: Bool
@@ -133,6 +150,15 @@ struct CompetitiveGoalRow: View {
     let onEditNotes: () -> Void
 
     private let tierOrder: [String] = ["Beginner", "Intermediate", "Advanced", "Elite"]
+
+    // Equatable: compare visual state only
+    static func == (lhs: CompetitiveGoalRow, rhs: CompetitiveGoalRow) -> Bool {
+        lhs.goal.id == rhs.goal.id &&
+        lhs.goal.status == rhs.goal.status &&
+        lhs.goal.notes == rhs.goal.notes &&
+        lhs.snapshot.selectedTier == rhs.snapshot.selectedTier &&
+        lhs.isExpanded == rhs.isExpanded
+    }
 
     private var sortedTiers: [(String, String)] {
         tierOrder.compactMap { tier in

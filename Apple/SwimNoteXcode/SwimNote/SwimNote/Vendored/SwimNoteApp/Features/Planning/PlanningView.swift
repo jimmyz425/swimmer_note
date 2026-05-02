@@ -693,7 +693,7 @@ struct PlanningView: View {
                 apiKeyReference: config.apiKeyReference,
                 baseURL: config.baseURL,
                 modelName: config.modelName,
-                timeoutSeconds: 240,  // 4 minutes for plan generation with more sessions
+                timeoutSeconds: 300,  // 5 minutes for plan generation with more sessions
                 maxRetries: config.maxRetries
             )
         } catch {
@@ -712,7 +712,7 @@ struct PlanningView: View {
                 systemRole: strategy.buildSystemRole(),
                 userPrompt: strategy.buildUserPrompt(context: planContext),
                 tools: AllTools.all,
-                maxIterations: 20  // Increased for complex plans with more sessions - LLM needs multiple reads for stroke rotation
+                maxIterations: 50  // Increased for complex plans with more sessions - LLM needs multiple reads for stroke rotation
             )
 
             generatedPlan = rawOutput
@@ -721,7 +721,7 @@ struct PlanningView: View {
             parsedPlan = plan
             savedStatus = nil // Reset save status when new plan generated
         } catch LLMServiceError.maxIterationsReached {
-            errorMessage = "Plan generation took too long (20 iterations). Try with fewer sessions."
+            errorMessage = "Plan generation took too long (50 iterations). Try with fewer sessions."
         } catch {
             errorMessage = "Failed to generate plan: \(error.localizedDescription)"
         }
@@ -1086,10 +1086,18 @@ struct PlanningView: View {
             }
         }
 
+        // Fallback: if no available days, use all days in the week
+        if availableDays.isEmpty {
+            for dayOffset in 0..<7 {
+                availableDays.append(calendar.date(byAdding: .day, value: dayOffset, to: weekStarting) ?? weekStarting)
+            }
+        }
+
         // Assign dry land exercises to available days, cycling if needed
         for (index, _) in assigned.enumerated() {
             let dayIndex = index % availableDays.count
             assigned[index].scheduledDate = availableDays[dayIndex]
+            assigned[index].isAssigned = true  // Mark as assigned when auto-scheduled
         }
 
         return assigned
@@ -1211,9 +1219,11 @@ struct PlanningView: View {
         for (index, _) in assigned.enumerated() {
             if index < dayOffsets.count {
                 assigned[index].scheduledDate = calendar.date(byAdding: .day, value: dayOffsets[index], to: weekStarting)
+                assigned[index].isAssigned = true  // Mark as assigned when auto-scheduled
             } else {
                 // Fallback: assign to consecutive days
                 assigned[index].scheduledDate = calendar.date(byAdding: .day, value: index, to: weekStarting)
+                assigned[index].isAssigned = true
             }
         }
 

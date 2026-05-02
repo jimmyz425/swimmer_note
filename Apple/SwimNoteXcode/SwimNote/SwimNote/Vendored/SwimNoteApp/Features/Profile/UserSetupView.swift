@@ -14,6 +14,7 @@ struct UserSetupView: View {
     @State private var isSaving: Bool = false
     @State private var errorMessage: String?
     @State private var showTierGuide: Bool = false
+    @Environment(\.dismiss) private var dismiss
 
     private var age: Int {
         Calendar.current.dateComponents([.year], from: birthday, to: Date()).year ?? 0
@@ -72,6 +73,7 @@ struct UserSetupView: View {
             Form {
                 Section("Basic Information") {
                     TextField("Name", text: $name)
+                        .submitLabel(.done)
                     DatePicker(
                         "Birthday",
                         selection: $birthday,
@@ -161,7 +163,12 @@ struct UserSetupView: View {
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
+                        // If profiles exist and we're in setup mode, transition to user selection
+                        if !appModel.profiles.isEmpty && appModel.needsSetup {
+                            appModel.needsSetup = false
+                        }
                         appModel.showingUserSetup = false
+                        dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {

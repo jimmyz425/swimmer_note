@@ -4,7 +4,10 @@ import SwiftUI
 
 /// Refined session card with fluid animations and clear visual hierarchy
 /// Designed for the Pantone 2026 pool theme - elegant, calm, water-inspired
-struct SessionCard: View {
+///
+/// Equatable conformance skips re-renders when visual state hasn't changed,
+/// even if parent recreates closure callbacks.
+struct SessionCard: View, Equatable {
     let session: DetailedSession
     let isExpanded: Bool
     let onToggleExpand: () -> Void
@@ -32,6 +35,16 @@ struct SessionCard: View {
         self.poolType = poolType
         self.onDelete = onDelete
         self.onComplete = onComplete
+    }
+
+    // Equatable: compare visual state only (ignore closures)
+    static func == (lhs: SessionCard, rhs: SessionCard) -> Bool {
+        lhs.session.id == rhs.session.id &&
+        lhs.session.isCompleted == rhs.session.isCompleted &&
+        lhs.session.isAssigned == rhs.session.isAssigned &&
+        lhs.isExpanded == rhs.isExpanded &&
+        lhs.poolType == rhs.poolType &&
+        lhs.showDatePicker == rhs.showDatePicker
     }
 
     var body: some View {
@@ -170,64 +183,66 @@ private struct SessionHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // Main header row
-            HStack(alignment: .center, spacing: Spacing.medium) {
-                SessionNumberBadge(number: sessionNumber, isCompleted: isCompleted)
-
-                Text(focus)
-                    .font(.system(size: 17, weight: .semibold, design: .rounded))
-                    .foregroundStyle(isCompleted ? PoolTheme.smoke : PoolTheme.deep)
-                    .lineLimit(2)
-
-                if isCompleted {
-                    Text("Done")
-                        .font(.system(size: 10, weight: .bold))
-                        .foregroundStyle(.green)
-                        .padding(.horizontal, 6)
-                        .padding(.vertical, 3)
-                        .background(.green.opacity(0.2))
-                        .cornerRadius(4)
-                }
-
-                Spacer()
-
-                // Action buttons in header
-                HStack(spacing: 8) {
-                    if let onComplete = onComplete, !isCompleted {
-                        Button {
-                            onComplete()
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.system(size: 24))
-                                .foregroundStyle(.green)
-                        }
-                        .buttonStyle(.plain)
-                    }
-
-                    if let onDelete = onDelete {
-                        Button {
-                            onDelete()
-                        } label: {
-                            Image(systemName: "trash")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundStyle(.red.opacity(0.8))
-                        }
-                        .buttonStyle(.plain)
-                    }
-                }
-
-                Image(systemName: "chevron.right")
-                    .font(.system(size: 12, weight: .bold, design: .rounded))
-                    .foregroundStyle(PoolTheme.smoke)
-                    .rotationEffect(.degrees(isExpanded ? 90 : 0))
-                    .animation(.easeInOut(duration: 0.2), value: isExpanded)
-            }
-            .padding(.horizontal, Spacing.large)
-            .padding(.vertical, Spacing.medium)
-            .contentShape(Rectangle())
-            .onTapGesture {
+            // Main header row - use Button for proper gesture handling
+            Button {
                 onToggle()
+            } label: {
+                HStack(alignment: .center, spacing: Spacing.medium) {
+                    SessionNumberBadge(number: sessionNumber, isCompleted: isCompleted)
+
+                    Text(focus)
+                        .font(.system(size: 17, weight: .semibold, design: .rounded))
+                        .foregroundStyle(isCompleted ? PoolTheme.smoke : PoolTheme.deep)
+                        .lineLimit(2)
+
+                    if isCompleted {
+                        Text("Done")
+                            .font(.system(size: 10, weight: .bold))
+                            .foregroundStyle(.green)
+                            .padding(.horizontal, 6)
+                            .padding(.vertical, 3)
+                            .background(.green.opacity(0.2))
+                            .cornerRadius(4)
+                    }
+
+                    Spacer()
+
+                    // Action buttons in header
+                    HStack(spacing: 8) {
+                        if let onComplete = onComplete, !isCompleted {
+                            Button {
+                                onComplete()
+                            } label: {
+                                Image(systemName: "checkmark.circle.fill")
+                                    .font(.system(size: 24))
+                                    .foregroundStyle(.green)
+                            }
+                            .buttonStyle(.plain)
+                        }
+
+                        if let onDelete = onDelete {
+                            Button {
+                                onDelete()
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 18, weight: .medium))
+                                    .foregroundStyle(.red.opacity(0.8))
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+
+                    Image(systemName: "chevron.right")
+                        .font(.system(size: 12, weight: .bold, design: .rounded))
+                        .foregroundStyle(PoolTheme.smoke)
+                        .rotationEffect(.degrees(isExpanded ? 90 : 0))
+                        .animation(.easeInOut(duration: 0.2), value: isExpanded)
+                }
+                .padding(.horizontal, Spacing.large)
+                .padding(.vertical, Spacing.medium)
+                .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
 
             // Goal reference row (if exists)
             if let goalRef = goalRef {

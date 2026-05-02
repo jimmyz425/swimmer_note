@@ -117,6 +117,13 @@ struct TrainingPlanView: View {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Close") { dismiss() }
             }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                }
+                .buttonStyle(.bordered)
+            }
         }
     }
 
@@ -147,6 +154,7 @@ struct TrainingPlanView: View {
                 TextField("Overview", text: $plan.overview, axis: .vertical)
                     .lineLimit(3...8)
                     .textFieldStyle(.roundedBorder)
+                    .submitLabel(.done)
             } else {
                 Text(plan.overview.isEmpty ? "No overview." : plan.overview)
                     .font(.body)
@@ -216,12 +224,15 @@ struct TrainingPlanView: View {
 
                     TextField("Focus", text: $plan.sessions[index].focus)
                         .textFieldStyle(.roundedBorder)
+                        .submitLabel(.done)
 
                     TextField("Details", text: $plan.sessions[index].details)
                         .textFieldStyle(.roundedBorder)
+                        .submitLabel(.done)
 
                     TextField("Goals", text: $plan.sessions[index].goals)
                         .textFieldStyle(.roundedBorder)
+                        .submitLabel(.done)
                 }
 
                 // Delete button
@@ -280,17 +291,20 @@ struct TrainingPlanView: View {
                                     set: { plan.dryLandTraining?[index].name = $0 }
                                 ))
                                 .textFieldStyle(.roundedBorder)
+                                .submitLabel(.done)
                                 TextField("Duration", text: Binding(
                                     get: { plan.dryLandTraining?[index].duration ?? "" },
                                     set: { plan.dryLandTraining?[index].duration = $0 }
                                 ))
                                 .textFieldStyle(.roundedBorder)
+                                .submitLabel(.done)
                             }
                             TextField("Purpose", text: Binding(
                                 get: { plan.dryLandTraining?[index].purpose ?? "" },
                                 set: { plan.dryLandTraining?[index].purpose = $0 }
                             ))
                             .textFieldStyle(.roundedBorder)
+                            .submitLabel(.done)
 
                             Button("Remove", systemImage: "trash") {
                                 plan.dryLandTraining?.remove(at: index)
@@ -352,6 +366,7 @@ struct TrainingPlanView: View {
                 TextField("Remarks", text: $plan.remarks, axis: .vertical)
                     .lineLimit(2...6)
                     .textFieldStyle(.roundedBorder)
+                    .submitLabel(.done)
             } else {
                 Text(plan.remarks.isEmpty ? "No remarks." : plan.remarks)
                     .font(.body)

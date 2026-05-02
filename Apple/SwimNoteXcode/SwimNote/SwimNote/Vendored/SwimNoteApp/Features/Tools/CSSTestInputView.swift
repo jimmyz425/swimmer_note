@@ -168,6 +168,13 @@ struct CSSTestInputView: View {
                     }
                     .disabled(calculatedCSS == nil || isSaving)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
             .disabled(isSaving)
             .overlay {

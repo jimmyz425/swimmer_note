@@ -20,42 +20,40 @@ struct PBTrackerView: View {
     private let distances = [50, 100, 200, 400, 800, 1500]
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: 24) {
-                    // Current Bests Section
-                    currentBestsSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                // Current Bests Section
+                currentBestsSection
 
-                    // Add Result Button
-                    addResultSection
+                // Add Result Button
+                addResultSection
 
-                    // History Section
-                    historySection
-                }
-                .padding()
+                // History Section
+                historySection
             }
-            .background(
-                LinearGradient(
-                    colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
+            .padding()
+        }
+        .background(
+            LinearGradient(
+                colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)],
+                startPoint: .top,
+                endPoint: .bottom
             )
-            .navigationTitle("Personal Bests")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .primaryAction) {
-                    Button {
-                        showingAddResult = true
-                    } label: {
-                        Image(systemName: "plus")
-                    }
+        )
+        .navigationTitle("Personal Bests")
+        .navigationBarTitleDisplayMode(.large)
+        .toolbar {
+            ToolbarItem(placement: .primaryAction) {
+                Button {
+                    showingAddResult = true
+                } label: {
+                    Image(systemName: "plus")
                 }
             }
-            .sheet(isPresented: $showingAddResult) {
-                if let profile = appModel.activeProfile {
-                    PBResultInputView(appModel: appModel, profile: profile)
-                }
+        }
+        .sheet(isPresented: $showingAddResult) {
+            if let profile = appModel.activeProfile {
+                PBResultInputView(appModel: appModel, profile: profile)
             }
         }
     }

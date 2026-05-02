@@ -67,15 +67,17 @@ struct PBResultInputView: View {
                     )
 
                     TextField("Meet Name (optional)", text: $meetName)
+                        .submitLabel(.done)
                 }
 
-                Section("Time") {
+                Section {
                     HStack(spacing: 8) {
                         // Minutes (optional)
                         TextField("MM", text: $timeMinutes)
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 50)
                             .keyboardType(.numberPad)
+                            .submitLabel(.done)
                         Text(":")
                             .foregroundStyle(PoolTheme.smoke)
 
@@ -84,6 +86,7 @@ struct PBResultInputView: View {
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 50)
                             .keyboardType(.numberPad)
+                            .submitLabel(.done)
                         Text(".")
                             .foregroundStyle(PoolTheme.smoke)
 
@@ -92,6 +95,7 @@ struct PBResultInputView: View {
                             .textFieldStyle(.roundedBorder)
                             .frame(width: 50)
                             .keyboardType(.numberPad)
+                            .submitLabel(.done)
                     }
 
                     Text("Enter time as MM:SS.HH (e.g., 1:32.45 for 100m)")
@@ -108,6 +112,10 @@ struct PBResultInputView: View {
                                 .foregroundStyle(PoolTheme.mid)
                         }
                     }
+                } header: {
+                    Text("Time")
+                } footer: {
+                    Text("Tap Done above to close keyboard after entering time")
                 }
 
                 Section("Notes") {
@@ -147,6 +155,13 @@ struct PBResultInputView: View {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveResult() }
                         .disabled(parsedTime == nil || isSaving)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
             .disabled(isSaving)

@@ -219,6 +219,13 @@ struct LLMConfigurationSheet: View {
                     }
                     .disabled(apiKey.isEmpty || modelName.isEmpty || isTesting)
                 }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
+                }
             }
             .task {
                 // Load existing config if available
@@ -264,6 +271,7 @@ struct LLMConfigurationSheet: View {
             TextField("Model name", text: $modelName)
                 .textContentType(.none)
                 .autocapitalization(.none)
+                .submitLabel(.done)
 
             // Show suggested models for each provider
             VStack(alignment: .leading, spacing: 4) {
@@ -292,6 +300,7 @@ struct LLMConfigurationSheet: View {
                     .textContentType(.URL)
                     .autocapitalization(.none)
                     .keyboardType(.URL)
+                    .submitLabel(.done)
 
                 Text("For DashScope: https://dashscope.aliyuncs.com/compatible-mode/v1")
                     .font(.caption)

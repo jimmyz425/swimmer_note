@@ -400,7 +400,8 @@ extension DetailedSessionEntity {
             sessionNotes: sessionNotes,
             scheduledDate: scheduledDate,
             isCompleted: isCompleted,
-            isAssigned: isAssigned
+            // Auto-set isAssigned if scheduledDate exists but isAssigned was stored as false
+            isAssigned: isAssigned || (scheduledDate != nil)
         )
     }
 }
@@ -414,7 +415,8 @@ extension DryLandExercisePlanEntity {
             focus: focus,
             techniqueSupport: techniqueSupport,
             scheduledDate: scheduledDate,
-            isAssigned: isAssigned,
+            // Auto-set isAssigned if scheduledDate exists but isAssigned was stored as false
+            isAssigned: isAssigned || (scheduledDate != nil),
             isCompleted: isCompleted
         )
     }

@@ -3,21 +3,26 @@ import SwiftUI
 struct PersonalBestsEditor: View {
     @Bindable var appModel: SwimNoteAppModel
     @State var profile: UserProfile
+    @State private var name: String
     @State private var mainStroke: StrokeID?
     @State private var distancePreference: DistancePreference
-    @State private var distanceUnit: DistanceUnit
+    @State private var trainingTier: TrainingTier
+    @State private var subTier: SubTier
     @State private var profileIconType: ProfileIconType
     @State private var profileImageData: Data?
     @State private var profileIconName: String?
     @State private var isSaving: Bool = false
+    @State private var showTierGuide: Bool = false
     @Environment(\.dismiss) private var dismiss
 
     init(appModel: SwimNoteAppModel, profile: UserProfile) {
         self.appModel = appModel
         self._profile = State(initialValue: profile)
+        self._name = State(initialValue: profile.name)
         self._mainStroke = State(initialValue: profile.mainStroke)
         self._distancePreference = State(initialValue: profile.distancePreference)
-        self._distanceUnit = State(initialValue: profile.preferredDistanceUnit)
+        self._trainingTier = State(initialValue: profile.trainingTier)
+        self._subTier = State(initialValue: profile.subTier)
         self._profileIconType = State(initialValue: profile.profileIconType)
         self._profileImageData = State(initialValue: profile.profileImageData)
         self._profileIconName = State(initialValue: profile.profileIconName)
@@ -30,11 +35,37 @@ struct PersonalBestsEditor: View {
         (.butterfly, "Butterfly")
     ]
 
+    /// Tier-specific guidance text
+    private var tierGuidance: String {
+        switch trainingTier {
+        case .preCompetitive:
+            return "Pre-competitive: 2-3 practices/week, 3-7 km/week. Water comfort, basic strokes, fun."
+        case .bronze:
+            switch subTier {
+            case .one: return "Bronze 1: 3 practices, 4.5-7.5 km/week. First year competitive, legal strokes."
+            case .two: return "Bronze 2: 3-4 practices, 6-14 km/week. Working toward B times."
+            case .three: return "Bronze 3: 4 practices, 10-18 km/week. Has B times, preparing for Silver."
+            default: return "Bronze: 3-4 practices/week, 8-18 km/week. First B times."
+            }
+        case .silver:
+            switch subTier {
+            case .one: return "Silver 1: 4 practices, 10-16 km/week. Just got B times, transitioning."
+            case .two: return "Silver 2: 4 practices, 12-20 km/week. Working on A times, aerobic engine."
+            case .three: return "Silver 3: 4-5 practices, 14-28 km/week. Has A times, preparing for Gold."
+            default: return "Silver: 4-5 practices/week, 15-28 km/week. A times."
+            }
+        case .gold: return "Gold: 5-6 practices/week, 25-40 km/week. AA times, Zone qualifiers."
+        case .senior: return "Senior: 6-8 practices/week, 40-60 km/week. AAA times, Junior Nationals."
+        case .national: return "National: 8-12+ practices/week, 50-80+ km/week. AAAA times, National level."
+        }
+    }
+
     var body: some View {
         NavigationStack {
             Form {
                 Section("Profile") {
-                    LabeledContent("Name", value: profile.name)
+                    TextField("Name", text: $name)
+                        .submitLabel(.done)
                     LabeledContent("Age", value: "\(profile.age)")
                     LabeledContent("Sex", value: profile.sex.rawValue.capitalized)
                 }
@@ -50,6 +81,47 @@ struct PersonalBestsEditor: View {
                     Text("Profile Icon")
                 }
 
+                Section {
+                    // Main tier picker
+                    Picker("Training Group", selection: $trainingTier) {
+                        ForEach(TrainingTier.allCases, id: \.self) { tier in
+                            Text(tier.displayName).tag(tier)
+                        }
+                    }
+                    .pickerStyle(.navigationLink)
+                    .onChange(of: trainingTier) { _, newTier in
+                        // Reset sub-tier when main tier changes
+                        subTier = newTier.defaultSubTier
+                    }
+
+                    // Sub-tier picker (only shown for tiers with sub-tiers)
+                    if trainingTier.hasSubTiers {
+                        Picker("Sub-Level", selection: $subTier) {
+                            ForEach(trainingTier.availableSubTiers, id: \.self) { sub in
+                                Text(subTierLabel(sub, for: trainingTier)).tag(sub)
+                            }
+                        }
+                        .pickerStyle(.navigationLink)
+                    }
+
+                    Button {
+                        showTierGuide = true
+                    } label: {
+                        HStack {
+                            Label("What's my level?", systemImage: "questionmark.circle")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    .foregroundStyle(.blue)
+                } header: {
+                    Text("Training Level")
+                } footer: {
+                    Text(tierGuidance)
+                }
+
                 Section("Swimming Focus") {
                     Picker("Main Stroke", selection: $mainStroke) {
                         Text("Not set").tag(nil as StrokeID?)
@@ -63,21 +135,9 @@ struct PersonalBestsEditor: View {
                             Text(dist.displayName).tag(dist)
                         }
                     }
-
-                    Picker("Distance Unit", selection: $distanceUnit) {
-                        Text("Meters").tag(DistanceUnit.meters)
-                        Text("Yards").tag(DistanceUnit.yards)
-                    }
-                    .pickerStyle(.segmented)
                 }
 
-                Section("Current Level") {
-                    HStack {
-                        Text("Skill Level")
-                        Spacer()
-                        skillBadge(profile.skillLevel)
-                    }
-
+                Section("Personal Bests") {
                     if let pbHistory = profile.pbHistory, !pbHistory.isEmpty {
                         NavigationLink {
                             PBTrackerView(appModel: appModel)
@@ -94,8 +154,8 @@ struct PersonalBestsEditor: View {
                             }
                         }
                     } else {
-                        Button {
-                            // Will open PBTrackerView where user can add results
+                        NavigationLink {
+                            PBTrackerView(appModel: appModel)
                         } label: {
                             HStack {
                                 Image(systemName: "medal")
@@ -118,7 +178,14 @@ struct PersonalBestsEditor: View {
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Save") { saveProfile() }
-                        .disabled(isSaving)
+                        .disabled(isSaving || name.isEmpty)
+                }
+                ToolbarItemGroup(placement: .keyboard) {
+                    Spacer()
+                    Button("Done") {
+                        UIApplication.shared.sendAction(#selector(UIResponder.resignFirstResponder), to: nil, from: nil, for: nil)
+                    }
+                    .buttonStyle(.bordered)
                 }
             }
             .disabled(isSaving)
@@ -130,35 +197,48 @@ struct PersonalBestsEditor: View {
                         .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
             }
+            .sheet(isPresented: $showTierGuide) {
+                TrainingTierGuideView(selectedTier: trainingTier, selectedSubTier: subTier)
+            }
         }
     }
 
-    private func skillBadge(_ level: SkillLevel) -> some View {
-        Text(level.displayName)
-            .font(.caption)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 4)
-            .background(skillColor(level))
-            .foregroundStyle(.white)
-            .clipShape(Capsule())
-    }
-
-    private func skillColor(_ level: SkillLevel) -> Color {
-        switch level {
-        case .beginner: .gray
-        case .intermediate: .blue
-        case .advanced: .green
-        case .competitive: .orange
-        case .elite: .purple
+    /// Label for sub-tier based on main tier
+    private func subTierLabel(_ sub: SubTier, for tier: TrainingTier) -> String {
+        switch tier {
+        case .preCompetitive:
+            switch sub {
+            case .a: return "A - Foundations"
+            case .b: return "B - Skill Building"
+            case .c: return "C - Pre-Competitive"
+            default: return sub.displayName
+            }
+        case .bronze:
+            switch sub {
+            case .one: return "1 - First Year"
+            case .two: return "2 - Toward B Times"
+            case .three: return "3 - Has B Times"
+            default: return sub.displayName
+            }
+        case .silver:
+            switch sub {
+            case .one: return "1 - Early Silver"
+            case .two: return "2 - Mid Silver"
+            case .three: return "3 - Upper Silver"
+            default: return sub.displayName
+            }
+        default: return sub.displayName
         }
     }
 
     private func saveProfile() {
         isSaving = true
         var updated = profile
+        updated.name = name
         updated.mainStroke = mainStroke
         updated.distancePreference = distancePreference
-        updated.preferredDistanceUnit = distanceUnit
+        updated.trainingTier = trainingTier
+        updated.subTier = subTier
         updated.profileIconType = profileIconType
         updated.profileImageData = profileImageData
         updated.profileIconName = profileIconName
@@ -173,7 +253,7 @@ struct PersonalBestsEditor: View {
 
 // MARK: - Previews
 
-#Preview("Personal Bests Editor - Intermediate") {
+#Preview("Personal Bests Editor - Silver 2") {
     PersonalBestsEditor(
         appModel: SwimNoteAppModel.bootstrap(),
         profile: UserProfile(
@@ -181,8 +261,9 @@ struct PersonalBestsEditor: View {
             name: "Alex",
             birthday: "1995-06-15",
             sex: .male,
-            skillLevel: .intermediate,
-            weeklySessionTarget: 3,
+            trainingTier: .silver,
+            subTier: .two,
+            weeklySessionTarget: 4,
             preferredStrokes: [.freestyle],
             mainStroke: .freestyle,
             distancePreference: .mid,
@@ -195,17 +276,19 @@ struct PersonalBestsEditor: View {
     )
 }
 
-#Preview("Personal Bests Editor - Beginner") {
+#Preview("Personal Bests Editor - Bronze 1") {
     PersonalBestsEditor(
         appModel: SwimNoteAppModel.bootstrap(),
         profile: UserProfile(
             id: "preview-user",
             name: "Maya",
-            birthday: "2000-03-20",
+            birthday: "2015-03-20",
             sex: .female,
-            skillLevel: .beginner,
-            weeklySessionTarget: 2,
+            trainingTier: .bronze,
+            subTier: .one,
+            weeklySessionTarget: 3,
             preferredStrokes: [],
+            mainStroke: nil,
             distancePreference: .na,
             preferredDistanceUnit: .meters,
             personalBests: .empty(),
@@ -216,15 +299,16 @@ struct PersonalBestsEditor: View {
     )
 }
 
-#Preview("Personal Bests Editor - Elite") {
+#Preview("Personal Bests Editor - Senior") {
     PersonalBestsEditor(
         appModel: SwimNoteAppModel.bootstrap(),
         profile: UserProfile(
             id: "preview-user",
             name: "Jordan",
-            birthday: "1988-11-10",
+            birthday: "2005-11-10",
             sex: .male,
-            skillLevel: .elite,
+            trainingTier: .senior,
+            subTier: .none,
             weeklySessionTarget: 6,
             preferredStrokes: [.butterfly, .freestyle],
             mainStroke: .butterfly,

@@ -506,7 +506,7 @@ public struct PersonalBests: Codable, Hashable, Sendable {
     public var butterfly50yd: TimeInterval?
     public var updatedAt: String?
 
-    public init(
+    public nonisolated init(
         freestyle50m: TimeInterval? = nil,
         backstroke50m: TimeInterval? = nil,
         breaststroke50m: TimeInterval? = nil,
@@ -528,7 +528,7 @@ public struct PersonalBests: Codable, Hashable, Sendable {
         self.updatedAt = updatedAt
     }
 
-    public static func empty() -> PersonalBests {
+    public nonisolated static func empty() -> PersonalBests {
         PersonalBests()
     }
 

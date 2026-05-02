@@ -3,11 +3,13 @@ import SwiftUI
 // MARK: - Swipe to Delete Row
 
 /// Swipe left to delete an item
+/// Uses gesture with low minimumDistance to beat ScrollView
 struct SwipeToDeleteRow<Content: View>: View {
     let onDelete: () -> Void
     @ViewBuilder let content: Content
 
     @State private var offset: CGFloat = 0
+    @State private var isSwipeActive = false
 
     private let deleteThreshold: CGFloat = -100
 
@@ -32,14 +34,22 @@ struct SwipeToDeleteRow<Content: View>: View {
                         .fill(PoolTheme.light.opacity(0.08))
                 )
                 .offset(x: offset)
+                // Use gesture with very low minimumDistance to beat ScrollView
                 .gesture(
-                    DragGesture()
+                    DragGesture(minimumDistance: 5)
                         .onChanged { value in
-                            if value.translation.width < 0 {
+                            // Detect if this is a horizontal swipe (not vertical scroll)
+                            let isHorizontalSwipe = abs(value.translation.width) > abs(value.translation.height) * 2
+
+                            // Only swipe left if horizontal
+                            if isHorizontalSwipe && value.translation.width < 0 {
+                                isSwipeActive = true
                                 offset = value.translation.width
                             }
                         }
                         .onEnded { value in
+                            isSwipeActive = false
+
                             if value.translation.width < deleteThreshold {
                                 withAnimation(.easeOut(duration: 0.2)) {
                                     offset = -300
@@ -70,6 +80,7 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
     @ViewBuilder let content: Content
 
     @State private var offset: CGFloat = 0
+    @State private var isSwipeActive = false
 
     private let actionThreshold: CGFloat = 80
 
@@ -94,15 +105,22 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
             // Content
             content
                 .offset(x: offset)
-                .gesture(
-                    DragGesture()
+                // Use highPriorityGesture so swipe beats Button taps in SessionHeader
+                .highPriorityGesture(
+                    DragGesture(minimumDistance: 5)
                         .onChanged { value in
-                            // Only allow swipe right if assigned
-                            if isAssigned {
-                                offset = max(0, value.translation.width)
+                            // Detect if this is a horizontal swipe (not vertical scroll)
+                            let isHorizontalSwipe = abs(value.translation.width) > abs(value.translation.height) * 2
+
+                            // Only allow swipe right if assigned and horizontal
+                            if isAssigned && isHorizontalSwipe && value.translation.width > 0 {
+                                isSwipeActive = true
+                                offset = value.translation.width
                             }
                         }
                         .onEnded { value in
+                            isSwipeActive = false
+
                             guard isAssigned else {
                                 offset = 0
                                 return

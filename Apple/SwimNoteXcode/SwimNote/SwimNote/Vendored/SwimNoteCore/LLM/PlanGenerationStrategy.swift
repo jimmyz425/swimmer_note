@@ -160,25 +160,35 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         return """
         MANDATORY FIRST STEPS (call these tools BEFORE generating the plan):
 
-        1. Call get_css_info() to get the swimmer's Critical Swim Speed (CSS) test results.
+        1. Call get_tier_guidance() to get training guidance based on the swimmer's competitive tier.
+           - Returns tier and sub-tier (Pre-Competitive, Bronze 1/2/3, Silver 1/2/3, Gold, Senior, National)
+           - Returns recommended weekly distance and per-session distance ranges
+           - Returns zone distribution percentages appropriate for the tier (Zone 0-6)
+           - Returns training focus priorities
+           - CRITICAL: Session totals MUST align with per-session distance guidance
+           - CRITICAL: Zone distribution MUST follow tier-appropriate percentages
+
+        2. Call get_css_info() to get the swimmer's Critical Swim Speed (CSS) test results.
            - CSS determines training zone paces (Zone 0-6)
            - Use CSS pace + offsets to set accurate interval targets
            - If no CSS available, use skill level fallback
 
-        2. Call read_interval_research(section: "zones") to understand:
+        3. Call read_interval_research(section: "zones") to understand:
            - Zone definitions and pace targets
            - Volume recommendations by skill level
            - Rest interval guidelines
            - Sample sets for each zone
 
-        3. Call read_interval_research(section: "levels") for swimmer-specific adjustments.
+        4. Call read_interval_research(section: "levels") for swimmer-specific adjustments.
 
-        AFTER reading CSS info and interval research, use that knowledge to:
+        AFTER reading tier guidance, CSS info, and interval research, use that knowledge to:
 
-        STEP 1: DETERMINE SESSION ZONES AND VOLUMES
-        - Use CSS zone paces to set main set intensity
-        - Match volumes to skill level from research document
-        - Zone distribution: 30% Zone 1-2, 40% Zone 3-4, 20% Zone 5, 10% Zone 0
+        STEP 1: DETERMINE SESSION ZONES AND VOLUMES FROM TIER GUIDANCE
+        - Use tier guidance zone distribution (NOT generic 30/40/20/10 split)
+        - Lower tiers (Bronze/Silver): More Zone 1-2, minimal Zone 4-5
+        - Higher tiers (Gold/Senior/National): More Zone 3-4, structured Zone 5-6
+        - Match per-session distance to tier guidance range
+        - Match weekly total to tier guidance weekly distance
 
         STEP 2: BUILD THE PLAN
 
@@ -237,10 +247,25 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         Zone 5: VO2max (CSS -3-6s/100m)
         Zone 6: Sprint (Race pace)
 
+        ZONE DISTRIBUTION BY TIER (from get_tier_guidance - MUST follow these):
+        Pre-Competitive: 60-70% Z1, 10-15% Z2, 0-5% Z3, NO Z4-Z6
+        Bronze 1: 55-60% Z1, 15-20% Z2, 5-10% Z3, NO Z4-Z6
+        Bronze 2: 50-55% Z1, 20-25% Z2, 10-15% Z3, 0-5% Z4, NO Z5-Z6
+        Bronze 3: 45-50% Z1, 25-30% Z2, 10-15% Z3, 5% Z4, NO Z5-Z6
+        Silver 1: 45-50% Z1, 25-30% Z2, 10-15% Z3, 5% Z4, NO Z5-Z6
+        Silver 2: 40-45% Z1, 25-30% Z2, 15% Z3, 5-10% Z4, 0-5% Z5
+        Silver 3: 35-40% Z1, 25-30% Z2, 15-20% Z3, 10% Z4, 5% Z5, 0-3% Z6
+        Gold: 35-40% Z1, 25-30% Z2, 15-20% Z3, 5-10% Z4, 0-5% Z5, 0-3% Z6
+        Senior: 25-30% Z1, 25-30% Z2, 15-20% Z3, 10-15% Z4, 5-10% Z5, 3-5% Z6
+        National: 15-20% Z1, 20-25% Z2, 15-20% Z3, 15-20% Z4, 10-15% Z5, 5-10% Z6
+
+        CRITICAL: Zone distribution MUST match the swimmer's tier from get_tier_guidance()!
+        Example: A Bronze 1 swimmer should NOT have Zone 4-5 work. A Senior swimmer needs structured Zone 4-5.
+
         SESSION PLANNING TEMPLATE FORMAT:
         Warm-up: Zone 0-1 (easy, progressive build, 12-20s rest)
         Drill/Pre-set: Zone 1-2 (technique focus, 10-16s rest)
-        Main Set: Zone ___ (primary training zone - specify based on session focus)
+        Main Set: Zone ___ (primary training zone - specify based on session focus AND TIER ALLOWANCE)
         Secondary Set: Zone ___ (optional - complementary work)
         Cool-down: Zone 0 (recovery, 60-120s rest)
         Notes/Observations: coaching tips for this session
@@ -297,22 +322,32 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
 
         SELF-REVIEW (CRITICAL - perform before outputting):
         After generating the JSON, verify:
-        1. DISTANCE MATH: For EACH segment, calculate sum of (repeatCount × distancePerRep) for all sets.
+        1. TIER ALIGNMENT: Check get_tier_guidance() results:
+           - Session distance within per_session_distance range for tier
+           - Weekly total within weekly_distance range for tier
+           - Zone distribution matches tier percentages (no Zone 4-6 for Bronze, etc.)
+        2. DISTANCE MATH: For EACH segment, calculate sum of (repeatCount × distancePerRep) for all sets.
            - Example: sets=[{"repeatCount":6,"distancePerRep":50},{"repeatCount":4,"distancePerRep":25}]
            - Check: 6×50=300, 4×25=100, total=400m ✓
            - If mismatch found, CORRECT the sets before outputting.
-        2. SESSION TOTALS: Each session's segments (warmUp+drillSet+mainSet+secondarySet+coolDown) should total roughly the per-session target.
+        3. SESSION TOTALS: Each session's segments (warmUp+drillSet+mainSet+secondarySet+coolDown) should total roughly the per-session target.
            - Target: ~\(perSessionTarget)m per session (weekly total divided by \(context.sessionsPerWeek) sessions).
-        3. ZONE FIELDS: Each set AND each segment has zone field (Int 0-6):
+           - MUST be within tier guidance per_session_distance range.
+        4. ZONE FIELDS: Each set AND each segment has zone field (Int 0-6):
            - Warm-up sets: zone 0-1
            - Drill/Pre-set sets: zone 1-2
-           - Main Set sets: zone based on session focus (3-5 for training, 6 for sprint)
+           - Main Set sets: zone based on session focus AND TIER ALLOWANCE
            - Secondary Set sets: zone based on complementary work
            - Cool-down sets: zone 0
-        4. SWIM SECONDS / EFFORT: Each set has either swimSeconds OR effort guidance:
+        5. ZONE DISTRIBUTION: Check that zone usage matches tier from get_tier_guidance():
+           - Pre-Comp/Bronze 1-2: NO Zone 4, 5, 6 allowed
+           - Bronze 3/Silver 1: Zone 4 limited to 5%
+           - Silver 2-3/Gold: Zone 4-5 allowed, Zone 6 limited
+           - Senior/National: All zones allowed with proper distribution
+        6. SWIM SECONDS / EFFORT: Each set has either swimSeconds OR effort guidance:
            - IF CSS available: swimSeconds = distance × zone pace (e.g., 100m @ Z4 = ~77s)
            - IF no CSS: include effort% in notes (e.g., "85% effort")
-        5. REST SECONDS: Each set has restSeconds appropriate for its zone:
+        7. REST SECONDS: Each set has restSeconds appropriate for its zone:
            - Zone 0: 60-120s
            - Zone 1: 12-20s
            - Zone 2: 8-16s
@@ -320,16 +355,17 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
            - Zone 4: 4-12s
            - Zone 5: 24-40s
            - Zone 6: 180-300s
-        6. JSON VALIDITY: All distancePerRep, swimSeconds, restSeconds are Int (not strings).
+        8. JSON VALIDITY: All distancePerRep, swimSeconds, restSeconds are Int (not strings).
            - All repeatCount are Int > 0.
            - All zone fields are Int 0-6 (in both sets AND segments).
            - All item fields are non-empty strings.
-        7. COMPLETE SESSIONS: Generate exactly \(context.sessionsPerWeek) sessions.
-        8. FUNDAMENTALS: At least 30% of sessions include fundamental revisit.
+        9. COMPLETE SESSIONS: Generate exactly \(context.sessionsPerWeek) sessions.
+        10. FUNDAMENTALS: At least 30% of sessions include fundamental revisit.
 
         If any check fails, fix the JSON before outputting the final result.
 
         Generate \(context.sessionsPerWeek) sessions. Include fundamentals in 30%+ sessions. Match drills to skill tier.
+        USE TIER GUIDANCE for zone distribution and session volumes.
         USE CSS ZONE PACES for interval targets when CSS is available.
         OUTPUT ONLY JSON (after self-review passes).
         """

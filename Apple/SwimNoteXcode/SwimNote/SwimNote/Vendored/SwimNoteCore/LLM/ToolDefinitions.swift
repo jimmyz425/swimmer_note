@@ -499,8 +499,40 @@ public enum UserDataTools {
         )
     )
 
+    public static let getTierGuidance = Tool(
+        function: ToolFunction(
+            name: "get_tier_guidance",
+            description: """
+            Get training guidance based on the swimmer's competitive tier.
+
+            Returns:
+            - Current tier and sub-tier (Pre-Competitive A/B/C, Bronze 1/2/3, Silver 1/2/3, Gold, Senior, National)
+            - Recommended weekly distance range in meters
+            - Recommended per-session distance range
+            - Zone distribution percentages (Zone 0-6) appropriate for the tier
+            - Training focus priorities
+            - Practices per week recommendation
+
+            This guidance comes from the USA Swimming club training structure, which defines
+            age-appropriate and developmentally-appropriate training volumes and intensities.
+
+            REQUIRED: Call this before generating training plans to ensure:
+            - Session total distance aligns with per-session guidance
+            - Weekly total aligns with weekly distance recommendation
+            - Zone distribution matches tier-appropriate intensity levels
+            - Training focus matches developmental stage
+
+            The guidance file 'usa-swimming-club-training-structure.md' is available for detailed
+            reference if needed (call read_interval_research with section='levels' for related info).
+            """,
+            parameters: JSONSchema(
+                properties: [:]
+            )
+        )
+    )
+
     public static var all: [Tool] {
-        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch]
+        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance]
     }
 }
 
@@ -512,11 +544,11 @@ public enum AllTools {
     }
 }
 
-// MARK: - Training Plan Tools (CSS + Interval Research)
+// MARK: - Training Plan Tools (CSS + Interval Research + Tier Guidance)
 
 public enum TrainingPlanTools {
     public static var all: [Tool] {
-        UserDataTools.all + [UserDataTools.getCSSInfo, UserDataTools.readIntervalResearch]
+        UserDataTools.all
     }
 }
 
