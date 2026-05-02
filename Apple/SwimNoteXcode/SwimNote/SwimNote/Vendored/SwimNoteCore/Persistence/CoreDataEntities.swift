@@ -42,6 +42,7 @@ public class UserProfileEntity: NSManagedObject {
     @NSManaged public var profileImageData: Data?
     @NSManaged public var profileIconName: String?
     @NSManaged public var personalBestsJSON: String?
+    @NSManaged public var pbHistoryJSON: String?
     @NSManaged public var cssHistoryJSON: String?
     @NSManaged public var trainingGoalsJSON: String?
     @NSManaged public var limitationsJSON: String?
@@ -151,6 +152,13 @@ extension UserProfileEntity {
             cssHistory = nil
         }
 
+        let pbHistory: PBHistory?
+        if let json = pbHistoryJSON, let data = json.data(using: .utf8) {
+            pbHistory = try decoder.decode(PBHistory.self, from: data)
+        } else {
+            pbHistory = nil
+        }
+
         let trainingGoals: [String]
         if let json = trainingGoalsJSON, let data = json.data(using: .utf8) {
             trainingGoals = try decoder.decode([String].self, from: data)
@@ -187,6 +195,7 @@ extension UserProfileEntity {
             profileImageData: profileImageData,
             profileIconName: profileIconName,
             personalBests: personalBests,
+            pbHistory: pbHistory,
             cssHistory: cssHistory,
             trainingGoals: trainingGoals,
             limitations: limitations,

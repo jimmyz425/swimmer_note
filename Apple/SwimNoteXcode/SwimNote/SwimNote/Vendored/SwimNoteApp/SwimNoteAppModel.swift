@@ -164,6 +164,7 @@ public final class SwimNoteAppModel {
 
     public func switchProfile(to profile: UserProfile) async throws {
         activeProfile = profile
+        needsSetup = false  // No longer need setup once we have an active profile
         try await profileRepository.setActiveProfile(id: profile.id)
         await reloadNotes(userId: profile.id)
     }
@@ -175,7 +176,8 @@ public final class SwimNoteAppModel {
         mainStroke: StrokeID? = nil,
         distancePreference: DistancePreference = .na,
         preferredDistanceUnit: DistanceUnit = .meters,
-        personalBests: PersonalBests,
+        personalBests: PersonalBests = .empty(),
+        skillLevelOverride: SkillLevel? = nil,
         weeklySessionTarget: Int = 3,
         profileIconType: ProfileIconType = .letter,
         profileImageData: Data? = nil,
@@ -183,12 +185,14 @@ public final class SwimNoteAppModel {
     ) async throws -> UserProfile {
         let now = Date()
         let timestamp = SwimNoteDateFormatting.string(from: now)
+        // Use override if provided, otherwise calculate from PBs
+        let skillLevel = skillLevelOverride ?? personalBests.estimatedSkillLevel(birthday: birthday, sex: sex)
         let profile = UserProfile(
             id: UUID().uuidString,
             name: name,
             birthday: birthday,
             sex: sex,
-            skillLevel: personalBests.estimatedSkillLevel(birthday: birthday, sex: sex),
+            skillLevel: skillLevel,
             weeklySessionTarget: weeklySessionTarget,
             preferredStrokes: [],
             mainStroke: mainStroke,
@@ -204,6 +208,56 @@ public final class SwimNoteAppModel {
         )
         try await profileRepository.save(profile)
         profiles.append(profile)
+        needsSetup = profiles.isEmpty  // Update needsSetup immediately
+        if profiles.count == 1 {
+            try await switchProfile(to: profile)
+        }
+        return profile
+    }
+
+    /// Create profile with training tier system
+    public func createProfile(
+        name: String,
+        birthday: String,
+        sex: Sex,
+        mainStroke: StrokeID? = nil,
+        distancePreference: DistancePreference = .na,
+        preferredDistanceUnit: DistanceUnit = .meters,
+        personalBests: PersonalBests = .empty(),
+        trainingTier: TrainingTier,
+        subTier: SubTier = .none,
+        weeklySessionTarget: Int = 3,
+        profileIconType: ProfileIconType = .letter,
+        profileImageData: Data? = nil,
+        profileIconName: String? = nil
+    ) async throws -> UserProfile {
+        let now = Date()
+        let timestamp = SwimNoteDateFormatting.string(from: now)
+        let effectiveSubTier = subTier == .none ? trainingTier.defaultSubTier : subTier
+
+        let profile = UserProfile(
+            id: UUID().uuidString,
+            name: name,
+            birthday: birthday,
+            sex: sex,
+            trainingTier: trainingTier,
+            subTier: effectiveSubTier,
+            weeklySessionTarget: weeklySessionTarget,
+            preferredStrokes: [],
+            mainStroke: mainStroke,
+            distancePreference: distancePreference,
+            preferredDistanceUnit: preferredDistanceUnit,
+            profileIconType: profileIconType,
+            profileImageData: profileImageData,
+            profileIconName: profileIconName,
+            personalBests: personalBests,
+            trainingGoals: [],
+            createdAt: timestamp,
+            updatedAt: timestamp
+        )
+        try await profileRepository.save(profile)
+        profiles.append(profile)
+        needsSetup = profiles.isEmpty  // Update needsSetup immediately
         if profiles.count == 1 {
             try await switchProfile(to: profile)
         }

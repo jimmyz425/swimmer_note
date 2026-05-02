@@ -139,12 +139,22 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func buildUserPrompt(context: PlanContext) -> String {
-        // Compute weekly total for self-review
-        let weeklyTotal = weeklyDistanceTarget(
-            skillLevel: context.profile?.skillLevel ?? .intermediate,
-            sessionsPerWeek: context.sessionsPerWeek,
-            poolType: context.poolType
-        )
+        // Compute weekly total for self-review using tier-based calculation
+        let weeklyTotal: Int
+        if let profile = context.profile {
+            weeklyTotal = weeklyDistanceTarget(
+                tier: profile.trainingTier,
+                subTier: profile.subTier,
+                sessionsPerWeek: context.sessionsPerWeek,
+                poolType: context.poolType
+            )
+        } else {
+            weeklyTotal = weeklyDistanceTarget(
+                skillLevel: .intermediate,
+                sessionsPerWeek: context.sessionsPerWeek,
+                poolType: context.poolType
+            )
+        }
         let perSessionTarget = weeklyTotal / max(context.sessionsPerWeek, 1)
 
         return """
@@ -365,8 +375,22 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
             }
         }
 
-        // Weekly total distance guidance based on skill level
-        let weeklyTotal = weeklyDistanceTarget(skillLevel: context.profile?.skillLevel ?? .intermediate, sessionsPerWeek: context.sessionsPerWeek, poolType: context.poolType)
+        // Weekly total distance guidance based on training tier
+        let weeklyTotal: Int
+        if let profile = context.profile {
+            weeklyTotal = weeklyDistanceTarget(
+                tier: profile.trainingTier,
+                subTier: profile.subTier,
+                sessionsPerWeek: context.sessionsPerWeek,
+                poolType: context.poolType
+            )
+        } else {
+            weeklyTotal = weeklyDistanceTarget(
+                skillLevel: .intermediate,
+                sessionsPerWeek: context.sessionsPerWeek,
+                poolType: context.poolType
+            )
+        }
         prompt += """
         WEEKLY TOTAL DISTANCE: \(weeklyTotal) across ALL sessions combined.
         Each session should be roughly \(weeklyTotal / context.sessionsPerWeek)m (divide weekly total by session count).
@@ -410,27 +434,85 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
     }
 
     /// Calculate appropriate weekly total distance based on skill level
+    /// Based on swimming-interval-training-research.md volume recommendations
     private func weeklyDistanceTarget(skillLevel: SkillLevel, sessionsPerWeek: Int, poolType: PoolType) -> Int {
         // Base weekly totals by skill level (in meters)
+        // From research document Section 2.1 Volume Recommendations:
+        // Beginner: 3-5 km/week (1,500-2,500m per session)
+        // Intermediate: 15-25 km/week (3,000-5,000m per session)
+        // Advanced: 30-50 km/week (5,000-8,000m per session)
+        // Elite: 50-80 km/week (7,000-12,000m per session)
         let baseWeekly: Int
         switch skillLevel {
         case .beginner:
-            baseWeekly = 1500  // 500m per session for 3 sessions
+            baseWeekly = 4000  // ~1,300m per session for 3 sessions (lower end of 3-5km range)
         case .intermediate:
-            baseWeekly = 2200  // ~733m per session for 3 sessions
+            baseWeekly = 12000  // ~4,000m per session for 3 sessions (scaled for recreational club swimmers)
         case .advanced:
-            baseWeekly = 3500  // ~1167m per session for 3 sessions
+            baseWeekly = 20000  // ~6,700m per session for 3 sessions (middle of 30-50km range)
         case .competitive:
-            baseWeekly = 5000  // ~1667m per session for 3 sessions
+            baseWeekly = 30000  // ~10,000m per session for 3 sessions (between advanced and elite)
         case .elite:
-            baseWeekly = 8000  // ~2667m per session for 3 sessions
+            baseWeekly = 40000  // ~13,300m per session for 3 sessions (scaled for national level)
         }
 
-        // Adjust for pool type (long course = 2x distance)
+        // Adjust for pool type (long course = 2x distance for same time)
         let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
 
         // Scale by sessions per week (3 sessions is baseline)
         return adjusted * sessionsPerWeek / 3
+    }
+
+    /// Weekly distance based on training tier + sub-tier (more precise)
+    private func weeklyDistanceTarget(tier: TrainingTier, subTier: SubTier, sessionsPerWeek: Int, poolType: PoolType) -> Int {
+        // Base weekly totals from USA Swimming club training structure (in meters)
+        // See usa-swimming-club-training-structure.md for detailed breakdowns
+        let baseWeekly: Int
+        switch tier {
+        case .preCompetitive:
+            switch subTier {
+            case .a: baseWeekly = 1500   // 1-2.5 km/week (Pre-Comp A)
+            case .b: baseWeekly = 3000   // 2-4 km/week (Pre-Comp B)
+            case .c: baseWeekly = 5000   // 3-7 km/week (Pre-Comp C)
+            default: baseWeekly = 3000
+            }
+        case .bronze:
+            switch subTier {
+            case .one: baseWeekly = 6000    // 4.5-7.5 km/week (Bronze 1)
+            case .two: baseWeekly = 10000   // 6-14 km/week (Bronze 2)
+            case .three: baseWeekly = 14000 // 10-18 km/week (Bronze 3)
+            default: baseWeekly = 8000
+            }
+        case .silver:
+            switch subTier {
+            case .one: baseWeekly = 13000   // 10-16 km/week (Silver 1)
+            case .two: baseWeekly = 16000   // 12-20 km/week (Silver 2)
+            case .three: baseWeekly = 21000 // 14-28 km/week (Silver 3)
+            default: baseWeekly = 15000
+            }
+        case .gold:
+            baseWeekly = 32500  // 25-40 km/week
+        case .senior:
+            baseWeekly = 50000  // 40-60 km/week
+        case .national:
+            baseWeekly = 65000  // 50-80+ km/week
+        }
+
+        // Adjust for pool type (long course = 2x distance for same time)
+        let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
+
+        // Scale by sessions per week (use tier-specific baseline)
+        let baselineSessions: Int
+        switch tier {
+        case .preCompetitive: baselineSessions = 2
+        case .bronze: baselineSessions = 3
+        case .silver: baselineSessions = 4
+        case .gold: baselineSessions = 5
+        case .senior: baselineSessions = 6
+        case .national: baselineSessions = 8
+        }
+
+        return adjusted * sessionsPerWeek / baselineSessions
     }
 }
 

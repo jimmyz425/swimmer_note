@@ -3,8 +3,6 @@ import SwiftUI
 struct PersonalBestsEditor: View {
     @Bindable var appModel: SwimNoteAppModel
     @State var profile: UserProfile
-    @State private var personalBests: PersonalBests
-    @State private var isBeginner: Bool
     @State private var mainStroke: StrokeID?
     @State private var distancePreference: DistancePreference
     @State private var distanceUnit: DistanceUnit
@@ -17,8 +15,6 @@ struct PersonalBestsEditor: View {
     init(appModel: SwimNoteAppModel, profile: UserProfile) {
         self.appModel = appModel
         self._profile = State(initialValue: profile)
-        self._personalBests = State(initialValue: profile.personalBests)
-        self._isBeginner = State(initialValue: profile.personalBests.isEmpty)
         self._mainStroke = State(initialValue: profile.mainStroke)
         self._distancePreference = State(initialValue: profile.distancePreference)
         self._distanceUnit = State(initialValue: profile.preferredDistanceUnit)
@@ -33,10 +29,6 @@ struct PersonalBestsEditor: View {
         (.breaststroke, "Breaststroke"),
         (.butterfly, "Butterfly")
     ]
-
-    private var distanceLabel: String {
-        distanceUnit == .meters ? "50m" : "50yd"
-    }
 
     var body: some View {
         NavigationStack {
@@ -79,42 +71,42 @@ struct PersonalBestsEditor: View {
                     .pickerStyle(.segmented)
                 }
 
-                Section("Personal Bests") {
-                    Toggle("Beginner - no PBs yet", isOn: $isBeginner)
-                        .onChange(of: isBeginner) { _, newValue in
-                            if newValue {
-                                personalBests = .empty()
-                            }
-                        }
-
-                    if !isBeginner {
-                        Text("Enter times in seconds for \(distanceLabel)")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-
-                        ForEach(strokes, id: \.0) { strokeId, strokeName in
-                            HStack {
-                                Text(strokeName)
-                                    .font(.subheadline.bold())
-                                Spacer()
-                                timeField(label: distanceLabel, binding: bindingFor(strokeId, distance: distanceLabel))
-                            }
-                            .padding(.vertical, 4)
-                        }
-
-                        Button("Clear All Times") {
-                            personalBests = .empty()
-                            isBeginner = true
-                        }
-                        .foregroundStyle(.red)
-                    }
-                }
-
                 Section("Current Level") {
                     HStack {
                         Text("Skill Level")
                         Spacer()
-                        skillBadge(estimatedLevel)
+                        skillBadge(profile.skillLevel)
+                    }
+
+                    if let pbHistory = profile.pbHistory, !pbHistory.isEmpty {
+                        NavigationLink {
+                            PBTrackerView(appModel: appModel)
+                        } label: {
+                            HStack {
+                                Image(systemName: "medal")
+                                    .foregroundStyle(PoolTheme.mid)
+                                Text("Manage Personal Bests")
+                                    .foregroundStyle(PoolTheme.deep)
+                                Spacer()
+                                Text("\(pbHistory.currentBests().count) events")
+                                    .font(.caption)
+                                    .foregroundStyle(PoolTheme.smoke)
+                            }
+                        }
+                    } else {
+                        Button {
+                            // Will open PBTrackerView where user can add results
+                        } label: {
+                            HStack {
+                                Image(systemName: "medal")
+                                    .foregroundStyle(PoolTheme.mid)
+                                Text("Add Personal Bests")
+                                    .foregroundStyle(PoolTheme.deep)
+                                Spacer()
+                                Image(systemName: "chevron.right")
+                                    .foregroundStyle(PoolTheme.smoke)
+                            }
+                        }
                     }
                 }
             }
@@ -141,40 +133,8 @@ struct PersonalBestsEditor: View {
         }
     }
 
-    private var estimatedLevel: SkillLevel {
-        personalBests.estimatedSkillLevel(birthday: profile.birthday, sex: profile.sex)
-    }
-
-    private func timeField(label: String, binding: Binding<TimeInterval?>) -> some View {
-        HStack {
-            Text(label)
-                .font(.caption)
-            TextField("Time", value: Binding(
-                get: { binding.wrappedValue ?? 0 },
-                set: { binding.wrappedValue = $0 > 0 ? $0 : nil }
-            ), format: .number)
-                .textFieldStyle(.roundedBorder)
-                .frame(width: 60)
-                .keyboardType(.numbersAndPunctuation)
-        }
-    }
-
-    private func bindingFor(_ strokeId: StrokeID, distance: String) -> Binding<TimeInterval?> {
-        switch (strokeId, distance) {
-        case (.freestyle, "50m"): return $personalBests.freestyle50m
-        case (.freestyle, "50yd"): return $personalBests.freestyle50yd
-        case (.backstroke, "50m"): return $personalBests.backstroke50m
-        case (.backstroke, "50yd"): return $personalBests.backstroke50yd
-        case (.breaststroke, "50m"): return $personalBests.breaststroke50m
-        case (.breaststroke, "50yd"): return $personalBests.breaststroke50yd
-        case (.butterfly, "50m"): return $personalBests.butterfly50m
-        case (.butterfly, "50yd"): return $personalBests.butterfly50yd
-        default: return .constant(nil)
-        }
-    }
-
     private func skillBadge(_ level: SkillLevel) -> some View {
-        Text(level.rawValue.capitalized)
+        Text(level.displayName)
             .font(.caption)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
@@ -196,16 +156,12 @@ struct PersonalBestsEditor: View {
     private func saveProfile() {
         isSaving = true
         var updated = profile
-        updated.personalBests = personalBests
         updated.mainStroke = mainStroke
         updated.distancePreference = distancePreference
         updated.preferredDistanceUnit = distanceUnit
         updated.profileIconType = profileIconType
         updated.profileImageData = profileImageData
         updated.profileIconName = profileIconName
-        if personalBests.updatedAt == nil && !personalBests.isEmpty {
-            updated.personalBests.updatedAt = SwimNoteDateFormatting.string(from: Date())
-        }
 
         Task {
             try? await appModel.updateProfile(updated)

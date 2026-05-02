@@ -23,6 +23,8 @@ struct ToolsView: View {
 
                     savedAnalysisSection
 
+                    pbTrackerSection
+
                     cssToolsSection
                 }
                 .padding()
@@ -139,6 +141,61 @@ struct ToolsView: View {
                     .padding(.vertical, 8)
                     Divider()
                 }
+            }
+        }
+        .poolCard()
+    }
+
+    private var pbTrackerSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Personal Bests")
+                .font(.title3.bold())
+
+            // PB Tracker Navigation
+            NavigationLink {
+                PBTrackerView(appModel: appModel)
+            } label: {
+                HStack {
+                    Image(systemName: "medal")
+                        .foregroundStyle(PoolTheme.mid)
+                    Text("PB Tracker")
+                        .foregroundStyle(PoolTheme.deep)
+                    Spacer()
+                    if let pbHistory = appModel.activeProfile?.pbHistory, !pbHistory.isEmpty {
+                        Text("\(pbHistory.currentBests().count) events")
+                            .font(.caption)
+                            .foregroundStyle(PoolTheme.smoke)
+                    }
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+                .padding(.vertical, 8)
+            }
+
+            Divider()
+
+            // PB Progression Chart
+            NavigationLink {
+                if let pbHistory = appModel.activeProfile?.pbHistory, !pbHistory.isEmpty {
+                    PBProgressionChartView(pbHistory: pbHistory)
+                } else {
+                    ContentUnavailableView(
+                        "No PB History",
+                        systemImage: "chart.xyaxis.line",
+                        description: Text("Add meet results to start tracking your progression.")
+                    )
+                }
+            } label: {
+                HStack {
+                    Image(systemName: "chart.xyaxis.line")
+                        .foregroundStyle(PoolTheme.mid)
+                    Text("PB Progression Chart")
+                        .foregroundStyle(PoolTheme.deep)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+                .padding(.vertical, 8)
             }
         }
         .poolCard()

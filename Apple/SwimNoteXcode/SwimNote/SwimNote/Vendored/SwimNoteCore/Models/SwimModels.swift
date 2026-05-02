@@ -3,7 +3,7 @@
 public struct SwimNoteJSONDecoder: Sendable {
     private let decoder: JSONDecoder
 
-    public init() {
+    public nonisolated init() {
         self.decoder = JSONDecoder()
     }
 
@@ -15,7 +15,7 @@ public struct SwimNoteJSONDecoder: Sendable {
 public struct SwimNoteJSONEncoder: Sendable {
     private let encoder: JSONEncoder
 
-    public init() {
+    public nonisolated init() {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
         self.encoder = encoder
@@ -133,12 +133,366 @@ public enum ProfileIconType: String, Codable, CaseIterable, Hashable, Sendable {
     case icon    // SF Symbol
 }
 
+// MARK: - Training Tier System (USA Swimming Club Structure)
+
+/// Main training tier based on USA Swimming club group structure
+public enum TrainingTier: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {
+    case preCompetitive = "pre_competitive"
+    case bronze
+    case silver
+    case gold
+    case senior
+    case national
+
+    public var id: String { rawValue }
+
+    /// Display name for the tier
+    public var displayName: String {
+        switch self {
+        case .preCompetitive: return "Pre-Competitive"
+        case .bronze: return "Bronze"
+        case .silver: return "Silver"
+        case .gold: return "Gold"
+        case .senior: return "Senior"
+        case .national: return "National"
+        }
+    }
+
+    /// Full group name with alternate names
+    public var fullName: String {
+        switch self {
+        case .preCompetitive: return "Pre-Competitive / Developmental"
+        case .bronze: return "Bronze / Junior Age Group"
+        case .silver: return "Silver / Age Group"
+        case .gold: return "Gold / Senior Age Group"
+        case .senior: return "Senior / Championship"
+        case .national: return "National / Elite"
+        }
+    }
+
+    /// Typical age range for this tier
+    public var ageRange: String {
+        switch self {
+        case .preCompetitive: return "5-8 years"
+        case .bronze: return "8-10 years"
+        case .silver: return "10-12 years"
+        case .gold: return "12-14 years"
+        case .senior: return "14-18 years"
+        case .national: return "14+ years (qualifier-based)"
+        }
+    }
+
+    /// Whether this tier has sub-tiers
+    public var hasSubTiers: Bool {
+        switch self {
+        case .preCompetitive, .bronze, .silver: return true
+        case .gold, .senior, .national: return false
+        }
+    }
+
+    /// Available sub-tiers for this tier
+    public var availableSubTiers: [SubTier] {
+        switch self {
+        case .preCompetitive: return [.a, .b, .c]
+        case .bronze, .silver: return [.one, .two, .three]
+        case .gold, .senior, .national: return [.none]
+        }
+    }
+
+    /// Default sub-tier when tier is selected
+    public var defaultSubTier: SubTier {
+        hasSubTiers ? availableSubTiers.first! : .none
+    }
+
+    /// Time standards reference
+    public var timeStandardReference: String {
+        switch self {
+        case .preCompetitive: return "None required"
+        case .bronze: return "B times"
+        case .silver: return "B-A times"
+        case .gold: return "A-AA times"
+        case .senior: return "AA-AAA times"
+        case .national: return "AAAA / National cuts"
+        }
+    }
+}
+
+/// Sub-tier within a training tier
+public enum SubTier: String, Codable, CaseIterable, Hashable, Sendable, Identifiable {
+    case none = ""
+    case a
+    case b
+    case c
+    case one = "1"
+    case two = "2"
+    case three = "3"
+
+    public var id: String { rawValue }
+
+    /// Display name for the sub-tier
+    public var displayName: String {
+        switch self {
+        case .none: return ""
+        case .a: return "A"
+        case .b: return "B"
+        case .c: return "C"
+        case .one: return "1"
+        case .two: return "2"
+        case .three: return "3"
+        }
+    }
+
+    /// Description for Pre-Competitive sub-tiers
+    public var preCompetitiveDescription: String {
+        switch self {
+        case .a: return "Just transitioning from learn-to-swim; developing water comfort"
+        case .b: return "Can swim 25 yds comfortably; learning all 4 strokes"
+        case .c: return "Nearly ready for competitive group; has all 4 strokes"
+        default: return ""
+        }
+    }
+
+    /// Description for Bronze sub-tiers
+    public var bronzeDescription: String {
+        switch self {
+        case .one: return "First year competitive; chasing first legal times"
+        case .two: return "Working toward B times; building consistency"
+        case .three: return "Has B times in 1+ events; preparing for Silver"
+        default: return ""
+        }
+    }
+
+    /// Description for Silver sub-tiers
+    public var silverDescription: String {
+        switch self {
+        case .one: return "Just got B times; transitioning from Bronze"
+        case .two: return "Working on A times; building aerobic engine"
+        case .three: return "Has A times in 1+ events; preparing for Gold"
+        default: return ""
+        }
+    }
+
+    /// Weekly distance range for Pre-Comp sub-tiers
+    public var preCompetitiveWeeklyDistance: String {
+        switch self {
+        case .a: return "1-2.5 km/week"
+        case .b: return "2-4 km/week"
+        case .c: return "3-7 km/week"
+        default: return ""
+        }
+    }
+
+    /// Weekly distance range for Bronze sub-tiers
+    public var bronzeWeeklyDistance: String {
+        switch self {
+        case .one: return "4.5-7.5 km/week"
+        case .two: return "6-14 km/week"
+        case .three: return "10-18 km/week"
+        default: return ""
+        }
+    }
+
+    /// Weekly distance range for Silver sub-tiers
+    public var silverWeeklyDistance: String {
+        switch self {
+        case .one: return "10-16 km/week"
+        case .two: return "12-20 km/week"
+        case .three: return "14-28 km/week"
+        default: return ""
+        }
+    }
+
+    /// Practices per week for Pre-Comp sub-tiers
+    public var preCompetitivePractices: String {
+        switch self {
+        case .a: return "2 practices/week"
+        case .b: return "2 practices/week"
+        case .c: return "2-3 practices/week"
+        default: return ""
+        }
+    }
+
+    /// Practices per week for Bronze sub-tiers
+    public var bronzePractices: String {
+        switch self {
+        case .one: return "3 practices/week"
+        case .two: return "3-4 practices/week"
+        case .three: return "4 practices/week"
+        default: return ""
+        }
+    }
+
+    /// Practices per week for Silver sub-tiers
+    public var silverPractices: String {
+        switch self {
+        case .one: return "4 practices/week"
+        case .two: return "4 practices/week"
+        case .three: return "4-5 practices/week"
+        default: return ""
+        }
+    }
+}
+
+// MARK: - Skill Level (Legacy, derived from TrainingTier)
+
 public enum SkillLevel: String, Codable, CaseIterable, Hashable, Sendable {
     case beginner
     case intermediate
     case advanced
     case competitive
     case elite
+
+    /// Display name based on USA Swimming club group structure
+    public var displayName: String {
+        switch self {
+        case .beginner: return "Bronze / Junior Age Group"
+        case .intermediate: return "Silver / Age Group"
+        case .advanced: return "Gold / Senior Age Group"
+        case .competitive: return "Senior / Championship"
+        case .elite: return "National / Elite"
+        }
+    }
+
+    /// Short guidance for picker footer
+    public var guidance: String {
+        switch self {
+        case .beginner: return "3-4 practices/week, 8-18 km/week. Learning all 4 strokes, chasing first B times."
+        case .intermediate: return "4-5 practices/week, 15-28 km/week. Refining technique, building aerobic base, A times."
+        case .advanced: return "5-6 practices/week, 25-40 km/week. Threshold introduction, AA times, Zone qualifiers."
+        case .competitive: return "6-8 practices/week, 40-60 km/week. Race pace training, AAA times, Junior Nationals."
+        case .elite: return "8-12 practices/week, 50-80+ km/week. Peak performance, AAAA times, National/International."
+        }
+    }
+
+    /// Detailed description based on USA Swimming club training structure
+    public var detailedDescription: String {
+        switch self {
+        case .beginner:
+            return """
+            **First competitive group**
+
+            Swimmers are learning what it means to be on a team: showing up to practice regularly, competing at meets, working on all four strokes, and chasing their first official time standards (B times).
+
+            **Training Focus:**
+            - 40-50% stroke technique refinement
+            - 20-25% aerobic base building
+            - 15-20% starts, turns, underwater skills
+            - 10-15% introduction to interval training
+
+            **Typical Age:** 8-10 years
+
+            **Meet Participation:** B-meets, dual meets, developmental meets. Focus on achieving first B times.
+            """
+        case .intermediate:
+            return """
+            **Committed age-group level**
+
+            Swimmers train year-round, compete at sectional and LSC championship meets, and are working toward A and AA time standards. This is where the training volume increases meaningfully and swimmers begin to develop their aerobic engine.
+
+            **Training Focus:**
+            - 30-35% stroke technique refinement
+            - 30-35% aerobic base and endurance
+            - 15-20% threshold introduction (CSS pace work)
+            - 10-15% starts, turns, race strategy
+
+            **Typical Age:** 10-12 years
+
+            **Meet Participation:** Sectional meets, LSC Age Group Championships. Working toward A and AA times.
+            """
+        case .advanced:
+            return """
+            **Bridge to senior-level competition**
+
+            Swimmers are typically in early adolescence (12-14), training with significant volume, and competing at the highest age-group level. This is a critical developmental window—the "Train to Train" phase.
+
+            **Training Focus:**
+            - 25-30% stroke-specific technique
+            - 30-35% aerobic base and endurance
+            - 15-20% threshold training
+            - 10-15% race-pace and sprint development
+
+            **Typical Age:** 12-14 years
+
+            **Meet Participation:** Sectional, Zone, Junior National qualifier meets. Working toward AA and AAA times.
+            """
+        case .competitive:
+            return """
+            **Primary competitive group for serious high school swimmers**
+
+            Athletes train year-round with substantial volume, attend morning and afternoon sessions, and compete at sectional through national level. Training becomes increasingly specialized.
+
+            **Training Focus:**
+            - 20-25% stroke technique at race pace
+            - 25-30% aerobic endurance
+            - 20-25% threshold and race-pace work
+            - 10-15% VO2max and lactate tolerance
+
+            **Typical Age:** 14-18 years
+
+            **Meet Participation:** Sectional, Zone, Junior/Senior Nationals. Working toward AAA and AAAA times.
+            """
+        case .elite:
+            return """
+            **Top qualifier-based group**
+
+            Membership by invitation only, based on times, commitment, and potential. Training at the highest domestic level, competing at national and international meets.
+
+            **Training Focus:**
+            - 15-20% technique fine-tuning (video analysis)
+            - 20-25% aerobic maintenance
+            - 20-25% threshold and race-pace work
+            - 15-20% VO2max and lactate tolerance
+
+            **Typical Age:** 14+ years (qualifier-based)
+
+            **Meet Participation:** Junior Nationals, Senior Nationals, Olympic Trials, international competition.
+            """
+        }
+    }
+
+    /// Weekly distance range based on club training structure
+    public var weeklyDistanceRange: String {
+        switch self {
+        case .beginner: return "8-18 km/week"
+        case .intermediate: return "15-28 km/week"
+        case .advanced: return "25-40 km/week"
+        case .competitive: return "40-60 km/week"
+        case .elite: return "50-80+ km/week"
+        }
+    }
+
+    /// Practices per week range
+    public var practicesPerWeekRange: String {
+        switch self {
+        case .beginner: return "3-4 practices/week"
+        case .intermediate: return "4-5 practices/week"
+        case .advanced: return "5-6 practices/week"
+        case .competitive: return "6-8 practices/week"
+        case .elite: return "8-12+ practices/week"
+        }
+    }
+
+    /// USA Swimming time standard reference
+    public var timeStandardReference: String {
+        switch self {
+        case .beginner: return "B times"
+        case .intermediate: return "B-A times"
+        case .advanced: return "A-AA times"
+        case .competitive: return "AA-AAA times"
+        case .elite: return "AAAA / National cuts"
+        }
+    }
+
+    /// Convert legacy SkillLevel to TrainingTier
+    public var toTrainingTier: TrainingTier {
+        switch self {
+        case .beginner: return .bronze
+        case .intermediate: return .silver
+        case .advanced: return .gold
+        case .competitive: return .senior
+        case .elite: return .national
+        }
+    }
 }
 
 public struct PersonalBests: Codable, Hashable, Sendable {
@@ -204,12 +558,196 @@ public struct PersonalBests: Codable, Hashable, Sendable {
     }
 }
 
+// MARK: - PB History Models
+
+/// A single meet result / personal best record
+public struct PBResult: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var date: String  // Meet date (ISO format YYYY-MM-DD)
+    public var strokeId: StrokeID
+    public var distance: Int  // 50, 100, 200, etc. (in meters)
+    public var time: TimeInterval  // Seconds
+    public var meetName: String?
+    public var courseType: CourseType  // Short course (SC) or Long course (LC)
+    public var notes: String?
+    public var createdAt: String
+    public var updatedAt: String
+
+    public init(
+        id: String = UUID().uuidString,
+        date: String,
+        strokeId: StrokeID,
+        distance: Int,
+        time: TimeInterval,
+        meetName: String? = nil,
+        courseType: CourseType = .shortCourse,
+        notes: String? = nil,
+        createdAt: String = SwimNoteDateFormatting.string(from: Date()),
+        updatedAt: String = SwimNoteDateFormatting.string(from: Date())
+    ) {
+        self.id = id
+        self.date = date
+        self.strokeId = strokeId
+        self.distance = distance
+        self.time = time
+        self.meetName = meetName
+        self.courseType = courseType
+        self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// Format time as MM:SS.ss
+    public var formattedTime: String {
+        let minutes = Int(time) / 60
+        let seconds = Int(time) % 60
+        let hundredths = Int((time * 100).truncatingRemainder(dividingBy: 100))
+        if minutes > 0 {
+            return String(format: "%d:%02d.%02d", minutes, seconds, hundredths)
+        } else {
+            return String(format: "%02d.%02d", seconds, hundredths)
+        }
+    }
+
+    /// Distance label with course type
+    public var distanceLabel: String {
+        return "\(distance)m"
+    }
+
+    /// Stroke + distance display
+    public var eventLabel: String {
+        "\(strokeId.rawValue.capitalized) \(distanceLabel)"
+    }
+}
+
+/// Course type for swim meets (Short Course 25m vs Long Course 50m)
+public enum CourseType: String, Codable, CaseIterable, Hashable, Sendable {
+    case shortCourse = "SC"  // 25m pool
+    case longCourse = "LC"   // 50m pool (Olympic size)
+
+    public var displayName: String {
+        switch self {
+        case .shortCourse: "Short Course (25m)"
+        case .longCourse: "Long Course (50m)"
+        }
+    }
+
+    public var shortLabel: String {
+        switch self {
+        case .shortCourse: "SC"
+        case .longCourse: "LC"
+        }
+    }
+}
+
+/// History of personal best results with progression tracking
+public struct PBHistory: Codable, Hashable, Sendable {
+    public var results: [PBResult]
+    public var updatedAt: String?
+
+    public init(results: [PBResult] = [], updatedAt: String? = nil) {
+        self.results = results.sorted { $0.date > $1.date }  // Most recent first
+        self.updatedAt = updatedAt
+    }
+
+    public var isEmpty: Bool { results.isEmpty }
+
+    /// Get best time for a specific stroke and distance
+    public func bestTime(stroke: StrokeID, distance: Int, courseType: CourseType? = nil) -> PBResult? {
+        let filtered = results.filter { result in
+            result.strokeId == stroke && result.distance == distance &&
+            (courseType == nil || result.courseType == courseType)
+        }
+        return filtered.min(by: { $0.time < $1.time })
+    }
+
+    /// Get all results for a specific stroke
+    public func resultsForStroke(_ stroke: StrokeID) -> [PBResult] {
+        results.filter { $0.strokeId == stroke }
+    }
+
+    /// Get all results for a specific event (stroke + distance)
+    public func resultsForEvent(stroke: StrokeID, distance: Int) -> [PBResult] {
+        results.filter { $0.strokeId == stroke && $0.distance == distance }
+    }
+
+    /// Calculate trend for an event (comparing best to previous best)
+    public func trend(stroke: StrokeID, distance: Int) -> PBTrend? {
+        let eventResults = resultsForEvent(stroke: stroke, distance: distance)
+        guard eventResults.count >= 2 else { return nil }
+
+        let sortedByTime = eventResults.sorted(by: { $0.time < $1.time })
+        let best = sortedByTime[0].time
+        let previousBest = sortedByTime[1].time
+        let improvement = previousBest - best  // Positive = faster = improved
+
+        if improvement > 1.0 { return .improving }  // > 1 second improvement
+        if improvement < -1.0 { return .declining }  // > 1 second slower
+        return .stable
+    }
+
+    /// Get all current best times (one per event)
+    public func currentBests() -> [PBResult] {
+        var bests: [String: PBResult] = [:]  // Key: "stroke-distance-courseType"
+        for result in results {
+            let key = "\(result.strokeId.rawValue)-\(result.distance)-\(result.courseType.rawValue)"
+            if bests[key] == nil || result.time < bests[key]!.time {
+                bests[key] = result
+            }
+        }
+        return Array(bests.values).sorted { $0.date > $1.date }
+    }
+
+    /// Add a new result and return updated history
+    public func addingResult(_ result: PBResult) -> PBHistory {
+        var newResults = results
+        newResults.append(result)
+        return PBHistory(
+            results: newResults,
+            updatedAt: SwimNoteDateFormatting.string(from: Date())
+        )
+    }
+}
+
+/// Trend direction for PB progression
+public enum PBTrend: String, Codable, Sendable {
+    case improving
+    case stable
+    case declining
+
+    public var symbol: String {
+        switch self {
+        case .improving: "arrow.down"  // Faster = down arrow (time decreased)
+        case .stable: "arrow.right"
+        case .declining: "arrow.up"  // Slower = up arrow (time increased)
+        }
+    }
+
+    public var colorHex: String {
+        switch self {
+        case .improving: "green"  // Faster is good
+        case .stable: "blue"
+        case .declining: "orange"
+        }
+    }
+
+    public var description: String {
+        switch self {
+        case .improving: "Getting faster"
+        case .stable: "Holding steady"
+        case .declining: "Slower than before"
+        }
+    }
+}
+
 public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var birthday: String  // ISO format: YYYY-MM-DD
     public var sex: Sex
-    public var skillLevel: SkillLevel
+    public var trainingTier: TrainingTier
+    public var subTier: SubTier
+    public var skillLevel: SkillLevel  // Derived from tier, stored for compatibility
     public var weeklySessionTarget: Int
     public var preferredStrokes: [StrokeID]
     public var mainStroke: StrokeID?  // Primary stroke focus, nil = not set
@@ -219,11 +757,39 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
     public var profileImageData: Data?  // Base64 encoded image
     public var profileIconName: String? // SF Symbol name
     public var personalBests: PersonalBests
+    public var pbHistory: PBHistory?
     public var cssHistory: CSSHistory?
     public var trainingGoals: [String]
     public var limitations: [String]?
     public var createdAt: String
     public var updatedAt: String
+
+    /// Compute skill level from training tier + sub-tier
+    public var computedSkillLevel: SkillLevel {
+        switch trainingTier {
+        case .preCompetitive:
+            return .beginner
+        case .bronze:
+            switch subTier {
+            case .one, .two: return .beginner
+            case .three: return .intermediate  // Bronze 3 transitioning to Silver
+            default: return .beginner
+            }
+        case .silver:
+            switch subTier {
+            case .one: return .beginner
+            case .two: return .intermediate
+            case .three: return .advanced  // Silver 3 preparing for Gold
+            default: return .intermediate
+            }
+        case .gold:
+            return .advanced
+        case .senior:
+            return .competitive
+        case .national:
+            return .elite
+        }
+    }
 
     public var age: Int {
         let formatter = DateFormatter()
@@ -242,10 +808,10 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
     // MARK: - Codable with backward compatibility
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, birthday, sex, skillLevel, weeklySessionTarget
+        case id, name, birthday, sex, trainingTier, subTier, skillLevel, weeklySessionTarget
         case preferredStrokes, mainStroke, distancePreference, preferredDistanceUnit
         case profileIconType, profileImageData, profileIconName
-        case personalBests, cssHistory, trainingGoals, limitations
+        case personalBests, pbHistory, cssHistory, trainingGoals, limitations
         case createdAt, updatedAt
     }
 
@@ -255,7 +821,23 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         name = try container.decode(String.self, forKey: .name)
         birthday = try container.decode(String.self, forKey: .birthday)
         sex = try container.decode(Sex.self, forKey: .sex)
-        skillLevel = try container.decode(SkillLevel.self, forKey: .skillLevel)
+
+        // Backward compatibility: derive tier from skillLevel if not present
+        if let tier = try container.decodeIfPresent(TrainingTier.self, forKey: .trainingTier) {
+            trainingTier = tier
+        } else {
+            // Map legacy skillLevel to trainingTier
+            let legacyLevel = try container.decode(SkillLevel.self, forKey: .skillLevel)
+            trainingTier = legacyLevel.toTrainingTier
+        }
+
+        if let sub = try container.decodeIfPresent(SubTier.self, forKey: .subTier) {
+            subTier = sub
+        } else {
+            subTier = trainingTier.defaultSubTier
+        }
+
+        skillLevel = try container.decodeIfPresent(SkillLevel.self, forKey: .skillLevel) ?? Self.computeSkillLevel(tier: trainingTier, sub: subTier)
         weeklySessionTarget = try container.decode(Int.self, forKey: .weeklySessionTarget)
         preferredStrokes = try container.decode([StrokeID].self, forKey: .preferredStrokes)
         mainStroke = try container.decodeIfPresent(StrokeID.self, forKey: .mainStroke)
@@ -265,6 +847,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         profileImageData = try container.decodeIfPresent(Data.self, forKey: .profileImageData)
         profileIconName = try container.decodeIfPresent(String.self, forKey: .profileIconName)
         personalBests = try container.decode(PersonalBests.self, forKey: .personalBests)
+        pbHistory = try container.decodeIfPresent(PBHistory.self, forKey: .pbHistory)
         cssHistory = try container.decodeIfPresent(CSSHistory.self, forKey: .cssHistory)
         trainingGoals = try container.decode([String].self, forKey: .trainingGoals)
         limitations = try container.decodeIfPresent([String].self, forKey: .limitations)
@@ -278,6 +861,8 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         try container.encode(name, forKey: .name)
         try container.encode(birthday, forKey: .birthday)
         try container.encode(sex, forKey: .sex)
+        try container.encode(trainingTier, forKey: .trainingTier)
+        try container.encode(subTier, forKey: .subTier)
         try container.encode(skillLevel, forKey: .skillLevel)
         try container.encode(weeklySessionTarget, forKey: .weeklySessionTarget)
         try container.encode(preferredStrokes, forKey: .preferredStrokes)
@@ -288,6 +873,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         try container.encodeIfPresent(profileImageData, forKey: .profileImageData)
         try container.encodeIfPresent(profileIconName, forKey: .profileIconName)
         try container.encode(personalBests, forKey: .personalBests)
+        try container.encodeIfPresent(pbHistory, forKey: .pbHistory)
         try container.encodeIfPresent(cssHistory, forKey: .cssHistory)
         try container.encode(trainingGoals, forKey: .trainingGoals)
         try container.encodeIfPresent(limitations, forKey: .limitations)
@@ -295,6 +881,79 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         try container.encode(updatedAt, forKey: .updatedAt)
     }
 
+    public init(
+        id: String,
+        name: String,
+        birthday: String,
+        sex: Sex,
+        trainingTier: TrainingTier,
+        subTier: SubTier = .none,
+        skillLevel: SkillLevel? = nil,  // Computed if nil
+        weeklySessionTarget: Int,
+        preferredStrokes: [StrokeID],
+        mainStroke: StrokeID? = nil,
+        distancePreference: DistancePreference = .na,
+        preferredDistanceUnit: DistanceUnit = .meters,
+        profileIconType: ProfileIconType = .letter,
+        profileImageData: Data? = nil,
+        profileIconName: String? = nil,
+        personalBests: PersonalBests,
+        pbHistory: PBHistory? = nil,
+        cssHistory: CSSHistory? = nil,
+        trainingGoals: [String],
+        limitations: [String]? = nil,
+        createdAt: String,
+        updatedAt: String
+    ) {
+        self.id = id
+        self.name = name
+        self.birthday = birthday
+        self.sex = sex
+        self.trainingTier = trainingTier
+        let effectiveSubTier = subTier == .none ? trainingTier.defaultSubTier : subTier
+        self.subTier = effectiveSubTier
+        self.skillLevel = skillLevel ?? Self.computeSkillLevel(tier: trainingTier, sub: effectiveSubTier)
+        self.weeklySessionTarget = weeklySessionTarget
+        self.preferredStrokes = preferredStrokes
+        self.mainStroke = mainStroke
+        self.distancePreference = distancePreference
+        self.preferredDistanceUnit = preferredDistanceUnit
+        self.profileIconType = profileIconType
+        self.profileImageData = profileImageData
+        self.profileIconName = profileIconName
+        self.personalBests = personalBests
+        self.pbHistory = pbHistory
+        self.cssHistory = cssHistory
+        self.trainingGoals = trainingGoals
+        self.limitations = limitations
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// Compute skill level from tier + sub-tier without needing self
+    private static func computeSkillLevel(tier: TrainingTier, sub: SubTier) -> SkillLevel {
+        switch tier {
+        case .preCompetitive: return .beginner
+        case .bronze:
+            switch sub {
+            case .one, .two: return .beginner
+            case .three: return .intermediate
+            default: return .beginner
+            }
+        case .silver:
+            switch sub {
+            case .one: return .beginner
+            case .two: return .intermediate
+            case .three: return .advanced
+            default: return .intermediate
+            }
+        case .gold: return .advanced
+        case .senior: return .competitive
+        case .national: return .elite
+        }
+    }
+
+    /// Legacy init for backward compatibility
     public init(
         id: String,
         name: String,
@@ -310,6 +969,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         profileImageData: Data? = nil,
         profileIconName: String? = nil,
         personalBests: PersonalBests,
+        pbHistory: PBHistory? = nil,
         cssHistory: CSSHistory? = nil,
         trainingGoals: [String],
         limitations: [String]? = nil,
@@ -320,6 +980,8 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         self.name = name
         self.birthday = birthday
         self.sex = sex
+        self.trainingTier = skillLevel.toTrainingTier
+        self.subTier = trainingTier.defaultSubTier
         self.skillLevel = skillLevel
         self.weeklySessionTarget = weeklySessionTarget
         self.preferredStrokes = preferredStrokes
@@ -330,6 +992,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         self.profileImageData = profileImageData
         self.profileIconName = profileIconName
         self.personalBests = personalBests
+        self.pbHistory = pbHistory
         self.cssHistory = cssHistory
         self.trainingGoals = trainingGoals
         self.limitations = limitations

@@ -27,7 +27,16 @@ public final class CoreDataPersistenceController: Sendable {
 
         if let storeURL = storageURL {
             let description = NSPersistentStoreDescription(url: storeURL)
+            // Enable lightweight migration for schema changes
+            description.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+            description.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
             container.persistentStoreDescriptions = [description]
+        } else {
+            // Enable lightweight migration for default store as well
+            if let description = container.persistentStoreDescriptions.first {
+                description.setOption(true as NSNumber, forKey: NSMigratePersistentStoresAutomaticallyOption)
+                description.setOption(true as NSNumber, forKey: NSInferMappingModelAutomaticallyOption)
+            }
         }
     }
 
@@ -35,7 +44,33 @@ public final class CoreDataPersistenceController: Sendable {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             container.loadPersistentStores { _, error in
                 if let error {
-                    continuation.resume(throwing: error)
+                    // For development: if migration fails, delete the incompatible store
+                    let nsError = error as NSError
+                    if nsError.code == 134140 || nsError.code == NSMigrationError || nsError.code == NSMigrationMissingSourceModelError {
+                        print("CoreData migration failed. Deleting incompatible store and recreating...")
+                        // Delete the existing store file
+                        if let storeDescription = self.container.persistentStoreDescriptions.first,
+                           let storeURL = storeDescription.url {
+                            try? FileManager.default.removeItem(at: storeURL)
+                            // Also delete related files (-shm, -wal)
+                            let shmURL = storeURL.deletingLastPathComponent().appendingPathComponent(storeURL.lastPathComponent + "-shm")
+                            let walURL = storeURL.deletingLastPathComponent().appendingPathComponent(storeURL.lastPathComponent + "-wal")
+                            try? FileManager.default.removeItem(at: shmURL)
+                            try? FileManager.default.removeItem(at: walURL)
+                        }
+                        // Try loading again
+                        self.container.loadPersistentStores { _, retryError in
+                            if let retryError {
+                                continuation.resume(throwing: retryError)
+                            } else {
+                                self.container.viewContext.automaticallyMergesChangesFromParent = true
+                                self.container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
+                                continuation.resume()
+                            }
+                        }
+                    } else {
+                        continuation.resume(throwing: error)
+                    }
                 } else {
                     self.container.viewContext.automaticallyMergesChangesFromParent = true
                     self.container.viewContext.mergePolicy = NSMergeByPropertyObjectTrumpMergePolicy
@@ -71,6 +106,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.profileImageData = profile.profileImageData
         entity.profileIconName = profile.profileIconName
         entity.personalBestsJSON = try encoder.encode(profile.personalBests).utf8String
+        entity.pbHistoryJSON = profile.pbHistory != nil ? try encoder.encode(profile.pbHistory!).utf8String : nil
         entity.cssHistoryJSON = profile.cssHistory != nil ? try encoder.encode(profile.cssHistory!).utf8String : nil
         entity.trainingGoalsJSON = try encoder.encode(profile.trainingGoals).utf8String
         entity.limitationsJSON = profile.limitations != nil ? try encoder.encode(profile.limitations!).utf8String : nil
@@ -133,7 +169,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.notes = plan.notes
         entity.poolTypeRaw = plan.poolTypeRaw
 
-        // Create session entities via mutable set
+        // Create session entities via mutable setol,kmj q
         let sessionsSet = entity.mutableSetValue(forKey: "detailedSessions")
         for session in plan.detailedSessions {
             let sessionEntity = createDetailedSessionEntity(from: session, in: context)
@@ -259,6 +295,7 @@ public actor CoreDataUserProfileRepository: UserProfileRepository {
                 entity.profileImageData = profile.profileImageData
                 entity.profileIconName = profile.profileIconName
                 entity.personalBestsJSON = try? encoder.encode(profile.personalBests).utf8String
+                entity.pbHistoryJSON = profile.pbHistory != nil ? try? encoder.encode(profile.pbHistory!).utf8String : nil
                 entity.cssHistoryJSON = profile.cssHistory != nil ? try? encoder.encode(profile.cssHistory!).utf8String : nil
                 entity.trainingGoalsJSON = try? encoder.encode(profile.trainingGoals).utf8String
                 entity.limitationsJSON = profile.limitations != nil ? try? encoder.encode(profile.limitations!).utf8String : nil
@@ -691,7 +728,7 @@ public struct CoreDataMigration: Sendable {
             for entityName in entities {
                 let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
                 let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)
-                try? context.execute(deleteRequest)
+                _ = try? context.execute(deleteRequest)
             }
             try? context.save()
         }
