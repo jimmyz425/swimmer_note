@@ -50,6 +50,13 @@ extension DateFormatter {
         return formatter
     }()
 
+    /// Cached formatter for short weekday (EEE - Mon, Tue, Wed, etc.)
+    static let weekdayShort: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter
+    }()
+
     /// Cached formatter for medium date style
     static let mediumDate: DateFormatter = {
         let formatter = DateFormatter()

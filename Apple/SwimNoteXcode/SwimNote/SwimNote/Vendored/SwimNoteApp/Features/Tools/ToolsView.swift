@@ -1,17 +1,10 @@
 import SwiftUI
-import AVKit
-import UniformTypeIdentifiers
 
 struct ToolsView: View {
     @Bindable var appModel: SwimNoteAppModel
-    @State private var selectedVideoURL: URL?
-    @State private var player: AVPlayer?
-    @State private var isImporterPresented = false
     @State private var showingProfileMenu = false
     @State private var showingUserSelection = false
     @State private var showingEditProfile = false
-    @State private var showingCSSEditor = false
-    @State private var showingIntervalCalculator = false
 
     var body: some View {
         NavigationStack {
@@ -19,13 +12,7 @@ struct ToolsView: View {
                 VStack(alignment: .leading, spacing: 24) {
                     headerSection
 
-                    videoSection
-
-                    savedAnalysisSection
-
-                    pbTrackerSection
-
-                    cssToolsSection
+                    toolCardsSection
                 }
                 .padding()
             }
@@ -36,33 +23,13 @@ struct ToolsView: View {
                     endPoint: .bottom
                 )
             )
-            .fileImporter(
-                isPresented: $isImporterPresented,
-                allowedContentTypes: [.movie, .video],
-                allowsMultipleSelection: false
-            ) { result in
-                if case .success(let urls) = result, let url = urls.first {
-                    selectedVideoURL = url
-                    player = AVPlayer(url: url)
-                    addImportedVideoRecord(url)
-                }
-            }
+            .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingUserSelection) {
                 UserSelectionView(appModel: appModel)
             }
             .sheet(isPresented: $showingEditProfile) {
                 if let profile = appModel.activeProfile {
                     PersonalBestsEditor(appModel: appModel, profile: profile)
-                }
-            }
-            .sheet(isPresented: $showingCSSEditor) {
-                if let profile = appModel.activeProfile {
-                    CSSTestInputView(appModel: appModel, profile: profile)
-                }
-            }
-            .sheet(isPresented: $showingIntervalCalculator) {
-                if let css = appModel.activeProfile?.cssHistory?.latestTest {
-                    IntervalCalculatorView(cssTest: css)
                 }
             }
         }
@@ -74,7 +41,7 @@ struct ToolsView: View {
                 Text("TOOLS")
                     .font(.system(size: 34, weight: .black, design: .rounded))
                     .foregroundStyle(PoolTheme.deep)
-                Text("Video analysis & CSS tracking")
+                Text("Video analysis & performance tracking")
                     .font(.headline)
                     .foregroundStyle(PoolTheme.mid)
             }
@@ -97,203 +64,123 @@ struct ToolsView: View {
         }
     }
 
-    private var videoSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Video Review")
-                .font(.title3.bold())
-
-            if let player {
-                VideoPlayer(player: player)
-                    .frame(minHeight: 240)
-                    .cornerRadius(12)
-            } else {
-                ContentUnavailableView(
-                    "Import a Video",
-                    systemImage: "video.badge.plus",
-                    description: Text("Import swim footage to analyze technique.")
-                )
+    private var toolCardsSection: some View {
+        VStack(spacing: 16) {
+            // Video Review Card
+            ToolCard(
+                icon: "video.fill",
+                iconColor: PoolTheme.mid,
+                title: "Video Review",
+                subtitle: "Import and analyze swim footage",
+                badge: appModel.videoRecords.isEmpty ? nil : "\(appModel.videoRecords.count)"
+            ) {
+                VideoReviewView(appModel: appModel)
             }
-        }
-        .poolCard()
-    }
 
-    private var savedAnalysisSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Saved Video Analysis")
-                .font(.title3.bold())
-
-            if appModel.videoRecords.isEmpty {
-                Text("No analysis records yet.")
-                    .foregroundStyle(PoolTheme.smoke)
-            } else {
-                ForEach(appModel.videoRecords) { record in
-                    HStack(spacing: 12) {
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(record.videoFilename)
-                                .font(.headline)
-                                .foregroundStyle(PoolTheme.deep)
-                            Text("Kick rate: \(record.metrics.kickRatePerMinute, specifier: "%.1f") / min")
-                                .font(.subheadline)
-                                .foregroundStyle(PoolTheme.smoke)
-                        }
-                        Spacer()
-                    }
-                    .padding(.vertical, 8)
-                    Divider()
-                }
+            // Technique Measurements Card
+            ToolCard(
+                icon: "chart.bar.xaxis",
+                iconColor: PoolTheme.mid,
+                title: "Technique Measurements",
+                subtitle: "Track stroke efficiency metrics",
+                badge: appModel.measurements.isEmpty ? nil : "\(appModel.measurements.count)"
+            ) {
+                TechniqueMeasurementView(appModel: appModel)
             }
-        }
-        .poolCard()
-    }
 
-    private var pbTrackerSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Personal Bests")
-                .font(.title3.bold())
-
-            // PB Tracker Navigation
-            NavigationLink {
+            // PB Tracker Card
+            let pbCount = appModel.activeProfile?.pbHistory?.currentBests().count ?? 0
+            ToolCard(
+                icon: "medal",
+                iconColor: PoolTheme.mid,
+                title: "PB Tracker",
+                subtitle: "Personal best progression",
+                badge: pbCount > 0 ? "\(pbCount)" : nil
+            ) {
                 PBTrackerView(appModel: appModel)
-            } label: {
-                HStack {
-                    Image(systemName: "medal")
-                        .foregroundStyle(PoolTheme.mid)
-                    Text("PB Tracker")
-                        .foregroundStyle(PoolTheme.deep)
-                    Spacer()
-                    if let pbHistory = appModel.activeProfile?.pbHistory, !pbHistory.isEmpty {
-                        Text("\(pbHistory.currentBests().count) events")
-                            .font(.caption)
-                            .foregroundStyle(PoolTheme.smoke)
-                    }
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(PoolTheme.smoke)
-                }
-                .padding(.vertical, 8)
             }
 
-            Divider()
-
-            // PB Progression Chart
-            NavigationLink {
-                if let pbHistory = appModel.activeProfile?.pbHistory, !pbHistory.isEmpty {
-                    PBProgressionChartView(pbHistory: pbHistory)
-                } else {
-                    ContentUnavailableView(
-                        "No PB History",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Add meet results to start tracking your progression.")
-                    )
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "chart.xyaxis.line")
-                        .foregroundStyle(PoolTheme.mid)
-                    Text("PB Progression Chart")
-                        .foregroundStyle(PoolTheme.deep)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(PoolTheme.smoke)
-                }
-                .padding(.vertical, 8)
+            // CSS Tools Card
+            let hasCSS = appModel.activeProfile?.cssHistory?.latestTest != nil
+            ToolCard(
+                icon: "speedometer",
+                iconColor: PoolTheme.mid,
+                title: "CSS Tools",
+                subtitle: "Critical Swim Speed analysis",
+                badge: hasCSS ? "✓" : nil
+            ) {
+                CSSToolsView(appModel: appModel)
             }
         }
-        .poolCard()
     }
+}
 
-    private var cssToolsSection: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("CSS Tools")
-                .font(.title3.bold())
+// MARK: - Tool Card Component
 
-            // CSS Progression
-            NavigationLink {
-                if let cssHistory = appModel.activeProfile?.cssHistory {
-                    CSSProgressionChartView(cssHistory: cssHistory)
-                } else {
-                    ContentUnavailableView(
-                        "No CSS History",
-                        systemImage: "chart.xyaxis.line",
-                        description: Text("Take a CSS test to start tracking your progression.")
-                    )
-                }
-            } label: {
-                HStack {
-                    Image(systemName: "chart.xyaxis.line")
-                        .foregroundStyle(PoolTheme.mid)
-                    Text("CSS Progression Chart")
-                        .foregroundStyle(PoolTheme.deep)
-                    Spacer()
-                    Image(systemName: "chevron.right")
-                        .foregroundStyle(PoolTheme.smoke)
-                }
-                .padding(.vertical, 8)
-            }
+struct ToolCard<Destination: View>: View {
+    let icon: String
+    let iconColor: Color
+    let title: String
+    let subtitle: String
+    let badge: String?
+    @ViewBuilder let destination: () -> Destination
 
-            Divider()
+    var body: some View {
+        NavigationLink {
+            destination()
+        } label: {
+            HStack(spacing: 16) {
+                // Icon
+                Image(systemName: icon)
+                    .font(.system(size: 28, weight: .medium))
+                    .foregroundStyle(iconColor)
+                    .frame(width: 44, height: 44)
+                    .background(iconColor.opacity(0.15))
+                    .clipShape(Circle())
 
-            // Interval Calculator
-            Button {
-                showingIntervalCalculator = true
-            } label: {
-                HStack {
-                    Image(systemName: "speedometer")
-                        .foregroundStyle(PoolTheme.mid)
-                    Text("Interval Calculator")
-                        .foregroundStyle(PoolTheme.deep)
-                    Spacer()
-                    if appModel.activeProfile?.cssHistory?.latestTest != nil {
-                        Image(systemName: "chevron.right")
-                            .foregroundStyle(PoolTheme.smoke)
-                    } else {
-                        Text("Need CSS test")
-                            .font(.caption)
-                            .foregroundStyle(PoolTheme.smoke)
+                // Content
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 8) {
+                        Text(title)
+                            .font(.headline)
+                            .foregroundStyle(PoolTheme.deep)
+
+                        if let badge {
+                            Text(badge)
+                                .font(.caption)
+                                .fontWeight(.medium)
+                                .foregroundStyle(.white)
+                                .padding(.horizontal, 6)
+                                .padding(.vertical, 2)
+                                .background(PoolTheme.mid)
+                                .clipShape(Capsule())
+                        }
                     }
-                }
-                .padding(.vertical, 8)
-            }
-            .disabled(appModel.activeProfile?.cssHistory?.latestTest == nil)
 
-            Divider()
-
-            // New Test Button
-            Button {
-                showingCSSEditor = true
-            } label: {
-                HStack {
-                    Image(systemName: "plus.circle")
-                        .foregroundStyle(PoolTheme.mid)
-                    Text("Record New CSS Test")
-                        .foregroundStyle(PoolTheme.deep)
-                    Spacer()
-                    Image(systemName: "chevron.right")
+                    Text(subtitle)
+                        .font(.subheadline)
                         .foregroundStyle(PoolTheme.smoke)
                 }
-                .padding(.vertical, 8)
+
+                Spacer()
+
+                // Arrow
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 14, weight: .semibold))
+                    .foregroundStyle(PoolTheme.smoke)
             }
+            .padding(16)
+            .background(.regularMaterial)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: PoolTheme.deep.opacity(0.08), radius: 4, y: 2)
         }
-        .poolCard()
-    }
-
-    private func formatDate(_ isoDate: String) -> String {
-        guard let date = DateFormatter.yyyyMMdd.date(from: isoDate) else { return isoDate }
-        return DateFormatter.mediumDate.string(from: date)
-    }
-
-    private func addImportedVideoRecord(_ url: URL) {
-        let record = NativeVideoAnalysisService().makeRecord(
-            videoURL: url,
-            strokeId: .freestyle,
-            frames: []
-        )
-        appModel.videoRecords.insert(record, at: 0)
+        .buttonStyle(.plain)
     }
 }
 
 // MARK: - Previews
 
-private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false) -> SwimNoteAppModel {
+private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false, withMeasurements: Bool = false) -> SwimNoteAppModel {
     let model = SwimNoteAppModel.bootstrap()
     model.activeProfile = UserProfile(
         id: "preview-user",
@@ -321,42 +208,6 @@ private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false) 
                     time400m: 285,
                     cssMetersPerSecond: 1.33,
                     cssPaceSecondsPer100m: 75.2
-                ),
-                CSSTestResult(
-                    date: "2024-03-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 140,
-                    time400m: 295,
-                    cssMetersPerSecond: 1.29,
-                    cssPaceSecondsPer100m: 77.5
-                ),
-                CSSTestResult(
-                    date: "2024-02-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 145,
-                    time400m: 305,
-                    cssMetersPerSecond: 1.23,
-                    cssPaceSecondsPer100m: 81.3
-                ),
-                CSSTestResult(
-                    date: "2024-01-15",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 148,
-                    time400m: 312,
-                    cssMetersPerSecond: 1.19,
-                    cssPaceSecondsPer100m: 84.0
-                ),
-                CSSTestResult(
-                    date: "2023-12-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 152,
-                    time400m: 320,
-                    cssMetersPerSecond: 1.15,
-                    cssPaceSecondsPer100m: 87.0
                 )
             ]
         )
@@ -384,6 +235,20 @@ private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false) 
             )
         ]
     }
+    if withMeasurements {
+        model.measurements = [
+            TechniqueMeasurement(
+                userId: "preview-user",
+                date: "2024-05-05",
+                strokeId: .freestyle,
+                poolLength: 25,
+                distanceUnit: .meters,
+                strokeCount: 18,
+                lapTime: 22.5,
+                effortZone: 3
+            )
+        ]
+    }
     return model
 }
 
@@ -391,10 +256,6 @@ private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false) 
     ToolsView(appModel: makePreviewModel())
 }
 
-#Preview("Tools - With CSS") {
-    ToolsView(appModel: makePreviewModel(withCSS: true))
-}
-
-#Preview("Tools - Full") {
-    ToolsView(appModel: makePreviewModel(withCSS: true, withRecords: true))
+#Preview("Tools - With Data") {
+    ToolsView(appModel: makePreviewModel(withCSS: true, withRecords: true, withMeasurements: true))
 }

@@ -1,5 +1,129 @@
 import Foundation
 
+// MARK: - Phase 1: Weekly Plan Outline (Rough Plan)
+
+/// Rough weekly plan outline for user review before detailed session generation
+public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Sendable {
+    public var id: Date { weekStartingDate ?? Date() }
+
+    public var overview: PlanOverview
+    public var schedule: [SessionOutline]  // Rough session focuses, no detailed sets
+    public var techniqueProgressPlan: TechniqueProgressPlan?
+    public var pastTrainingSummary: String?  // Analysis of recent training sessions
+    public var planConnectionRationale: String?  // How this plan connects to past training
+    public var notes: String
+
+    public var weekStartingDate: Date?
+    public var poolTypeRaw: String?
+
+    public init(
+        overview: PlanOverview,
+        schedule: [SessionOutline],
+        techniqueProgressPlan: TechniqueProgressPlan?,
+        pastTrainingSummary: String? = nil,
+        planConnectionRationale: String? = nil,
+        notes: String,
+        weekStartingDate: Date? = nil,
+        poolTypeRaw: String? = nil
+    ) {
+        self.overview = overview
+        self.schedule = schedule
+        self.techniqueProgressPlan = techniqueProgressPlan
+        self.pastTrainingSummary = pastTrainingSummary
+        self.planConnectionRationale = planConnectionRationale
+        self.notes = notes
+        self.weekStartingDate = weekStartingDate
+        self.poolTypeRaw = poolTypeRaw
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        overview = try container.decode(PlanOverview.self, forKey: .overview)
+        schedule = try container.decode([SessionOutline].self, forKey: .schedule)
+        techniqueProgressPlan = try container.decodeIfPresent(TechniqueProgressPlan.self, forKey: .techniqueProgressPlan)
+        pastTrainingSummary = try container.decodeIfPresent(String.self, forKey: .pastTrainingSummary)
+        planConnectionRationale = try container.decodeIfPresent(String.self, forKey: .planConnectionRationale)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        weekStartingDate = try container.decodeIfPresent(Date.self, forKey: .weekStartingDate)
+        poolTypeRaw = try container.decodeIfPresent(String.self, forKey: .poolTypeRaw)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case overview, schedule, techniqueProgressPlan
+        case pastTrainingSummary, planConnectionRationale, notes, weekStartingDate, poolTypeRaw
+    }
+}
+
+/// Rough session outline - focus area without detailed sets
+public nonisolated struct SessionOutline: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var sessionNumber: Int
+    public var dayOfWeek: String?  // "Monday", "Tuesday", etc.
+    public var poolSession: String  // Session name
+    public var focus: String  // Main focus description
+    public var sessionType: String?  // "sprint", "technique", "endurance", etc.
+    public var techniqueFocus: String?  // Specific technique emphasis
+    public var techniqueFileRef: String?  // Reference to technique file
+    public var addressesGoal: String?  // Which goal this addresses
+    public var estimatedDuration: String?  // "~60min"
+    public var estimatedDistance: String?  // "~800m"
+    public var isDetailsGenerated: Bool = false  // Whether detailed session was generated
+    public var detailedSession: DetailedSession?  // Populated after Phase 2
+
+    public init(
+        id: String = UUID().uuidString,
+        sessionNumber: Int,
+        dayOfWeek: String?,
+        poolSession: String,
+        focus: String,
+        sessionType: String?,
+        techniqueFocus: String?,
+        techniqueFileRef: String?,
+        addressesGoal: String?,
+        estimatedDuration: String?,
+        estimatedDistance: String?,
+        isDetailsGenerated: Bool = false,
+        detailedSession: DetailedSession? = nil
+    ) {
+        self.id = id
+        self.sessionNumber = sessionNumber
+        self.dayOfWeek = dayOfWeek
+        self.poolSession = poolSession
+        self.focus = focus
+        self.sessionType = sessionType
+        self.techniqueFocus = techniqueFocus
+        self.techniqueFileRef = techniqueFileRef
+        self.addressesGoal = addressesGoal
+        self.estimatedDuration = estimatedDuration
+        self.estimatedDistance = estimatedDistance
+        self.isDetailsGenerated = isDetailsGenerated
+        self.detailedSession = detailedSession
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decodeIfPresent(String.self, forKey: .id) ?? UUID().uuidString
+        sessionNumber = try container.decodeIfPresent(Int.self, forKey: .sessionNumber) ?? 1
+        dayOfWeek = try container.decodeIfPresent(String.self, forKey: .dayOfWeek)
+        poolSession = try container.decodeIfPresent(String.self, forKey: .poolSession) ?? ""
+        focus = try container.decodeIfPresent(String.self, forKey: .focus) ?? ""
+        sessionType = try container.decodeIfPresent(String.self, forKey: .sessionType)
+        techniqueFocus = try container.decodeIfPresent(String.self, forKey: .techniqueFocus)
+        techniqueFileRef = try container.decodeIfPresent(String.self, forKey: .techniqueFileRef)
+        addressesGoal = try container.decodeIfPresent(String.self, forKey: .addressesGoal)
+        estimatedDuration = try container.decodeIfPresent(String.self, forKey: .estimatedDuration)
+        estimatedDistance = try container.decodeIfPresent(String.self, forKey: .estimatedDistance)
+        isDetailsGenerated = try container.decodeIfPresent(Bool.self, forKey: .isDetailsGenerated) ?? false
+        detailedSession = try container.decodeIfPresent(DetailedSession.self, forKey: .detailedSession)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, sessionNumber, dayOfWeek, poolSession, focus, sessionType
+        case techniqueFocus, techniqueFileRef, addressesGoal
+        case estimatedDuration, estimatedDistance, isDetailsGenerated, detailedSession
+    }
+}
+
 // MARK: - Structured Training Plan Output
 
 public nonisolated struct WeeklyTrainingPlan: Codable, Hashable, Identifiable, Sendable {

@@ -16,6 +16,7 @@ public final class SwimNoteAppModel {
     public var videoRecords: [VideoAnalysisRecord] = []
     public var trainingPlans: [TrainingPlan] = []
     public var weeklyPlans: [WeeklyTrainingPlan] = []
+    public var measurements: [TechniqueMeasurement] = []
     public var isInitialized: Bool = false  // Track initialization state
 
     // Cached session lookup for O(1) date-based queries
@@ -26,6 +27,7 @@ public final class SwimNoteAppModel {
     private let profileRepository: any UserProfileRepository
     private let planRepository: any TrainingPlanRepository
     private let weeklyPlanRepository: any WeeklyPlanRepository
+    private let measurementRepository: any TechniqueMeasurementRepository
     private let contentLoader: BundleContentLoader
     private let llmConfigurationStore = LLMConfigurationStore()
     private var parsedContentCache: [String: ParsedTechniqueContent] = [:]
@@ -36,12 +38,14 @@ public final class SwimNoteAppModel {
         profileRepository: any UserProfileRepository,
         planRepository: any TrainingPlanRepository,
         weeklyPlanRepository: any WeeklyPlanRepository,
+        measurementRepository: any TechniqueMeasurementRepository,
         contentLoader: BundleContentLoader
     ) {
         self.noteRepository = noteRepository
         self.profileRepository = profileRepository
         self.planRepository = planRepository
         self.weeklyPlanRepository = weeklyPlanRepository
+        self.measurementRepository = measurementRepository
         self.contentLoader = contentLoader
     }
 
@@ -63,6 +67,7 @@ public final class SwimNoteAppModel {
             profileRepository: CoreDataUserProfileRepository(controller: controller),
             planRepository: JSONTrainingPlanRepository(plansDirectory: appSupport.appendingPathComponent("plans")),
             weeklyPlanRepository: CoreDataWeeklyPlanRepository(controller: controller),
+            measurementRepository: CoreDataTechniqueMeasurementRepository(controller: controller),
             contentLoader: loader
         )
 
@@ -95,71 +100,10 @@ public final class SwimNoteAppModel {
         isInitialized = true  // Mark as initialized after loading
         if let profile = activeProfile {
             await reloadNotes(userId: profile.id)
-
-            // Add demo CSS history if profile has none (for demonstration)
-            if profile.cssHistory == nil || profile.cssHistory?.isEmpty == true {
-                addDemoCSSHistory(to: profile)
-            }
+            await reloadMeasurements(userId: profile.id)
+            // Note: CSS history is only added when user explicitly does a CSS test
+            // No demo data is auto-added
         }
-    }
-
-    private func addDemoCSSHistory(to profile: UserProfile) {
-        var updated = profile
-        updated.cssHistory = CSSHistory(
-            tests: [
-                CSSTestResult(
-                    date: "2026-04-15",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 135,
-                    time400m: 285,
-                    cssMetersPerSecond: 1.33,
-                    cssPaceSecondsPer100m: 75.2
-                ),
-                CSSTestResult(
-                    date: "2026-03-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 140,
-                    time400m: 295,
-                    cssMetersPerSecond: 1.29,
-                    cssPaceSecondsPer100m: 77.5
-                ),
-                CSSTestResult(
-                    date: "2026-02-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 145,
-                    time400m: 305,
-                    cssMetersPerSecond: 1.23,
-                    cssPaceSecondsPer100m: 81.3
-                ),
-                CSSTestResult(
-                    date: "2026-01-15",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 148,
-                    time400m: 312,
-                    cssMetersPerSecond: 1.19,
-                    cssPaceSecondsPer100m: 84.0
-                ),
-                CSSTestResult(
-                    date: "2025-12-01",
-                    testType: .twoTrial,
-                    strokeId: .freestyle,
-                    time200m: 152,
-                    time400m: 320,
-                    cssMetersPerSecond: 1.15,
-                    cssPaceSecondsPer100m: 87.0
-                )
-            ]
-        )
-
-        // Update in-memory (don't save to disk for demo data)
-        if let index = profiles.firstIndex(where: { $0.id == profile.id }) {
-            profiles[index] = updated
-        }
-        activeProfile = updated
     }
 
     public func switchProfile(to profile: UserProfile) async throws {
@@ -167,6 +111,7 @@ public final class SwimNoteAppModel {
         needsSetup = false  // No longer need setup once we have an active profile
         try await profileRepository.setActiveProfile(id: profile.id)
         await reloadNotes(userId: profile.id)
+        await reloadMeasurements(userId: profile.id)
     }
 
     public func createProfile(
@@ -307,6 +252,22 @@ public final class SwimNoteAppModel {
 
         // Build date-based caches for O(1) lookup
         rebuildDateCaches()
+    }
+
+    public func reloadMeasurements(userId: String) async {
+        measurements = await measurementRepository.list(for: userId)
+    }
+
+    public func saveMeasurement(_ measurement: TechniqueMeasurement) async throws {
+        try await measurementRepository.save(measurement)
+        await reloadMeasurements(userId: measurement.userId)
+    }
+
+    public func deleteMeasurement(id: String) async throws {
+        try await measurementRepository.delete(id: id)
+        if let userId = activeProfile?.id {
+            await reloadMeasurements(userId: userId)
+        }
     }
 
     private func rebuildDateCaches() {

@@ -1651,6 +1651,25 @@ public enum CSSPaceTrend: String, Codable, Sendable {
     }
 }
 
+// MARK: - CSSTestResult Zone Pace Helpers
+
+extension CSSTestResult {
+    /// Get formatted pace string for a zone (e.g., "1:45")
+    public func zonePace(forZone zone: Int) -> String {
+        let trainingZone = TrainingZone(rawValue: zone) ?? .aerobicBase
+        let paceSeconds = trainingPace(zone: trainingZone)
+        let minutes = Int(paceSeconds) / 60
+        let seconds = Int(paceSeconds) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Get seconds per 100m for a zone (for swimSeconds calculation)
+    public func zoneSecondsPer100m(forZone zone: Int) -> Int {
+        let trainingZone = TrainingZone(rawValue: zone) ?? .aerobicBase
+        return Int(trainingPace(zone: trainingZone))
+    }
+}
+
 // MARK: - Training Plan Models
 
 /// A single day's training plan
@@ -1829,5 +1848,131 @@ public nonisolated enum SwimNoteDateFormatting {
 
     public static func todayShort() -> String {
         shortDateFormatter.string(from: Date())
+    }
+}
+
+// MARK: - Technique Measurement Models
+
+/// Hand position during stroke (for drill variations)
+public enum HandPosition: String, Codable, CaseIterable, Sendable {
+    case palm  // Open hand - normal swimming
+    case fist  // Closed hand - fist drill
+}
+
+/// A technique efficiency measurement taken during practice
+/// Used to track before/after drill improvements
+public nonisolated struct TechniqueMeasurement: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var userId: String
+    public var date: String  // YYYY-MM-DD
+    public var timestamp: String  // ISO8601 with time
+    public var strokeId: StrokeID
+    public var poolLength: Int  // 25 or 50
+    public var distanceUnit: DistanceUnit  // meters or yards
+    public var strokeCount: Int  // Strokes per lap
+    public var lapTime: TimeInterval  // Seconds
+    public var glideTime: TimeInterval?  // Streamline hold seconds after push-off
+    public var handPosition: HandPosition?
+    public var kickPerStroke: Int?  // Nil = no-kick drill, values 1-6
+    public var effortZone: Int  // 0-6 matching TrainingZone
+    public var drillContext: String?  // e.g., "before catch drill", "after single-arm"
+    public var notes: String?
+    public var createdAt: String
+    public var updatedAt: String
+
+    public init(
+        id: String = UUID().uuidString,
+        userId: String,
+        date: String = SwimNoteDateFormatting.todayShort(),
+        timestamp: String = SwimNoteDateFormatting.string(from: Date()),
+        strokeId: StrokeID,
+        poolLength: Int = 25,
+        distanceUnit: DistanceUnit = .meters,
+        strokeCount: Int,
+        lapTime: TimeInterval,
+        glideTime: TimeInterval? = nil,
+        handPosition: HandPosition? = nil,
+        kickPerStroke: Int? = nil,
+        effortZone: Int,
+        drillContext: String? = nil,
+        notes: String? = nil,
+        createdAt: String = SwimNoteDateFormatting.string(from: Date()),
+        updatedAt: String = SwimNoteDateFormatting.string(from: Date())
+    ) {
+        self.id = id
+        self.userId = userId
+        self.date = date
+        self.timestamp = timestamp
+        self.strokeId = strokeId
+        self.poolLength = poolLength
+        self.distanceUnit = distanceUnit
+        self.strokeCount = strokeCount
+        self.lapTime = lapTime
+        self.glideTime = glideTime
+        self.handPosition = handPosition
+        self.kickPerStroke = kickPerStroke
+        self.effortZone = effortZone
+        self.drillContext = drillContext
+        self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// Pool length display label
+    public var poolLengthLabel: String {
+        let unit = distanceUnit == .meters ? "m" : "yd"
+        return "\(poolLength)\(unit)"
+    }
+
+    /// Stroke rate (strokes per minute)
+    public var strokeRate: Double {
+        guard lapTime > 0 else { return 0 }
+        return Double(strokeCount) / lapTime * 60.0
+    }
+
+    /// Distance per stroke (pool length units)
+    public var distancePerStroke: Double {
+        guard strokeCount > 0 else { return 0 }
+        return Double(poolLength) / Double(strokeCount)
+    }
+
+    /// Speed in pool length units per second
+    public var speed: Double {
+        guard lapTime > 0 else { return 0 }
+        return Double(poolLength) / lapTime
+    }
+
+    /// Formatted lap time as MM:SS.HH or SS.HH
+    public var formattedLapTime: String {
+        let minutes = Int(lapTime) / 60
+        let seconds = Int(lapTime) % 60
+        let hundredths = Int((lapTime * 100).truncatingRemainder(dividingBy: 100))
+        if minutes > 0 {
+            return String(format: "%d:%02d.%02d", minutes, seconds, hundredths)
+        } else {
+            return String(format: "%02d.%02d", seconds, hundredths)
+        }
+    }
+
+    /// Effort zone description
+    public var effortZoneDescription: String {
+        switch effortZone {
+        case 0: return "Recovery"
+        case 1: return "Aerobic Base"
+        case 2: return "Aerobic Endurance"
+        case 3: return "Tempo"
+        case 4: return "Lactate Threshold"
+        case 5: return "VO2max"
+        case 6: return "Sprint"
+        default: return "Unknown"
+        }
+    }
+
+    /// Kick per stroke display text
+    public var kickDisplay: String {
+        if kickPerStroke == nil {
+            return "No kick"
+        }
+        return "\(kickPerStroke!)-beat"
     }
 }

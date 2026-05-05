@@ -101,4 +101,26 @@
         <attribute name="isCompleted" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
         <relationship name="weeklyPlan" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="WeeklyTrainingPlan" inverseName="dryLandProgram" inverseEntity="WeeklyTrainingPlan"/>
     </entity>
+    <entity name="TechniqueMeasurement" representedClassName="TechniqueMeasurementEntity" syncable="YES">
+        <attribute name="id" optional="NO" attributeType="String"/>
+        <attribute name="userId" optional="NO" attributeType="String"/>
+        <attribute name="date" optional="NO" attributeType="String"/>
+        <attribute name="timestamp" optional="NO" attributeType="String"/>
+        <attribute name="strokeIdRaw" optional="NO" attributeType="String"/>
+        <attribute name="poolLength" optional="NO" attributeType="Integer 32"/>
+        <attribute name="distanceUnitRaw" optional="NO" attributeType="String"/>
+        <attribute name="strokeCount" optional="NO" attributeType="Integer 32"/>
+        <attribute name="lapTime" optional="NO" attributeType="Double"/>
+        <attribute name="glideTime" optional="YES" attributeType="Double"/>
+        <attribute name="handPositionRaw" optional="YES" attributeType="String"/>
+        <attribute name="kickPerStroke" optional="YES" attributeType="Integer 32"/>
+        <attribute name="effortZone" optional="NO" attributeType="Integer 32"/>
+        <attribute name="drillContext" optional="YES" attributeType="String"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="String"/>
+        <attribute name="updatedAt" optional="NO" attributeType="String"/>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
 </model>

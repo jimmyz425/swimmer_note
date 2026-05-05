@@ -223,6 +223,28 @@ public final class CoreDataPersistenceController: Sendable {
         entity.isCompleted = exercise.isCompleted
         return entity
     }
+
+    public func createTechniqueMeasurementEntity(from measurement: TechniqueMeasurement, in context: NSManagedObjectContext) -> TechniqueMeasurementEntity {
+        let entity = TechniqueMeasurementEntity(context: context)
+        entity.id = measurement.id
+        entity.userId = measurement.userId
+        entity.date = measurement.date
+        entity.timestamp = measurement.timestamp
+        entity.strokeIdRaw = measurement.strokeId.rawValue
+        entity.poolLength = Int32(measurement.poolLength)
+        entity.distanceUnitRaw = measurement.distanceUnit.rawValue
+        entity.strokeCount = Int32(measurement.strokeCount)
+        entity.lapTime = measurement.lapTime
+        entity.glideTime = measurement.glideTime != nil ? NSNumber(value: measurement.glideTime!) : nil
+        entity.handPositionRaw = measurement.handPosition?.rawValue
+        entity.kickPerStroke = measurement.kickPerStroke != nil ? NSNumber(value: Int32(measurement.kickPerStroke!)) : nil
+        entity.effortZone = Int32(measurement.effortZone)
+        entity.drillContext = measurement.drillContext
+        entity.notes = measurement.notes
+        entity.createdAt = measurement.createdAt
+        entity.updatedAt = measurement.updatedAt
+        return entity
+    }
 }
 
 // MARK: - Core Data Repository Implementations
@@ -597,6 +619,112 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
     }
 }
 
+// MARK: - Technique Measurement Repository Protocol
+
+public protocol TechniqueMeasurementRepository: Sendable {
+    func list(for userId: String) async -> [TechniqueMeasurement]
+    func list(for userId: String, date: String) async -> [TechniqueMeasurement]
+    func save(_ measurement: TechniqueMeasurement) async throws
+    func delete(id: String) async throws
+}
+
+// MARK: - Core Data Technique Measurement Repository
+
+public actor CoreDataTechniqueMeasurementRepository: TechniqueMeasurementRepository {
+    private let controller: CoreDataPersistenceController
+
+    public init(controller: CoreDataPersistenceController) {
+        self.controller = controller
+    }
+
+    public func list(for userId: String) async -> [TechniqueMeasurement] {
+        await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TechniqueMeasurementEntity>(entityName: "TechniqueMeasurement")
+            fetchRequest.predicate = NSPredicate(format: "userId == %@", userId)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                return entities.map { $0.toTechniqueMeasurement() }
+            } catch {
+                print("Error fetching measurements: \(error)")
+                return []
+            }
+        }
+    }
+
+    public func list(for userId: String, date: String) async -> [TechniqueMeasurement] {
+        await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TechniqueMeasurementEntity>(entityName: "TechniqueMeasurement")
+            fetchRequest.predicate = NSPredicate(format: "userId == %@ AND date == %@", userId, date)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timestamp", ascending: false)]
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                return entities.map { $0.toTechniqueMeasurement() }
+            } catch {
+                print("Error fetching measurements for date: \(error)")
+                return []
+            }
+        }
+    }
+
+    public func save(_ measurement: TechniqueMeasurement) async throws {
+        try await MainActor.run {
+            let context = controller.viewContext
+
+            // Check if entity exists
+            let fetchRequest = NSFetchRequest<TechniqueMeasurementEntity>(entityName: "TechniqueMeasurement")
+            fetchRequest.predicate = NSPredicate(format: "id == %@", measurement.id)
+            fetchRequest.fetchLimit = 1
+
+            let existingEntity = (try? context.fetch(fetchRequest))?.first
+
+            if let entity = existingEntity {
+                // Update existing
+                entity.strokeIdRaw = measurement.strokeId.rawValue
+                entity.poolLength = Int32(measurement.poolLength)
+                entity.distanceUnitRaw = measurement.distanceUnit.rawValue
+                entity.strokeCount = Int32(measurement.strokeCount)
+                entity.lapTime = measurement.lapTime
+                entity.glideTime = measurement.glideTime != nil ? NSNumber(value: measurement.glideTime!) : nil
+                entity.handPositionRaw = measurement.handPosition?.rawValue
+                entity.kickPerStroke = measurement.kickPerStroke != nil ? NSNumber(value: Int32(measurement.kickPerStroke!)) : nil
+                entity.effortZone = Int32(measurement.effortZone)
+                entity.drillContext = measurement.drillContext
+                entity.notes = measurement.notes
+                entity.updatedAt = measurement.updatedAt
+            } else {
+                // Create new
+                _ = controller.createTechniqueMeasurementEntity(from: measurement, in: context)
+            }
+
+            try context.save()
+        }
+    }
+
+    public func delete(id: String) async throws {
+        try await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TechniqueMeasurementEntity>(entityName: "TechniqueMeasurement")
+            fetchRequest.predicate = NSPredicate(format: "id == %@", id)
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                for entity in entities {
+                    context.delete(entity)
+                }
+                try context.save()
+            } catch {
+                print("Error deleting measurement: \(error)")
+                throw error
+            }
+        }
+    }
+}
+
 #else
 // Fallback implementations when Core Data is not available
 public final class CoreDataPersistenceController: @unchecked Sendable {
@@ -641,6 +769,18 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
         throw SwimNotePersistenceError.cloudKitStoreUnavailable
     }
     public func delete(planId: String, userId: String) async throws {
+        throw SwimNotePersistenceError.cloudKitStoreUnavailable
+    }
+}
+
+public actor CoreDataTechniqueMeasurementRepository: TechniqueMeasurementRepository {
+    public init(controller: CoreDataPersistenceController) {}
+    public func list(for userId: String) async -> [TechniqueMeasurement] { [] }
+    public func list(for userId: String, date: String) async -> [TechniqueMeasurement] { [] }
+    public func save(_ measurement: TechniqueMeasurement) async throws {
+        throw SwimNotePersistenceError.cloudKitStoreUnavailable
+    }
+    public func delete(id: String) async throws {
         throw SwimNotePersistenceError.cloudKitStoreUnavailable
     }
 }
@@ -724,7 +864,7 @@ public struct CoreDataMigration: Sendable {
             let context = controller.viewContext
 
             // Delete all entities
-            let entities = ["UserProfile", "TrainingNote", "Goal", "WeeklyTrainingPlan", "DetailedSession", "DryLandExercisePlan"]
+            let entities = ["UserProfile", "TrainingNote", "Goal", "WeeklyTrainingPlan", "DetailedSession", "DryLandExercisePlan", "TechniqueMeasurement"]
             for entityName in entities {
                 let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
                 let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)

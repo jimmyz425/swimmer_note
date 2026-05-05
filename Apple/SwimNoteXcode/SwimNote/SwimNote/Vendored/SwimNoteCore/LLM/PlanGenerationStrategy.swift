@@ -45,7 +45,6 @@ public struct PlanContext: Sendable {
     public let notes: [TrainingNote]
     public let poolType: PoolType
     public let sessionsPerWeek: Int
-    public let includeDryLand: Bool
     public let strokeBalance: [StrokeBalanceInfo]
     public let goalProgress: GoalProgressInfo
 
@@ -54,7 +53,6 @@ public struct PlanContext: Sendable {
         notes: [TrainingNote],
         poolType: PoolType,
         sessionsPerWeek: Int,
-        includeDryLand: Bool,
         strokeBalance: [StrokeBalanceInfo],
         goalProgress: GoalProgressInfo
     ) {
@@ -62,7 +60,6 @@ public struct PlanContext: Sendable {
         self.notes = notes
         self.poolType = poolType
         self.sessionsPerWeek = sessionsPerWeek
-        self.includeDryLand = includeDryLand
         self.strokeBalance = strokeBalance
         self.goalProgress = goalProgress
     }
@@ -109,8 +106,164 @@ public protocol PlanGenerationStrategy: Sendable {
 
     func buildSystemRole() -> String
     func buildUserPrompt(context: PlanContext) -> String
+    func buildOutlinePrompt(context: PlanContext) -> String  // Phase 1: Rough outline
+    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String  // Phase 2: Detailed session
     func guidanceFiles() -> [String]
     func coachingRules() -> String
+}
+
+// MARK: - Default Two-Phase Implementations
+
+extension PlanGenerationStrategy {
+    /// Default Phase 1 prompt - rough weekly outline
+    public func buildOutlinePrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType)
+    }
+
+    /// Default Phase 2 prompt - detailed session for one outline
+    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String {
+        return buildDefaultDetailPrompt(sessionOutline, context: context)
+    }
+}
+
+// MARK: - Phase 1: Outline Prompt Builder
+
+/// Build default Phase 1 outline prompt with pre-gathered data
+private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanType) -> String {
+    let weeklyTotal: Int
+    if let profile = context.profile {
+        weeklyTotal = weeklyDistanceTarget(
+            tier: profile.trainingTier,
+            subTier: profile.subTier,
+            sessionsPerWeek: context.sessionsPerWeek,
+            poolType: context.poolType
+        )
+    } else {
+        weeklyTotal = weeklyDistanceTarget(
+            skillLevel: .intermediate,
+            sessionsPerWeek: context.sessionsPerWeek,
+            poolType: context.poolType
+        )
+    }
+    let perSessionTarget = weeklyTotal / max(context.sessionsPerWeek, 1)
+
+    var prompt = """
+    Generate a PHASE 1 WEEKLY PLAN OUTLINE for \(planType.rawValue).
+    This is a ROUGH outline - NO detailed sets, just session focuses and structure.
+
+    """
+
+    if let profile = context.profile {
+        prompt += """
+        SWIMMER PROFILE:
+        - Name: \(profile.name), Age: \(profile.age)
+        - Skill Level: \(profile.skillLevel.rawValue)
+        - Training Tier: \(profile.trainingTier.rawValue) \(profile.subTier.rawValue)
+        - Sessions/Week Target: \(profile.weeklySessionTarget)
+
+        """
+    }
+
+    prompt += """
+    WEEKLY TARGETS:
+    - Weekly Total Distance: \(weeklyTotal)m across ALL sessions
+    - Per-Session Target: ~\(perSessionTarget)m
+    - Pool Type: \(context.poolType.shortLabel)
+    - Sessions to Generate: \(context.sessionsPerWeek)
+
+    OUTPUT JSON FORMAT (outline only - NO detailed sets):
+    {
+      "overview": {
+        "weekFocus": "string - main focus for the week"
+      },
+      "pastTrainingSummary": "string - 2-3 sentences summarizing recent training patterns",
+      "planConnectionRationale": "string - how this week's plan builds on past training",
+      "schedule": [
+        {
+          "sessionNumber": 1,
+          "dayOfWeek": "Monday",
+          "poolSession": "string - session name",
+          "focus": "string - main focus description",
+          "sessionType": "string - session type",
+          "techniqueFocus": "string - technique emphasis",
+          "techniqueFileRef": "string - technique file reference",
+          "addressesGoal": "string - which goal this addresses",
+          "estimatedDuration": "~60min",
+          "estimatedDistance": "~\(perSessionTarget)m"
+        }
+      ],
+      "notes": "string - weekly rationale"
+    }
+
+    Generate exactly \(context.sessionsPerWeek) pool session outlines.
+    OUTPUT ONLY JSON (no explanations).
+    """
+    return prompt
+}
+
+// MARK: - Phase 2: Detail Prompt Builder
+
+/// Build default Phase 2 detail prompt for pool sessions only
+private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext) -> String {
+    let cssPace: String
+    if let profile = context.profile, let cssHistory = profile.cssHistory, let latestCSS = cssHistory.latestTest {
+        cssPace = latestCSS.formattedPace
+    } else {
+        cssPace = "NOT TESTED"
+    }
+
+    let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
+
+    let prompt = """
+    Generate PHASE 2 DETAILED SESSION for session #\(sessionOutline.sessionNumber).
+
+    SESSION CONTEXT:
+    - Session focus: \(sessionOutline.poolSession) - \(sessionOutline.focus)
+    - Technique focus: \(sessionOutline.techniqueFocus ?? "general")
+    - Estimated distance: \(sessionOutline.estimatedDistance ?? "~3000m")
+
+    SWIMMER CONTEXT:
+    - Skill Level: \(skillLevel)
+    - Pool Type: \(context.poolType.shortLabel)
+    - CSS Pace: \(cssPace)/100m
+
+    OUTPUT JSON FORMAT (detailed session with sets - NO dry-land):
+    {
+      "sessionNumber": \(sessionOutline.sessionNumber),
+      "focus": "\(sessionOutline.focus)",
+      "techniqueFocus": "\(sessionOutline.techniqueFocus ?? "general")",
+      "warmUp": {
+        "sets": [
+          {"repeatCount": 4, "distancePerRep": 100, "swimSeconds": 120, "item": "easy freestyle", "zone": 1, "restSeconds": 15}
+        ],
+        "zone": 1
+      },
+      "drillSet": {
+        "sets": [
+          {"repeatCount": 3, "distancePerRep": 50, "swimSeconds": 60, "item": "drill", "zone": 2, "restSeconds": 12}
+        ],
+        "zone": 2
+      },
+      "mainSet": {
+        "sets": [
+          {"repeatCount": 8, "distancePerRep": 100, "swimSeconds": 85, "item": "freestyle tempo", "zone": 3, "restSeconds": 10}
+        ],
+        "zone": 3
+      },
+      "coolDown": {
+        "sets": [
+          {"repeatCount": 2, "distancePerRep": 100, "swimSeconds": 120, "item": "easy mixed", "zone": 0, "restSeconds": 30}
+        ],
+        "zone": 0
+      },
+      "sessionNotes": "string - coaching tips for this session",
+      "progressionRationale": "string - why this progression"
+    }
+
+    NOTE: Dry-land is generated separately in Phase 1 (dryLandProgram), not in each pool session.
+    OUTPUT ONLY JSON (no explanations).
+    """
+    return prompt
 }
 
 // MARK: - Strategy Factory
@@ -464,92 +617,89 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         }
 
         // Settings
-        prompt += "SETTINGS: Pool \(context.poolType.shortLabel), \(context.sessionsPerWeek) sessions, DryLand \(context.includeDryLand ? "Yes" : "No")\n"
+        prompt += "SETTINGS: Pool \(context.poolType.shortLabel), \(context.sessionsPerWeek) sessions\n"
 
         return prompt
     }
 
-    /// Calculate appropriate weekly total distance based on skill level
-    /// Based on swimming-interval-training-research.md volume recommendations
-    private func weeklyDistanceTarget(skillLevel: SkillLevel, sessionsPerWeek: Int, poolType: PoolType) -> Int {
-        // Base weekly totals by skill level (in meters)
-        // From research document Section 2.1 Volume Recommendations:
-        // Beginner: 3-5 km/week (1,500-2,500m per session)
-        // Intermediate: 15-25 km/week (3,000-5,000m per session)
-        // Advanced: 30-50 km/week (5,000-8,000m per session)
-        // Elite: 50-80 km/week (7,000-12,000m per session)
-        let baseWeekly: Int
-        switch skillLevel {
-        case .beginner:
-            baseWeekly = 4000  // ~1,300m per session for 3 sessions (lower end of 3-5km range)
-        case .intermediate:
-            baseWeekly = 12000  // ~4,000m per session for 3 sessions (scaled for recreational club swimmers)
-        case .advanced:
-            baseWeekly = 20000  // ~6,700m per session for 3 sessions (middle of 30-50km range)
-        case .competitive:
-            baseWeekly = 30000  // ~10,000m per session for 3 sessions (between advanced and elite)
-        case .elite:
-            baseWeekly = 40000  // ~13,300m per session for 3 sessions (scaled for national level)
-        }
-
-        // Adjust for pool type (long course = 2x distance for same time)
-        let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
-
-        // Scale by sessions per week (3 sessions is baseline)
-        return adjusted * sessionsPerWeek / 3
     }
 
-    /// Weekly distance based on training tier + sub-tier (more precise)
-    private func weeklyDistanceTarget(tier: TrainingTier, subTier: SubTier, sessionsPerWeek: Int, poolType: PoolType) -> Int {
-        // Base weekly totals from USA Swimming club training structure (in meters)
-        // See usa-swimming-club-training-structure.md for detailed breakdowns
-        let baseWeekly: Int
-        switch tier {
-        case .preCompetitive:
-            switch subTier {
-            case .a: baseWeekly = 1500   // 1-2.5 km/week (Pre-Comp A)
-            case .b: baseWeekly = 3000   // 2-4 km/week (Pre-Comp B)
-            case .c: baseWeekly = 5000   // 3-7 km/week (Pre-Comp C)
-            default: baseWeekly = 3000
-            }
-        case .bronze:
-            switch subTier {
-            case .one: baseWeekly = 6000    // 4.5-7.5 km/week (Bronze 1)
-            case .two: baseWeekly = 10000   // 6-14 km/week (Bronze 2)
-            case .three: baseWeekly = 14000 // 10-18 km/week (Bronze 3)
-            default: baseWeekly = 8000
-            }
-        case .silver:
-            switch subTier {
-            case .one: baseWeekly = 13000   // 10-16 km/week (Silver 1)
-            case .two: baseWeekly = 16000   // 12-20 km/week (Silver 2)
-            case .three: baseWeekly = 21000 // 14-28 km/week (Silver 3)
-            default: baseWeekly = 15000
-            }
-        case .gold:
-            baseWeekly = 32500  // 25-40 km/week
-        case .senior:
-            baseWeekly = 50000  // 40-60 km/week
-        case .national:
-            baseWeekly = 65000  // 50-80+ km/week
-        }
+// MARK: - Weekly Distance Calculation (Shared)
 
-        // Adjust for pool type (long course = 2x distance for same time)
-        let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
-
-        // Scale by sessions per week (use tier-specific baseline)
-        let baselineSessions: Int
-        switch tier {
-        case .preCompetitive: baselineSessions = 2
-        case .bronze: baselineSessions = 3
-        case .silver: baselineSessions = 4
-        case .gold: baselineSessions = 5
-        case .senior: baselineSessions = 6
-        case .national: baselineSessions = 8
-        }
-
-        return adjusted * sessionsPerWeek / baselineSessions
+/// Calculate appropriate weekly total distance based on skill level
+/// Based on swimming-interval-training-research.md volume recommendations
+private func weeklyDistanceTarget(skillLevel: SkillLevel, sessionsPerWeek: Int, poolType: PoolType) -> Int {
+    // Base weekly totals by skill level (in meters)
+    let baseWeekly: Int
+    switch skillLevel {
+    case .beginner:
+        baseWeekly = 4000
+    case .intermediate:
+        baseWeekly = 12000
+    case .advanced:
+        baseWeekly = 20000
+    case .competitive:
+        baseWeekly = 30000
+    case .elite:
+        baseWeekly = 40000
     }
+
+    // Adjust for pool type (long course = 2x distance for same time)
+    let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
+
+    // Scale by sessions per week (3 sessions is baseline)
+    return adjusted * sessionsPerWeek / 3
+}
+
+/// Weekly distance based on training tier + sub-tier (more precise)
+private func weeklyDistanceTarget(tier: TrainingTier, subTier: SubTier, sessionsPerWeek: Int, poolType: PoolType) -> Int {
+    // Base weekly totals from USA Swimming club training structure (in meters)
+    let baseWeekly: Int
+    switch tier {
+    case .preCompetitive:
+        switch subTier {
+        case .a: baseWeekly = 1500
+        case .b: baseWeekly = 3000
+        case .c: baseWeekly = 5000
+        default: baseWeekly = 3000
+        }
+    case .bronze:
+        switch subTier {
+        case .one: baseWeekly = 6000
+        case .two: baseWeekly = 10000
+        case .three: baseWeekly = 14000
+        default: baseWeekly = 8000
+        }
+    case .silver:
+        switch subTier {
+        case .one: baseWeekly = 13000
+        case .two: baseWeekly = 16000
+        case .three: baseWeekly = 21000
+        default: baseWeekly = 15000
+        }
+    case .gold:
+        baseWeekly = 32500
+    case .senior:
+        baseWeekly = 50000
+    case .national:
+        baseWeekly = 65000
+    }
+
+    // Adjust for pool type (long course = 2x distance for same time)
+    let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
+
+    // Scale by sessions per week (use tier-specific baseline)
+    let baselineSessions: Int
+    switch tier {
+    case .preCompetitive: baselineSessions = 2
+    case .bronze: baselineSessions = 3
+    case .silver: baselineSessions = 4
+    case .gold: baselineSessions = 5
+    case .senior: baselineSessions = 6
+    case .national: baselineSessions = 8
+    }
+
+    return adjusted * sessionsPerWeek / baselineSessions
 }
 
 // MARK: - Recovery Strategy

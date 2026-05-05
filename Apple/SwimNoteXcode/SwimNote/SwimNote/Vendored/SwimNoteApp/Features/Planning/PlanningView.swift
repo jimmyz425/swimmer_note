@@ -52,11 +52,17 @@ struct PlanningView: View {
     @State private var selectedHistoryPlan: WeeklyTrainingPlan?
     @State private var isSettingsExpanded: Bool = true
 
+    // Two-phase generation state
+    @State private var planOutline: WeeklyPlanOutline?
+    @State private var isGeneratingOutline: Bool = false
+    @State private var isGeneratingDetails: Bool = false
+    @State private var generatingSessionNumber: Int?
+    @State private var showOutlineReview: Bool = false
+
     // Plan settings
     @State private var poolType: PoolType = .shortCourse
     @State private var sessionsPerWeek: Int = 3
     @State private var planType: PlanType = .mixed
-    @State private var includeDryLand: Bool = true
     @State private var weekStartingDate: Date = nextMonday()
 
     private let llmClient = OpenAIClient()
@@ -80,11 +86,10 @@ struct PlanningView: View {
                         poolType: $poolType,
                         sessionsPerWeek: $sessionsPerWeek,
                         planType: $planType,
-                        includeDryLand: $includeDryLand,
                         weekStartingDate: $weekStartingDate,
-                        isGenerating: isGenerating,
+                        isGenerating: isGeneratingOutline,
                         onToggle: { isSettingsExpanded.toggle() },
-                        onGenerate: { Task { await generatePlan() } },
+                        onGenerate: { Task { await generateOutline() } },
                         onLoadSample: loadSamplePlan
                     )
 
@@ -92,6 +97,12 @@ struct PlanningView: View {
                         errorSection
                     }
 
+                    // Phase 1: Outline Review
+                    if let outline = planOutline, parsedPlan == nil {
+                        outlineReviewSection(outline)
+                    }
+
+                    // Phase 2: Full Plan (after all details generated)
                     if generatedPlan != nil {
                         resultSection
                     }
@@ -118,6 +129,7 @@ struct PlanningView: View {
                     parsedPlan = plan
                     expandedSessions.insert(1) // Expand first session
                     savedStatus = nil // Reset save status
+                    planOutline = nil // Clear outline when loading history
                 }
             }
         }
@@ -165,6 +177,486 @@ struct PlanningView: View {
             }
             .poolCard()
         }
+    }
+
+    // MARK: - Phase 1: Outline Review Section
+
+    @ViewBuilder
+    private func outlineReviewSection(_ outline: WeeklyPlanOutline) -> some View {
+        VStack(alignment: .leading, spacing: 20) {
+            // Phase indicator
+            phaseIndicator(phase: 1, title: "Weekly Outline Review")
+
+            // Overview card
+            outlineOverviewCard(outline)
+
+            // Session outlines
+            sessionOutlinesGrid(outline)
+
+            // Generate All Details button
+            generateAllDetailsButton(outline)
+        }
+    }
+
+    private func phaseIndicator(phase: Int, title: String) -> some View {
+        HStack(spacing: 8) {
+            Text("Phase \(phase)")
+                .font(.caption.bold())
+                .foregroundStyle(PoolTheme.mid)
+                .padding(.horizontal, 8)
+                .padding(.vertical, 4)
+                .background(PoolTheme.mid.opacity(0.15))
+                .cornerRadius(6)
+
+            Text(title)
+                .font(.headline)
+                .foregroundStyle(PoolTheme.deep)
+
+            Spacer()
+
+            if phase == 1 {
+                Text("Review before generating details")
+                    .font(.caption)
+                    .foregroundStyle(PoolTheme.smoke)
+            }
+        }
+    }
+
+    private func outlineOverviewCard(_ outline: WeeklyPlanOutline) -> some View {
+        VStack(alignment: .leading, spacing: 16) {
+            // Week Focus Banner
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Week Focus")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(outline.overview.weekFocus)
+                        .font(.title3.bold())
+                        .foregroundStyle(PoolTheme.mid)
+                }
+
+                Spacer()
+
+                Image(systemName: planType.icon)
+                    .font(.system(size: 28, weight: .light))
+                    .foregroundStyle(PoolTheme.mid.opacity(0.6))
+            }
+            .padding(12)
+            .background(
+                LinearGradient(
+                    colors: [PoolTheme.mid.opacity(0.1), PoolTheme.light.opacity(0.05)],
+                    startPoint: .leading,
+                    endPoint: .trailing
+                )
+            )
+            .cornerRadius(12)
+
+            // Fundamental revisit plan
+            if let revisitPlan = outline.overview.fundamentalRevisitPlan, !revisitPlan.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Fundamentals Revisit", systemImage: "arrow.uturn.backward")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(revisitPlan)
+                        .font(.subheadline)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+
+            // Stroke rotation plan
+            if let rotationPlan = outline.overview.strokeRotationPlan, !rotationPlan.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Stroke Rotation", systemImage: "arrow.triangle.2.circlepath")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(rotationPlan)
+                        .font(.subheadline)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+
+            // Past training summary
+            if let pastSummary = outline.pastTrainingSummary, !pastSummary.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Recent Training", systemImage: "calendar.badge.clock")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(pastSummary)
+                        .font(.subheadline)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+
+            // Plan connection rationale
+            if let rationale = outline.planConnectionRationale, !rationale.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Why This Plan", systemImage: "lightbulb")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(rationale)
+                        .font(.subheadline)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+        }
+        .poolCard()
+    }
+
+    private func sessionOutlinesGrid(_ outline: WeeklyPlanOutline) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Session Outlines")
+                .font(.headline)
+                .foregroundStyle(PoolTheme.deep)
+
+            LazyVStack(spacing: 12) {
+                ForEach(outline.schedule) { session in
+                    SessionOutlineCard(
+                        session: session,
+                        isGenerating: generatingSessionNumber == session.sessionNumber,
+                        onGenerateDetails: {
+                            Task { await generateDetailedSession(for: session, in: outline) }
+                        }
+                    )
+                }
+            }
+        }
+        .poolCard()
+    }
+
+    private func generateAllDetailsButton(_ outline: WeeklyPlanOutline) -> some View {
+        VStack(spacing: 12) {
+            Button {
+                Task { await generateAllDetailedSessions(for: outline) }
+            } label: {
+                HStack(spacing: 8) {
+                    if isGeneratingDetails {
+                        ProgressView()
+                            .tint(.white)
+                    } else {
+                        Image(systemName: "sparkles")
+                    }
+                    Text(isGeneratingDetails ? "Generating All Details..." : "Generate All Session Details")
+                        .font(.headline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(PoolTheme.mid)
+                .foregroundStyle(.white)
+                .cornerRadius(12)
+            }
+            .disabled(isGeneratingDetails || outline.schedule.allSatisfy { $0.isDetailsGenerated })
+
+            Text("Or click \"Generate Details\" on individual sessions above")
+                .font(.caption)
+                .foregroundStyle(PoolTheme.smoke)
+        }
+        .poolCard()
+    }
+
+    // MARK: - Phase 1: Generate Outline
+
+    private func generateOutline() async {
+        guard let config = appModel.llmConfiguration else {
+            errorMessage = "Configure LLM provider in Settings first"
+            return
+        }
+
+        // Load API key from Keychain
+        let apiKey: String
+        do {
+            guard let key = try credentialStore.load(account: config.apiKeyReference) else {
+                errorMessage = "API key not found. Re-save settings in Settings tab."
+                return
+            }
+            apiKey = key
+        } catch {
+            errorMessage = "Could not load API key: \(error.localizedDescription)"
+            return
+        }
+
+        isGeneratingOutline = true
+        errorMessage = nil
+        planOutline = nil
+        parsedPlan = nil
+
+        // Get strategy for selected plan type
+        let strategy = PlanStrategyFactory.strategy(for: planType)
+
+        // Build plan context from swimmer data
+        let planContext = buildPlanContext()
+
+        // Use simpler configuration for outline (no tool calls needed)
+        let outlineConfig: LLMConfiguration
+        do {
+            outlineConfig = try LLMConfiguration(
+                provider: config.provider,
+                apiKeyReference: config.apiKeyReference,
+                baseURL: config.baseURL,
+                modelName: config.modelName,
+                timeoutSeconds: 180,  // 3 minutes for outline (large prompt with pre-gathered data)
+                maxRetries: config.maxRetries
+            )
+        } catch {
+            outlineConfig = config
+        }
+
+        // Direct LLM call (no tools) - pre-gathered data in prompt
+        let llmClient = OpenAIClient()
+
+        do {
+            let request = LLMRequest(
+                systemRole: strategy.buildSystemRole(),
+                prompt: strategy.buildOutlinePrompt(context: planContext)
+            )
+            let rawOutput = try await llmClient.complete(
+                request,
+                configuration: outlineConfig,
+                apiKey: apiKey
+            )
+
+            // Parse outline JSON
+            let outline = try parseOutlineJSON(rawOutput)
+            planOutline = enrichOutlineWithDates(outline: outline, weekStarting: weekStartingDate, poolType: poolType)
+            savedStatus = nil
+        } catch {
+            errorMessage = "Failed to generate outline: \(error.localizedDescription)"
+        }
+
+        isGeneratingOutline = false
+    }
+
+    // MARK: - Phase 2: Generate Detailed Session
+
+    private func generateDetailedSession(for sessionOutline: SessionOutline, in outline: WeeklyPlanOutline) async {
+        guard let config = appModel.llmConfiguration,
+              var currentOutline = planOutline else {
+            errorMessage = "Generate outline first"
+            return
+        }
+
+        // Load API key
+        let apiKey: String
+        do {
+            guard let key = try credentialStore.load(account: config.apiKeyReference) else {
+                errorMessage = "API key not found"
+                return
+            }
+            apiKey = key
+        } catch {
+            errorMessage = "Could not load API key: \(error.localizedDescription)"
+            return
+        }
+
+        generatingSessionNumber = sessionOutline.sessionNumber
+        errorMessage = nil
+
+        let strategy = PlanStrategyFactory.strategy(for: planType)
+        let planContext = buildPlanContext()
+
+        // Use tool calling for Phase 2 (read technique files for drills)
+        let conversation = ToolCallingConversation(
+            configuration: config,
+            apiKey: apiKey,
+            executor: appModel.createToolExecutor()
+        )
+
+        // Tools for Phase 2: technique file reading only (user data already in prompt)
+        let phase2Tools = ResourcesNavigationTools.all
+
+        do {
+            let rawOutput = try await conversation.run(
+                systemRole: strategy.buildSystemRole(),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
+                tools: phase2Tools,
+                maxIterations: 10  // Allow technique file reads
+            )
+
+            // Parse detailed session JSON
+            let detailedSession = try parseDetailedSessionJSON(rawOutput)
+
+            // Update outline with detailed session
+            for i in currentOutline.schedule.indices {
+                if currentOutline.schedule[i].sessionNumber == sessionOutline.sessionNumber {
+                    currentOutline.schedule[i].detailedSession = detailedSession
+                    currentOutline.schedule[i].isDetailsGenerated = true
+                }
+            }
+            planOutline = currentOutline
+
+            // Check if all sessions are generated - convert to full plan
+            if currentOutline.schedule.allSatisfy({ $0.isDetailsGenerated }) {
+                convertOutlineToFullPlan(currentOutline)
+            }
+        } catch LLMServiceError.maxIterationsReached {
+            errorMessage = "Session generation took too long. Try again."
+        } catch {
+            errorMessage = "Failed to generate session #\(sessionOutline.sessionNumber): \(error.localizedDescription)"
+        }
+
+        generatingSessionNumber = nil
+    }
+
+    private func generateAllDetailedSessions(for outline: WeeklyPlanOutline) async {
+        isGeneratingDetails = true
+        errorMessage = nil
+
+        for session in outline.schedule where !session.isDetailsGenerated {
+            await generateDetailedSession(for: session, in: outline)
+            // Small delay to avoid rate limiting
+            try? await Task.sleep(for: .milliseconds(500))
+        }
+
+        isGeneratingDetails = false
+    }
+
+    // MARK: - JSON Parsing Helpers
+
+    private func parseOutlineJSON(_ raw: String) throws -> WeeklyPlanOutline {
+        var jsonString = raw.trimmingCharacters(in: .whitespaces)
+
+        // Remove markdown wrapper
+        if jsonString.hasPrefix("```json") {
+            jsonString = jsonString.dropFirst(7).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasPrefix("```") {
+            jsonString = jsonString.dropFirst(3).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasSuffix("```") {
+            jsonString = String(jsonString.dropLast(3).trimmingCharacters(in: .whitespaces))
+        }
+
+        // Apply same JSON repair as full plan
+        jsonString = repairLLMJSON(jsonString)
+
+        let decoder = JSONDecoder()
+        let data = jsonString.data(using: .utf8) ?? Data()
+
+        do {
+            return try decoder.decode(WeeklyPlanOutline.self, from: data)
+        } catch let decodingError as DecodingError {
+            #if DEBUG
+            print("❌ Outline JSON Decoding Error:")
+            print("Raw JSON (first 500 chars): \(String(jsonString.prefix(500)))")
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                print("Missing key: \(key.stringValue) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch: expected \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .valueNotFound(let type, let context):
+                print("Value not found: \(type) at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            case .dataCorrupted(let context):
+                print("Data corrupted at path: \(context.codingPath.map { $0.stringValue }.joined(separator: "."))")
+            @unknown default:
+                print("Unknown decoding error: \(decodingError)")
+            }
+            #endif
+            throw decodingError
+        }
+    }
+
+    private func parseDetailedSessionJSON(_ raw: String) throws -> DetailedSession {
+        var jsonString = raw.trimmingCharacters(in: .whitespaces)
+
+        // Remove markdown wrapper
+        if jsonString.hasPrefix("```json") {
+            jsonString = jsonString.dropFirst(7).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasPrefix("```") {
+            jsonString = jsonString.dropFirst(3).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasSuffix("```") {
+            jsonString = String(jsonString.dropLast(3).trimmingCharacters(in: .whitespaces))
+        }
+
+        // Repair common issues
+        jsonString = repairLLMJSON(jsonString)
+
+        let decoder = JSONDecoder()
+        let data = jsonString.data(using: .utf8) ?? Data()
+
+        return try decoder.decode(DetailedSession.self, from: data)
+    }
+
+    private func enrichOutlineWithDates(
+        outline: WeeklyPlanOutline,
+        weekStarting: Date,
+        poolType: PoolType
+    ) -> WeeklyPlanOutline {
+        var enriched = outline
+        enriched.weekStartingDate = weekStarting
+        enriched.poolTypeRaw = poolType.rawValue
+
+        // Assign day of week to each session
+        let dayOffsets = dayOffsetsForSessions(count: outline.schedule.count)
+        let calendar = Calendar.current
+
+        for (index, _) in enriched.schedule.enumerated() {
+            if index < dayOffsets.count {
+                let date = calendar.date(byAdding: .day, value: dayOffsets[index], to: weekStarting) ?? weekStarting
+                let weekday = DateFormatter.weekdayShort.string(from: date)
+                enriched.schedule[index].dayOfWeek = weekday
+            }
+        }
+
+        return enriched
+    }
+
+    private func convertOutlineToFullPlan(_ outline: WeeklyPlanOutline) {
+        // Build WeeklyTrainingPlan from outline with all detailed sessions
+        var detailedSessions: [DetailedSession] = []
+        for sessionOutline in outline.schedule {
+            if let detailed = sessionOutline.detailedSession {
+                var session = detailed
+                // Assign date based on session number
+                let dayOffsets = dayOffsetsForSessions(count: outline.schedule.count)
+                let calendar = Calendar.current
+                if sessionOutline.sessionNumber - 1 < dayOffsets.count {
+                    session.scheduledDate = calendar.date(
+                        byAdding: .day,
+                        value: dayOffsets[sessionOutline.sessionNumber - 1],
+                        to: weekStartingDate
+                    )
+                    session.isAssigned = true
+                }
+                detailedSessions.append(session)
+            }
+        }
+
+        let plan = WeeklyTrainingPlan(
+            overview: outline.overview,
+            schedule: outline.schedule.map { s in
+                DaySchedule(
+                    sessionNumber: s.sessionNumber,
+                    poolSession: s.poolSession,
+                    duration: s.estimatedDuration,
+                    focus: s.focus,
+                    dryLand: nil,
+                    sessionType: s.sessionType
+                )
+            },
+            detailedSessions: detailedSessions,
+            dryLandProgram: nil,  // TODO: Add dry land generation
+            weeklyGoals: nil,
+            techniqueProgressPlan: outline.techniqueProgressPlan,
+            notes: outline.notes,
+            weekStartingDate: outline.weekStartingDate,
+            poolTypeRaw: outline.poolTypeRaw
+        )
+
+        // Enrich with computed fields
+        parsedPlan = enrichPlanWithComputedFields(
+            plan: plan,
+            sessionsPerWeek: sessionsPerWeek,
+            poolType: poolType,
+            profile: appModel.activeProfile
+        )
+        generatedPlan = "Generated from outline"  // Placeholder
+        expandedSessions.insert(1)
     }
 
     @ViewBuilder
@@ -742,7 +1234,6 @@ struct PlanningView: View {
             notes: recentNotes,
             poolType: poolType,
             sessionsPerWeek: sessionsPerWeek,
-            includeDryLand: includeDryLand,
             strokeBalance: strokeBalance,
             goalProgress: goalProgress
         )
@@ -1252,7 +1743,6 @@ private struct CollapsibleSettingsCard: View {
     @Binding var poolType: PoolType
     @Binding var sessionsPerWeek: Int
     @Binding var planType: PlanType
-    @Binding var includeDryLand: Bool
     @Binding var weekStartingDate: Date
     let isGenerating: Bool
     let onToggle: () -> Void
@@ -1417,18 +1907,6 @@ private struct CollapsibleSettingsCard: View {
 
                         // Row 4: Dry Land + Week
                         HStack {
-                            Text("Dry Land")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(PoolTheme.smoke)
-                                .tracking(0.5)
-
-                            Toggle("", isOn: $includeDryLand)
-                                .tint(PoolTheme.mid)
-                                .labelsHidden()
-                                .scaleEffect(0.85)
-
-                            Spacer()
-
                             Text("Week")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(PoolTheme.smoke)
@@ -1544,6 +2022,277 @@ func nextMonday() -> Date {
     // weekday: 1=Sunday, 2=Monday, ...
     let daysUntilMonday = weekday == 2 ? 0 : (9 - weekday) // If today is Monday, use today; else find next Monday
     return calendar.date(byAdding: .day, value: daysUntilMonday, to: today) ?? today
+}
+
+// MARK: - Session Outline Card (Phase 1)
+
+private struct SessionOutlineCard: View {
+    let session: SessionOutline
+    let isGenerating: Bool
+    let onGenerateDetails: () -> Void
+
+    @State private var isExpanded: Bool = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            // Header row - clickable to expand if details exist
+            Button {
+                if session.isDetailsGenerated {
+                    withAnimation(.easeInOut(duration: 0.2)) {
+                        isExpanded.toggle()
+                    }
+                }
+            } label: {
+                HStack(alignment: .top) {
+                    // Session number badge
+                    Text("#\(session.sessionNumber)")
+                        .font(.system(size: 14, weight: .bold, design: .rounded))
+                        .foregroundStyle(PoolTheme.mid)
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(PoolTheme.mid.opacity(0.15))
+                        .cornerRadius(6)
+
+                    // Day of week
+                    if let day = session.dayOfWeek {
+                        Text(day)
+                            .font(.caption.bold())
+                            .foregroundStyle(PoolTheme.smoke)
+                    }
+
+                    // Session name
+                    Text(session.poolSession)
+                        .font(.headline)
+                        .foregroundStyle(PoolTheme.deep)
+
+                    Spacer()
+
+                    // Status badge or generate button
+                    if session.isDetailsGenerated {
+                        HStack(spacing: 4) {
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption.bold())
+                            Image(systemName: "checkmark.circle.fill")
+                                .font(.caption)
+                            Text("Details")
+                                .font(.caption.bold())
+                        }
+                        .foregroundStyle(.green)
+                    } else {
+                        Button {
+                            onGenerateDetails()
+                        } label: {
+                            HStack(spacing: 4) {
+                                if isGenerating {
+                                    ProgressView()
+                                        .tint(PoolTheme.mid)
+                                        .scaleEffect(0.7)
+                                } else {
+                                    Image(systemName: "sparkles")
+                                        .font(.caption)
+                                }
+                                Text(isGenerating ? "..." : "Generate")
+                                    .font(.caption.bold())
+                            }
+                            .foregroundStyle(PoolTheme.mid)
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(PoolTheme.mid.opacity(0.1))
+                            .cornerRadius(6)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isGenerating)
+                    }
+                }
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Focus description
+            Text(session.focus)
+                .font(.subheadline)
+                .foregroundStyle(PoolTheme.smoke)
+
+            // Session type badge
+            if let sessionType = session.sessionType {
+                HStack(spacing: 8) {
+                    sessionTypePill(sessionType)
+
+                    if let techFocus = session.techniqueFocus {
+                        techniquePill(techFocus)
+                    }
+                }
+            }
+
+            // Estimated duration/distance
+            HStack(spacing: 12) {
+                if let duration = session.estimatedDuration {
+                    Label(duration, systemImage: "clock")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+
+                if let distance = session.estimatedDistance {
+                    Label(distance, systemImage: "ruler")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+            }
+
+            // Goal addressed
+            if let goal = session.addressesGoal {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Addresses Goal", systemImage: "target")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(goal)
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+
+            // EXPANDED: Show detailed session if generated
+            if isExpanded, let detailed = session.detailedSession {
+                Divider()
+                    .background(PoolTheme.border)
+
+                detailedSessionPreview(detailed)
+            }
+        }
+        .padding(12)
+        .background(PoolTheme.surface)
+        .cornerRadius(10)
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(session.isDetailsGenerated ? Color.green.opacity(0.3) : PoolTheme.border, lineWidth: 1)
+        )
+    }
+
+    // Preview of detailed session sets
+    private func detailedSessionPreview(_ detailed: DetailedSession) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Detailed Session")
+                .font(.subheadline.bold())
+                .foregroundStyle(PoolTheme.mid)
+
+            // Warm-up
+            segmentPreview("Warm-up", detailed.warmUp)
+
+            // Drill Set
+            segmentPreview("Drills", detailed.drillSet)
+
+            // Main Set
+            segmentPreview("Main", detailed.mainSet)
+
+            // Cool-down
+            segmentPreview("Cool-down", detailed.coolDown)
+
+            // Session notes
+            if let notes = detailed.sessionNotes, !notes.isEmpty {
+                VStack(alignment: .leading, spacing: 4) {
+                    Label("Notes", systemImage: "note.text")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    Text(notes)
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.deep)
+                }
+            }
+        }
+    }
+
+    private func segmentPreview(_ title: String, _ segment: SessionSegment) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Text(title)
+                    .font(.caption.bold())
+                    .foregroundStyle(PoolTheme.smoke)
+
+                Text(segment.distance)
+                    .font(.caption)
+                    .foregroundStyle(PoolTheme.deep)
+
+                if let zone = segment.zone {
+                    Text("Z\(zone)")
+                        .font(.caption.bold())
+                        .foregroundStyle(zoneColor(zone))
+                        .padding(.horizontal, 4)
+                        .padding(.vertical, 2)
+                        .background(zoneColor(zone).opacity(0.15))
+                        .cornerRadius(3)
+                }
+            }
+
+            // Show first few sets
+            if let sets = segment.sets {
+                ForEach(sets.prefix(3)) { set in
+                    HStack(spacing: 4) {
+                        Text(set.formatted)
+                            .font(.caption)
+                            .foregroundStyle(PoolTheme.deep)
+                    }
+                }
+                if sets.count > 3 {
+                    Text("+\(sets.count - 3) more sets")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+            } else {
+                Text(segment.description)
+                    .font(.caption)
+                    .foregroundStyle(PoolTheme.deep)
+            }
+        }
+    }
+
+    private func zoneColor(_ zone: Int) -> Color {
+        switch zone {
+        case 0: return .gray
+        case 1: return .green
+        case 2: return .cyan
+        case 3: return .blue
+        case 4: return .orange
+        case 5: return .red
+        case 6: return .purple
+        default: return PoolTheme.smoke
+        }
+    }
+
+    private func sessionTypePill(_ type: String) -> some View {
+        Text(type)
+            .font(.caption.bold())
+            .foregroundStyle(sessionTypeColor(type))
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .background(sessionTypeColor(type).opacity(0.15))
+            .cornerRadius(4)
+    }
+
+    private func sessionTypeColor(_ type: String) -> Color {
+        switch type.lowercased() {
+        case "fundamental revisit": return .orange
+        case "current level": return PoolTheme.mid
+        case "stretch goal": return .purple
+        case "recovery": return .green
+        case "endurance": return .blue
+        case "technique": return PoolTheme.mid
+        case "race prep": return .red
+        case "speed": return .red
+        default: return PoolTheme.smoke
+        }
+    }
+
+    private func techniquePill(_ tech: String) -> some View {
+        Text(tech)
+            .font(.caption)
+            .foregroundStyle(PoolTheme.deep)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 3)
+            .background(PoolTheme.light.opacity(0.2))
+            .cornerRadius(4)
+    }
 }
 
 #Preview("Planning") {

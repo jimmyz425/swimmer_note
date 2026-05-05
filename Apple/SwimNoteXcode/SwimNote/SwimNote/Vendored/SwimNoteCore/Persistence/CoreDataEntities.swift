@@ -132,6 +132,27 @@ public class DryLandExercisePlanEntity: NSManagedObject {
     @NSManaged public var weeklyPlan: WeeklyTrainingPlanEntity?
 }
 
+@objc(TechniqueMeasurementEntity)
+public class TechniqueMeasurementEntity: NSManagedObject {
+    @NSManaged public var id: String
+    @NSManaged public var userId: String
+    @NSManaged public var date: String
+    @NSManaged public var timestamp: String
+    @NSManaged public var strokeIdRaw: String
+    @NSManaged public var poolLength: Int32
+    @NSManaged public var distanceUnitRaw: String
+    @NSManaged public var strokeCount: Int32
+    @NSManaged public var lapTime: Double
+    @NSManaged public var glideTime: NSNumber?  // Use NSNumber for optional scalars
+    @NSManaged public var handPositionRaw: String?
+    @NSManaged public var kickPerStroke: NSNumber?  // Use NSNumber for optional scalars
+    @NSManaged public var effortZone: Int32
+    @NSManaged public var drillContext: String?
+    @NSManaged public var notes: String?
+    @NSManaged public var createdAt: String
+    @NSManaged public var updatedAt: String
+}
+
 // MARK: - Entity to Domain Model Conversion
 
 extension UserProfileEntity {
@@ -418,6 +439,41 @@ extension DryLandExercisePlanEntity {
             // Auto-set isAssigned if scheduledDate exists but isAssigned was stored as false
             isAssigned: isAssigned || (scheduledDate != nil),
             isCompleted: isCompleted
+        )
+    }
+}
+
+extension TechniqueMeasurementEntity {
+    func toTechniqueMeasurement() -> TechniqueMeasurement {
+        let handPosition: HandPosition?
+        if let raw = handPositionRaw {
+            handPosition = HandPosition(rawValue: raw)
+        } else {
+            handPosition = nil
+        }
+
+        // Convert NSNumber? to Swift optional types
+        let glideTimeValue: TimeInterval? = glideTime?.doubleValue
+        let kickPerStrokeValue: Int? = kickPerStroke != nil ? Int(kickPerStroke!.int32Value) : nil
+
+        return TechniqueMeasurement(
+            id: id,
+            userId: userId,
+            date: date,
+            timestamp: timestamp,
+            strokeId: StrokeID(rawValue: strokeIdRaw) ?? .freestyle,
+            poolLength: Int(poolLength),
+            distanceUnit: DistanceUnit(rawValue: distanceUnitRaw) ?? .meters,
+            strokeCount: Int(strokeCount),
+            lapTime: lapTime,
+            glideTime: glideTimeValue,
+            handPosition: handPosition,
+            kickPerStroke: kickPerStrokeValue,
+            effortZone: Int(effortZone),
+            drillContext: drillContext,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt
         )
     }
 }
