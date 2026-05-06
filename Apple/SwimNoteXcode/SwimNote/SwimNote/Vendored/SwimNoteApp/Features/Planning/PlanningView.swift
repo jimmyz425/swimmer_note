@@ -130,6 +130,7 @@ struct PlanningView: View {
                     expandedSessions.insert(1) // Expand first session
                     savedStatus = nil // Reset save status
                     planOutline = nil // Clear outline when loading history
+                    accumulatedDryLand = [] // Clear dry land - plan has its own
                 }
             }
         }
@@ -383,6 +384,7 @@ struct PlanningView: View {
         errorMessage = nil
         planOutline = nil
         parsedPlan = nil
+        accumulatedDryLand = []  // Reset dry land for new plan
 
         // Get strategy for selected plan type
         let strategy = PlanStrategyFactory.strategy(for: planType)
@@ -432,6 +434,9 @@ struct PlanningView: View {
 
     // MARK: - Phase 2: Generate Detailed Session
 
+    // Accumulated dry land exercises from last session (enriched after all sessions generated)
+    @State private var accumulatedDryLand: [MinimalDryLandExercise] = []
+
     private func generateDetailedSession(for sessionOutline: SessionOutline, in outline: WeeklyPlanOutline) async {
         guard let config = appModel.llmConfiguration,
               var currentOutline = planOutline else {
@@ -458,6 +463,9 @@ struct PlanningView: View {
         let strategy = PlanStrategyFactory.strategy(for: planType)
         let planContext = buildPlanContext()
 
+        // Determine if this is the last session (dry land generation happens here)
+        let isLastSession = sessionOutline.sessionNumber == sessionsPerWeek
+
         // Use tool calling for Phase 2 (read technique files for drills)
         let conversation = ToolCallingConversation(
             configuration: config,
@@ -471,13 +479,19 @@ struct PlanningView: View {
         do {
             let rawOutput = try await conversation.run(
                 systemRole: strategy.buildSystemRole(),
-                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext, isLastSession: isLastSession),
                 tools: phase2Tools,
                 maxIterations: 10  // Allow technique file reads
             )
 
             // Parse detailed session JSON
             let detailedSession = try parseDetailedSessionJSON(rawOutput)
+
+            // Parse dry land exercises if this is the last session
+            if isLastSession {
+                let dryLandExercises = parseDryLandFromJSON(rawOutput)
+                accumulatedDryLand = dryLandExercises
+            }
 
             // Update outline with detailed session
             for i in currentOutline.schedule.indices {
@@ -582,6 +596,108 @@ struct PlanningView: View {
         return try decoder.decode(DetailedSession.self, from: data)
     }
 
+    /// Parse dry land exercises from Phase 2 JSON (if present)
+    private func parseDryLandFromJSON(_ raw: String) -> [MinimalDryLandExercise] {
+        var jsonString = raw.trimmingCharacters(in: .whitespaces)
+
+        // Remove markdown wrapper
+        if jsonString.hasPrefix("```json") {
+            jsonString = jsonString.dropFirst(7).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasPrefix("```") {
+            jsonString = jsonString.dropFirst(3).trimmingCharacters(in: .whitespaces)
+        }
+        if jsonString.hasSuffix("```") {
+            jsonString = String(jsonString.dropLast(3).trimmingCharacters(in: .whitespaces))
+        }
+
+        // Repair common issues
+        jsonString = repairLLMJSON(jsonString)
+
+        // Extract dryLandExercises array from JSON
+        guard let data = jsonString.data(using: .utf8),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let dryLandArray = json["dryLandExercises"] as? [[String: Any]] else {
+            return []
+        }
+
+        let decoder = JSONDecoder()
+        var exercises: [MinimalDryLandExercise] = []
+
+        for exerciseJson in dryLandArray {
+            guard let exerciseData = try? JSONSerialization.data(withJSONObject: exerciseJson),
+                  let exercise = try? decoder.decode(MinimalDryLandExercise.self, from: exerciseData) else {
+                continue
+            }
+            exercises.append(exercise)
+        }
+
+        return exercises
+    }
+
+    /// Enrich dry land exercises from markdown files
+    private func enrichDryLandFromMarkdown(_ minimalExercises: [MinimalDryLandExercise]) -> [DryLandExercisePlan] {
+        let contentLoader = BundleContentLoader.bundled()
+        let parser = TechniqueMarkdownParser()
+
+        var enriched: [DryLandExercisePlan] = []
+
+        for minimal in minimalExercises {
+            // Load dry land markdown file
+            let filename = "\(minimal.stroke)-dry-land-training.md"
+            guard let content = try? contentLoader.loadMarkdown(filename: filename) else {
+                // If file not found, use minimal info
+                enriched.append(DryLandExercisePlan(
+                    exercise: minimal.exercise,
+                    setsReps: minimal.setsReps,
+                    focus: nil,
+                    techniqueSupport: nil
+                ))
+                continue
+            }
+
+            // Parse drills using existing parser
+            let parsed = parser.parse(filename: filename, rawContent: content)
+
+            // Find matching drill by name (flexible matching)
+            let matchingDrill = parsed.specificDrills.first { drill in
+                drill.name.lowercased().contains(minimal.exercise.lowercased()) ||
+                minimal.exercise.lowercased().contains(drill.name.lowercased())
+            }
+
+            // Extract focus area from section header
+            let focusArea = extractFocusArea(content, drillName: minimal.exercise)
+
+            // Build DryLandExercisePlan with enriched info
+            enriched.append(DryLandExercisePlan(
+                exercise: minimal.exercise,
+                setsReps: minimal.setsReps,
+                focus: focusArea,
+                techniqueSupport: matchingDrill?.description.components(separatedBy: " | Focus:").first?.trimmingCharacters(in: .whitespaces) ?? nil
+            ))
+        }
+
+        return enriched
+    }
+
+    /// Extract focus area from section header (e.g., "Core & Body Position Drills")
+    private func extractFocusArea(_ content: String, drillName: String) -> String? {
+        let lines = content.split(separator: "\n")
+        var currentSection: String?
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+            if trimmed.hasPrefix("## ") && trimmed.hasSuffix("Drills") {
+                // Extract section name: "## Core & Body Position Drills" -> "Core & Body Position"
+                currentSection = trimmed.dropFirst(3).dropLast(6).trimmingCharacters(in: .whitespaces)
+            }
+            if line.contains(drillName) {
+                return currentSection
+            }
+        }
+        return nil
+    }
+
     private func enrichOutlineWithDates(
         outline: WeeklyPlanOutline,
         weekStarting: Date,
@@ -627,6 +743,10 @@ struct PlanningView: View {
             }
         }
 
+        // Enrich and spread dry land exercises across all 7 days
+        let enrichedDryLand = enrichDryLandFromMarkdown(accumulatedDryLand)
+        let spreadDryLand = spreadDryLandAcrossWeek(enrichedDryLand, weekStarting: weekStartingDate)
+
         let plan = WeeklyTrainingPlan(
             overview: outline.overview,
             schedule: outline.schedule.map { s in
@@ -640,7 +760,7 @@ struct PlanningView: View {
                 )
             },
             detailedSessions: detailedSessions,
-            dryLandProgram: nil,  // TODO: Add dry land generation
+            dryLandProgram: spreadDryLand,  // Dry land enriched from markdown and spread across week
             weeklyGoals: nil,
             techniqueProgressPlan: outline.techniqueProgressPlan,
             notes: outline.notes,
@@ -657,6 +777,26 @@ struct PlanningView: View {
         )
         generatedPlan = "Generated from outline"  // Placeholder
         expandedSessions.insert(1)
+    }
+
+    /// Spread dry land exercises across all 7 days of the week
+    private func spreadDryLandAcrossWeek(_ exercises: [DryLandExercisePlan], weekStarting: Date) -> [DryLandExercisePlan] {
+        var spread = exercises
+        let calendar = Calendar.current
+
+        // Create all 7 days
+        let allDays = (0..<7).map { offset in
+            calendar.date(byAdding: .day, value: offset, to: weekStarting) ?? weekStarting
+        }
+
+        // Distribute exercises across days (cycling if fewer days than exercises)
+        for (index, _) in spread.enumerated() {
+            let dayIndex = index % allDays.count
+            spread[index].scheduledDate = allDays[dayIndex]
+            spread[index].isAssigned = true
+        }
+
+        return spread
     }
 
     @ViewBuilder
@@ -1465,6 +1605,8 @@ struct PlanningView: View {
             parsedPlan = plan
             errorMessage = nil
             savedStatus = nil // Reset save status
+            planOutline = nil // Clear outline
+            accumulatedDryLand = [] // Clear dry land - sample plan has its own
 
             // Expand first session by default
             expandedSessions.insert(1)

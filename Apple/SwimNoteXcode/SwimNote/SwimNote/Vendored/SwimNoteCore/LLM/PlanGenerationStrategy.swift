@@ -107,7 +107,7 @@ public protocol PlanGenerationStrategy: Sendable {
     func buildSystemRole() -> String
     func buildUserPrompt(context: PlanContext) -> String
     func buildOutlinePrompt(context: PlanContext) -> String  // Phase 1: Rough outline
-    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String  // Phase 2: Detailed session
+    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool) -> String  // Phase 2: Detailed session
     func guidanceFiles() -> [String]
     func coachingRules() -> String
 }
@@ -121,8 +121,9 @@ extension PlanGenerationStrategy {
     }
 
     /// Default Phase 2 prompt - detailed session for one outline
-    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String {
-        return buildDefaultDetailPrompt(sessionOutline, context: context)
+    /// isLastSession: when true, appends dry land generation request
+    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool = false) -> String {
+        return buildDefaultDetailPrompt(sessionOutline, context: context, isLastSession: isLastSession)
     }
 }
 
@@ -203,8 +204,9 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
 
 // MARK: - Phase 2: Detail Prompt Builder
 
-/// Build default Phase 2 detail prompt for pool sessions only
-private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext) -> String {
+/// Build default Phase 2 detail prompt for pool sessions
+/// isLastSession: when true, appends dry land generation request to avoid duplicate generation
+private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool) -> String {
     let cssPace: String
     if let profile = context.profile, let cssHistory = profile.cssHistory, let latestCSS = cssHistory.latestTest {
         cssPace = latestCSS.formattedPace
@@ -214,7 +216,7 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
 
     let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
 
-    let prompt = """
+    var prompt = """
     Generate PHASE 2 DETAILED SESSION for session #\(sessionOutline.sessionNumber).
 
     SESSION CONTEXT:
@@ -227,7 +229,7 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
     - Pool Type: \(context.poolType.shortLabel)
     - CSS Pace: \(cssPace)/100m
 
-    OUTPUT JSON FORMAT (detailed session with sets - NO dry-land):
+    OUTPUT JSON FORMAT (detailed session with sets):
     {
       "sessionNumber": \(sessionOutline.sessionNumber),
       "focus": "\(sessionOutline.focus)",
@@ -258,11 +260,35 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
       },
       "sessionNotes": "string - coaching tips for this session",
       "progressionRationale": "string - why this progression"
+    """
+
+    // Add dry land request ONLY for the last session to avoid duplicate generation
+    if isLastSession {
+        prompt += """
+        ,
+
+      // DRY LAND EXERCISES for the week (append ONLY to last session)
+      "dryLandExercises": [
+        {"stroke": "freestyle", "exercise": "Plank Hold", "setsReps": "3x30s"},
+        {"stroke": "freestyle", "exercise": "Medicine Ball Rotational Throws", "setsReps": "3x10"}
+      ]
     }
 
-    NOTE: Dry-land is generated separately in Phase 1 (dryLandProgram), not in each pool session.
+    DRY LAND RULES (for last session only):
+    - Generate 5-7 dry land exercises for the week's technique focus: \(sessionOutline.techniqueFocus ?? "general technique")
+    - Pick exercises from {stroke}-dry-land-training.md files
+    - Include exercises from: Core, Rotation, Shoulder/Arm, Flexibility categories
+    - Output MINIMAL info: stroke, exercise name (exact from markdown), setsReps
+    - App will read detailed instructions from markdown files
+    """
+    } else {
+        prompt += """
+    }
+
     OUTPUT ONLY JSON (no explanations).
     """
+    }
+
     return prompt
 }
 

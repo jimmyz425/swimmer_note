@@ -683,3 +683,29 @@ public nonisolated struct TechniqueProgressPlan: Codable, Hashable, Sendable {
         case continueGoals, achievedGoalsNextLevel, revisitGoals, newGoals, fundamentalRevisitGoals
     }
 }
+
+// MARK: - Minimal Dry Land Exercise (from LLM, enriched from markdown)
+
+/// Minimal dry land info from LLM - app enriches from markdown files
+public nonisolated struct MinimalDryLandExercise: Codable, Hashable, Sendable {
+    public var stroke: String
+    public var exercise: String
+    public var setsReps: String
+
+    public init(stroke: String, exercise: String, setsReps: String) {
+        self.stroke = stroke
+        self.exercise = exercise
+        self.setsReps = setsReps
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        stroke = try container.decodeIfPresent(String.self, forKey: .stroke) ?? "freestyle"
+        exercise = try container.decode(String.self, forKey: .exercise)
+        setsReps = try container.decode(String.self, forKey: .setsReps)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case stroke, exercise, setsReps
+    }
+}
