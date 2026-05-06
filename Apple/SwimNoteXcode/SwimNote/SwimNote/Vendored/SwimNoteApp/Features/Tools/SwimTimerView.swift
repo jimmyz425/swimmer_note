@@ -527,8 +527,8 @@ struct IntervalConfigSheet: View {
     @State private var reps: Int = 8
 
     var body: some View {
-        VStack(spacing: 24) {
-            // Header
+        VStack(spacing: 0) {
+            // Fixed header with buttons
             HStack {
                 Button("Cancel") {
                     dismiss()
@@ -550,139 +550,141 @@ struct IntervalConfigSheet: View {
                 }
                 .foregroundStyle(PoolTheme.mid)
             }
-            .padding(.horizontal)
-            .padding(.top)
-
-            // Work Duration
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Work Duration")
-                    .font(.subheadline)
-                    .foregroundStyle(PoolTheme.smoke)
-
-                HStack {
-                    Button {
-                        workDuration = max(5, workDuration - 5)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
-                    }
-
-                    Text("\(workDuration) sec")
-                        .font(.title.bold())
-                        .foregroundStyle(PoolTheme.deep)
-                        .frame(minWidth: 80)
-
-                    Button {
-                        workDuration = min(300, workDuration + 5)
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
             .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
+            .background(PoolTheme.surface)
 
-            // Rest Duration
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Rest Duration")
-                    .font(.subheadline)
-                    .foregroundStyle(PoolTheme.smoke)
+            ScrollView {
+                VStack(spacing: 16) {
+                    // Work Duration
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Work Duration")
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.smoke)
 
-                HStack {
-                    Button {
-                        restDuration = max(5, restDuration - 5)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
+                        HStack {
+                            Button {
+                                workDuration = max(5, workDuration - 5)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+
+                            Text("\(workDuration) sec")
+                                .font(.title.bold())
+                                .foregroundStyle(PoolTheme.deep)
+                                .frame(minWidth: 80)
+
+                            Button {
+                                workDuration = min(300, workDuration + 5)
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     }
+                    .padding()
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
 
-                    Text("\(restDuration) sec")
-                        .font(.title.bold())
-                        .foregroundStyle(PoolTheme.deep)
-                        .frame(minWidth: 80)
+                    // Rest Duration
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Rest Duration")
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.smoke)
 
-                    Button {
-                        restDuration = min(120, restDuration + 5)
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
+                        HStack {
+                            Button {
+                                restDuration = max(5, restDuration - 5)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+
+                            Text("\(restDuration) sec")
+                                .font(.title.bold())
+                                .foregroundStyle(PoolTheme.deep)
+                                .frame(minWidth: 80)
+
+                            Button {
+                                restDuration = min(120, restDuration + 5)
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
                     }
+                    .padding()
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Repetitions
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Repetitions")
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.smoke)
+
+                        HStack {
+                            Button {
+                                reps = max(1, reps - 1)
+                            } label: {
+                                Image(systemName: "minus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+
+                            Text("\(reps) rounds")
+                                .font(.title.bold())
+                                .foregroundStyle(PoolTheme.deep)
+                                .frame(minWidth: 80)
+
+                            Button {
+                                reps = min(20, reps + 1)
+                            } label: {
+                                Image(systemName: "plus.circle.fill")
+                                    .font(.title2)
+                                    .foregroundStyle(PoolTheme.mid)
+                            }
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
+
+                    // Summary
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text("Summary")
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.smoke)
+
+                        let totalWork = Double(workDuration) * Double(reps)
+                        let totalRest = Double(restDuration) * Double(reps)
+                        let totalTime = totalWork + totalRest
+
+                        HStack {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text("Work: \(formatDuration(totalWork))")
+                                Text("Rest: \(formatDuration(totalRest))")
+                            }
+                            Spacer()
+                            Text("Total: \(formatDuration(totalTime))")
+                                .font(.headline)
+                                .foregroundStyle(PoolTheme.mid)
+                        }
+                    }
+                    .padding()
+                    .background(.regularMaterial)
+                    .clipShape(RoundedRectangle(cornerRadius: 12))
                 }
-                .frame(maxWidth: .infinity)
+                .padding()
             }
-            .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            // Repetitions
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Repetitions")
-                    .font(.subheadline)
-                    .foregroundStyle(PoolTheme.smoke)
-
-                HStack {
-                    Button {
-                        reps = max(1, reps - 1)
-                    } label: {
-                        Image(systemName: "minus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
-                    }
-
-                    Text("\(reps) rounds")
-                        .font(.title.bold())
-                        .foregroundStyle(PoolTheme.deep)
-                        .frame(minWidth: 80)
-
-                    Button {
-                        reps = min(20, reps + 1)
-                    } label: {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.title2)
-                            .foregroundStyle(PoolTheme.mid)
-                    }
-                }
-                .frame(maxWidth: .infinity)
-            }
-            .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            // Summary
-            VStack(alignment: .leading, spacing: 8) {
-                Text("Summary")
-                    .font(.subheadline)
-                    .foregroundStyle(PoolTheme.smoke)
-
-                let totalWork = Double(workDuration) * Double(reps)
-                let totalRest = Double(restDuration) * Double(reps)
-                let totalTime = totalWork + totalRest
-
-                HStack {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text("Work: \(formatDuration(totalWork))")
-                        Text("Rest: \(formatDuration(totalRest))")
-                    }
-                    Spacer()
-                    Text("Total: \(formatDuration(totalTime))")
-                        .font(.headline)
-                        .foregroundStyle(PoolTheme.mid)
-                }
-            }
-            .padding()
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 12))
-
-            Spacer()
         }
-        .padding()
         .background(PoolTheme.surface)
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
@@ -962,7 +964,7 @@ struct SplitRow: View {
                     // Stroke count and rate
                     if split.strokeCount > 0 {
                         HStack(spacing: 4) {
-                            Image(systemName: "figure.swimming")
+                            Image(systemName: "figure.pool.swim")
                                 .font(.caption)
                                 .foregroundStyle(PoolTheme.gold)
                             Text("\(split.strokeCount)")
@@ -1102,7 +1104,7 @@ struct TimerSessionHistoryRow: View {
                     Label {
                         Text("\(session.totalStrokes) strokes")
                     } icon: {
-                        Image(systemName: "figure.swimming")
+                        Image(systemName: "figure.pool.swim")
                     }
                     .font(.caption)
                     .foregroundStyle(PoolTheme.gold)

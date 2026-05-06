@@ -81,20 +81,22 @@ struct TechniqueMeasurementView: View {
 
             HStack(spacing: 12) {
                 Picker("Stroke", selection: $selectedStroke) {
-                    Text("All").tag(nil as StrokeID?)
+                    Text("All Strokes").tag(nil as StrokeID?)
                     ForEach(strokes, id: \.0) { strokeId, strokeName in
                         Text(strokeName).tag(strokeId as StrokeID?)
                     }
                 }
                 .pickerStyle(.menu)
+                .frame(maxWidth: .infinity)
 
                 Picker("Date", selection: $selectedDate) {
-                    Text("All").tag(nil as String?)
+                    Text("All Dates").tag(nil as String?)
                     ForEach(uniqueDates, id: \.self) { date in
                         Text(formatDate(date)).tag(date as String?)
                     }
                 }
                 .pickerStyle(.menu)
+                .frame(maxWidth: .infinity)
             }
         }
         .poolCard()
