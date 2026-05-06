@@ -17,6 +17,7 @@ public final class SwimNoteAppModel {
     public var trainingPlans: [TrainingPlan] = []
     public var weeklyPlans: [WeeklyTrainingPlan] = []
     public var measurements: [TechniqueMeasurement] = []
+    public var timerSessions: [TimerSession] = []
     public var isInitialized: Bool = false  // Track initialization state
 
     // Cached session lookup for O(1) date-based queries
@@ -28,6 +29,7 @@ public final class SwimNoteAppModel {
     private let planRepository: any TrainingPlanRepository
     private let weeklyPlanRepository: any WeeklyPlanRepository
     private let measurementRepository: any TechniqueMeasurementRepository
+    private let timerSessionRepository: any TimerSessionRepository
     private let contentLoader: BundleContentLoader
     private let llmConfigurationStore = LLMConfigurationStore()
     private var parsedContentCache: [String: ParsedTechniqueContent] = [:]
@@ -39,6 +41,7 @@ public final class SwimNoteAppModel {
         planRepository: any TrainingPlanRepository,
         weeklyPlanRepository: any WeeklyPlanRepository,
         measurementRepository: any TechniqueMeasurementRepository,
+        timerSessionRepository: any TimerSessionRepository,
         contentLoader: BundleContentLoader
     ) {
         self.noteRepository = noteRepository
@@ -46,6 +49,7 @@ public final class SwimNoteAppModel {
         self.planRepository = planRepository
         self.weeklyPlanRepository = weeklyPlanRepository
         self.measurementRepository = measurementRepository
+        self.timerSessionRepository = timerSessionRepository
         self.contentLoader = contentLoader
     }
 
@@ -68,6 +72,7 @@ public final class SwimNoteAppModel {
             planRepository: JSONTrainingPlanRepository(plansDirectory: appSupport.appendingPathComponent("plans")),
             weeklyPlanRepository: CoreDataWeeklyPlanRepository(controller: controller),
             measurementRepository: CoreDataTechniqueMeasurementRepository(controller: controller),
+            timerSessionRepository: CoreDataTimerSessionRepository(controller: controller),
             contentLoader: loader
         )
 
@@ -101,6 +106,7 @@ public final class SwimNoteAppModel {
         if let profile = activeProfile {
             await reloadNotes(userId: profile.id)
             await reloadMeasurements(userId: profile.id)
+            await reloadTimerSessions(userId: profile.id)
             // Note: CSS history is only added when user explicitly does a CSS test
             // No demo data is auto-added
         }
@@ -112,6 +118,7 @@ public final class SwimNoteAppModel {
         try await profileRepository.setActiveProfile(id: profile.id)
         await reloadNotes(userId: profile.id)
         await reloadMeasurements(userId: profile.id)
+        await reloadTimerSessions(userId: profile.id)
     }
 
     public func createProfile(
@@ -267,6 +274,22 @@ public final class SwimNoteAppModel {
         try await measurementRepository.delete(id: id)
         if let userId = activeProfile?.id {
             await reloadMeasurements(userId: userId)
+        }
+    }
+
+    public func reloadTimerSessions(userId: String) async {
+        timerSessions = await timerSessionRepository.list(for: userId)
+    }
+
+    public func saveTimerSession(_ session: TimerSession) async throws {
+        try await timerSessionRepository.save(session)
+        await reloadTimerSessions(userId: session.userId)
+    }
+
+    public func deleteTimerSession(id: String) async throws {
+        try await timerSessionRepository.delete(id: id)
+        if let userId = activeProfile?.id {
+            await reloadTimerSessions(userId: userId)
         }
     }
 

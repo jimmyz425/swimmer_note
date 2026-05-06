@@ -1976,3 +1976,145 @@ public nonisolated struct TechniqueMeasurement: Codable, Hashable, Identifiable,
         return "\(kickPerStroke!)-beat"
     }
 }
+
+// MARK: - Swim Timer Models
+
+/// Single split/lap record for stopwatch timing
+public nonisolated struct TimerSplit: Codable, Hashable, Identifiable, Sendable {
+    public var id: String = UUID().uuidString
+    public var splitNumber: Int
+    public var cumulativeTime: TimeInterval  // Total elapsed at split
+    public var lapTime: TimeInterval         // Duration of this lap
+    public var strokeCount: Int              // Number of strokes in this lap
+    public var timestamp: Date
+
+    public init(
+        splitNumber: Int,
+        cumulativeTime: TimeInterval,
+        lapTime: TimeInterval,
+        strokeCount: Int = 0,
+        timestamp: Date = Date()
+    ) {
+        self.splitNumber = splitNumber
+        self.cumulativeTime = cumulativeTime
+        self.lapTime = lapTime
+        self.strokeCount = strokeCount
+        self.timestamp = timestamp
+    }
+
+    /// Stroke rate (strokes per minute)
+    public var strokeRate: Double {
+        guard lapTime > 0 else { return 0 }
+        return Double(strokeCount) / (lapTime / 60.0)
+    }
+
+    /// Stroke length (meters per stroke) - requires pool length context
+    public func strokeLength(poolLength: Int) -> Double {
+        guard strokeCount > 0 else { return 0 }
+        return Double(poolLength) / Double(strokeCount)
+    }
+
+    public nonisolated func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+        hasher.combine(splitNumber)
+        hasher.combine(cumulativeTime)
+        hasher.combine(lapTime)
+        hasher.combine(strokeCount)
+        hasher.combine(timestamp)
+    }
+
+    public nonisolated static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.id == rhs.id &&
+        lhs.splitNumber == rhs.splitNumber &&
+        lhs.cumulativeTime == rhs.cumulativeTime &&
+        lhs.lapTime == rhs.lapTime &&
+        lhs.strokeCount == rhs.strokeCount &&
+        lhs.timestamp == rhs.timestamp
+    }
+}
+
+/// Saved timer session with workout details
+public nonisolated struct TimerSession: Codable, Hashable, Identifiable, Sendable {
+    public var id: String
+    public var userId: String
+    public var date: String  // YYYY-MM-DD
+    public var strokeId: StrokeID  // freestyle, backstroke, breaststroke, butterfly, im
+    public var poolLength: Int  // 25 or 50
+    public var distanceUnit: DistanceUnit  // meters or yards
+    public var totalDistance: Int  // Total meters/yards swum
+    public var splits: [TimerSplit]
+    public var totalTime: TimeInterval  // Final elapsed time
+    public var notes: String?
+    public var createdAt: String
+    public var updatedAt: String
+
+    public init(
+        id: String = UUID().uuidString,
+        userId: String,
+        date: String = SwimNoteDateFormatting.todayShort(),
+        strokeId: StrokeID,
+        poolLength: Int = 25,
+        distanceUnit: DistanceUnit = .meters,
+        totalDistance: Int,
+        splits: [TimerSplit],
+        totalTime: TimeInterval,
+        notes: String? = nil,
+        createdAt: String = SwimNoteDateFormatting.string(from: Date()),
+        updatedAt: String = SwimNoteDateFormatting.string(from: Date())
+    ) {
+        self.id = id
+        self.userId = userId
+        self.date = date
+        self.strokeId = strokeId
+        self.poolLength = poolLength
+        self.distanceUnit = distanceUnit
+        self.totalDistance = totalDistance
+        self.splits = splits
+        self.totalTime = totalTime
+        self.notes = notes
+        self.createdAt = createdAt
+        self.updatedAt = updatedAt
+    }
+
+    /// Average pace per 100m/yd
+    public var averagePace: TimeInterval {
+        guard totalDistance > 0 else { return 0 }
+        return totalTime / (Double(totalDistance) / 100.0)
+    }
+
+    /// Formatted average pace
+    public var formattedAveragePace: String {
+        let minutes = Int(averagePace) / 60
+        let seconds = Int(averagePace) % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    /// Number of laps (based on pool length and total distance)
+    public var lapCount: Int {
+        guard poolLength > 0 else { return splits.count }
+        return totalDistance / poolLength
+    }
+
+    /// Pool length display label
+    public var poolLengthLabel: String {
+        let unit = distanceUnit == .meters ? "m" : "yd"
+        return "\(poolLength)\(unit)"
+    }
+
+    /// Total strokes across all splits
+    public var totalStrokes: Int {
+        splits.reduce(0) { $0 + $1.strokeCount }
+    }
+
+    /// Average stroke rate (strokes per minute)
+    public var averageStrokeRate: Double {
+        guard totalTime > 0 else { return 0 }
+        return Double(totalStrokes) / (totalTime / 60.0)
+    }
+
+    /// Average stroke length (meters per stroke)
+    public var averageStrokeLength: Double {
+        guard totalStrokes > 0 else { return 0 }
+        return Double(totalDistance) / Double(totalStrokes)
+    }
+}

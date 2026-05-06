@@ -123,4 +123,21 @@
             <constraint value="id"/>
         </uniquenessConstraint>
     </entity>
+    <entity name="TimerSession" representedClassName="TimerSessionEntity" syncable="YES">
+        <attribute name="id" optional="NO" attributeType="String"/>
+        <attribute name="userId" optional="NO" attributeType="String"/>
+        <attribute name="date" optional="NO" attributeType="String"/>
+        <attribute name="strokeIdRaw" optional="NO" attributeType="String"/>
+        <attribute name="poolLength" optional="NO" attributeType="Integer 32"/>
+        <attribute name="distanceUnitRaw" optional="NO" attributeType="String"/>
+        <attribute name="totalDistance" optional="NO" attributeType="Integer 32"/>
+        <attribute name="splitsJSON" optional="NO" attributeType="String"/>
+        <attribute name="totalTime" optional="NO" attributeType="Double"/>
+        <attribute name="notes" optional="YES" attributeType="String"/>
+        <attribute name="createdAt" optional="NO" attributeType="String"/>
+        <attribute name="updatedAt" optional="NO" attributeType="String"/>
+        <uniquenessConstraint>
+            <constraint value="id"/>
+        </uniquenessConstraint>
+    </entity>
 </model>

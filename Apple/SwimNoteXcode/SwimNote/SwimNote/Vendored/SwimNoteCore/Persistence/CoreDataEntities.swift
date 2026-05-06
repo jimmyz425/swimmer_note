@@ -478,4 +478,50 @@ extension TechniqueMeasurementEntity {
     }
 }
 
+// MARK: - Timer Session Entity
+
+@objc(TimerSessionEntity)
+public class TimerSessionEntity: NSManagedObject {
+    @NSManaged public var id: String
+    @NSManaged public var userId: String
+    @NSManaged public var date: String
+    @NSManaged public var strokeIdRaw: String
+    @NSManaged public var poolLength: Int32
+    @NSManaged public var distanceUnitRaw: String
+    @NSManaged public var totalDistance: Int32
+    @NSManaged public var splitsJSON: String
+    @NSManaged public var totalTime: Double
+    @NSManaged public var notes: String?
+    @NSManaged public var createdAt: String
+    @NSManaged public var updatedAt: String
+}
+
+extension TimerSessionEntity {
+    func toTimerSession() throws -> TimerSession {
+        let decoder = SwimNoteJSONDecoder()
+
+        let splits: [TimerSplit]
+        if let data = splitsJSON.data(using: .utf8) {
+            splits = try decoder.decode([TimerSplit].self, from: data)
+        } else {
+            splits = []
+        }
+
+        return TimerSession(
+            id: id,
+            userId: userId,
+            date: date,
+            strokeId: StrokeID(rawValue: strokeIdRaw) ?? .freestyle,
+            poolLength: Int(poolLength),
+            distanceUnit: DistanceUnit(rawValue: distanceUnitRaw) ?? .meters,
+            totalDistance: Int(totalDistance),
+            splits: splits,
+            totalTime: totalTime,
+            notes: notes,
+            createdAt: createdAt,
+            updatedAt: updatedAt
+        )
+    }
+}
+
 #endif

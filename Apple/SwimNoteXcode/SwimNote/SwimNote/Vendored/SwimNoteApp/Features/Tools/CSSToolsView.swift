@@ -110,7 +110,7 @@ struct CSSToolsView: View {
                 showingIntervalCalculator = true
             } label: {
                 HStack(spacing: 12) {
-                    Image(systemName: "calculator")
+                    Image(systemName: "function")
                         .font(.title2)
                         .foregroundStyle(PoolTheme.mid)
                         .frame(width: 32)

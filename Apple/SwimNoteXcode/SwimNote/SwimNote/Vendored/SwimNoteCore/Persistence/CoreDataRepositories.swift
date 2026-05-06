@@ -9,8 +9,8 @@ import CoreData
 @MainActor
 public final class CoreDataPersistenceController: Sendable {
     public let container: NSPersistentContainer
-    private let encoder = SwimNoteJSONEncoder()
-    private let decoder = SwimNoteJSONDecoder()
+    public let encoder = SwimNoteJSONEncoder()
+    public let decoder = SwimNoteJSONDecoder()
 
     public init(modelName: String = "SwimNote", storageURL: URL? = nil) {
         // Load model from bundle - requires SwimNote.xcdatamodeld in Xcode project
@@ -243,6 +243,23 @@ public final class CoreDataPersistenceController: Sendable {
         entity.notes = measurement.notes
         entity.createdAt = measurement.createdAt
         entity.updatedAt = measurement.updatedAt
+        return entity
+    }
+
+    public func createTimerSessionEntity(from session: TimerSession, in context: NSManagedObjectContext) throws -> TimerSessionEntity {
+        let entity = TimerSessionEntity(context: context)
+        entity.id = session.id
+        entity.userId = session.userId
+        entity.date = session.date
+        entity.strokeIdRaw = session.strokeId.rawValue
+        entity.poolLength = Int32(session.poolLength)
+        entity.distanceUnitRaw = session.distanceUnit.rawValue
+        entity.totalDistance = Int32(session.totalDistance)
+        entity.splitsJSON = try encoder.encode(session.splits).utf8String
+        entity.totalTime = session.totalTime
+        entity.notes = session.notes
+        entity.createdAt = session.createdAt
+        entity.updatedAt = session.updatedAt
         return entity
     }
 }
@@ -725,6 +742,108 @@ public actor CoreDataTechniqueMeasurementRepository: TechniqueMeasurementReposit
     }
 }
 
+// MARK: - Timer Session Repository Protocol
+
+public protocol TimerSessionRepository: Sendable {
+    func list(for userId: String) async -> [TimerSession]
+    func list(for userId: String, date: String) async -> [TimerSession]
+    func save(_ session: TimerSession) async throws
+    func delete(id: String) async throws
+}
+
+// MARK: - Core Data Timer Session Repository
+
+public actor CoreDataTimerSessionRepository: TimerSessionRepository {
+    private let controller: CoreDataPersistenceController
+
+    public init(controller: CoreDataPersistenceController) {
+        self.controller = controller
+    }
+
+    public func list(for userId: String) async -> [TimerSession] {
+        await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TimerSessionEntity>(entityName: "TimerSession")
+            fetchRequest.predicate = NSPredicate(format: "userId == %@", userId)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: false)]
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                return entities.compactMap { try? $0.toTimerSession() }
+            } catch {
+                print("Error fetching timer sessions: \(error)")
+                return []
+            }
+        }
+    }
+
+    public func list(for userId: String, date: String) async -> [TimerSession] {
+        await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TimerSessionEntity>(entityName: "TimerSession")
+            fetchRequest.predicate = NSPredicate(format: "userId == %@ AND date == %@", userId, date)
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "createdAt", ascending: false)]
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                return entities.compactMap { try? $0.toTimerSession() }
+            } catch {
+                print("Error fetching timer sessions for date: \(error)")
+                return []
+            }
+        }
+    }
+
+    public func save(_ session: TimerSession) async throws {
+        try await MainActor.run {
+            let context = controller.viewContext
+
+            // Check if entity exists
+            let fetchRequest = NSFetchRequest<TimerSessionEntity>(entityName: "TimerSession")
+            fetchRequest.predicate = NSPredicate(format: "id == %@", session.id)
+            fetchRequest.fetchLimit = 1
+
+            let existingEntity = (try? context.fetch(fetchRequest))?.first
+
+            if let entity = existingEntity {
+                // Update existing
+                entity.strokeIdRaw = session.strokeId.rawValue
+                entity.poolLength = Int32(session.poolLength)
+                entity.distanceUnitRaw = session.distanceUnit.rawValue
+                entity.totalDistance = Int32(session.totalDistance)
+                entity.splitsJSON = try controller.encoder.encode(session.splits).utf8String
+                entity.totalTime = session.totalTime
+                entity.notes = session.notes
+                entity.updatedAt = session.updatedAt
+            } else {
+                // Create new
+                _ = try controller.createTimerSessionEntity(from: session, in: context)
+            }
+
+            try context.save()
+        }
+    }
+
+    public func delete(id: String) async throws {
+        try await MainActor.run {
+            let context = controller.viewContext
+            let fetchRequest = NSFetchRequest<TimerSessionEntity>(entityName: "TimerSession")
+            fetchRequest.predicate = NSPredicate(format: "id == %@", id)
+
+            do {
+                let entities = try context.fetch(fetchRequest)
+                for entity in entities {
+                    context.delete(entity)
+                }
+                try context.save()
+            } catch {
+                print("Error deleting timer session: \(error)")
+                throw error
+            }
+        }
+    }
+}
+
 #else
 // Fallback implementations when Core Data is not available
 public final class CoreDataPersistenceController: @unchecked Sendable {
@@ -778,6 +897,18 @@ public actor CoreDataTechniqueMeasurementRepository: TechniqueMeasurementReposit
     public func list(for userId: String) async -> [TechniqueMeasurement] { [] }
     public func list(for userId: String, date: String) async -> [TechniqueMeasurement] { [] }
     public func save(_ measurement: TechniqueMeasurement) async throws {
+        throw SwimNotePersistenceError.cloudKitStoreUnavailable
+    }
+    public func delete(id: String) async throws {
+        throw SwimNotePersistenceError.cloudKitStoreUnavailable
+    }
+}
+
+public actor CoreDataTimerSessionRepository: TimerSessionRepository {
+    public init(controller: CoreDataPersistenceController) {}
+    public func list(for userId: String) async -> [TimerSession] { [] }
+    public func list(for userId: String, date: String) async -> [TimerSession] { [] }
+    public func save(_ session: TimerSession) async throws {
         throw SwimNotePersistenceError.cloudKitStoreUnavailable
     }
     public func delete(id: String) async throws {

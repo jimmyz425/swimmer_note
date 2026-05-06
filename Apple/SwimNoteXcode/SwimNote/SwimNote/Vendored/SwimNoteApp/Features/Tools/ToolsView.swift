@@ -66,6 +66,17 @@ struct ToolsView: View {
 
     private var toolCardsSection: some View {
         VStack(spacing: 16) {
+            // Swim Timer Card
+            ToolCard(
+                icon: "timer",
+                iconColor: PoolTheme.mid,
+                title: "Swim Timer",
+                subtitle: "Stopwatch with split tracking",
+                badge: nil
+            ) {
+                SwimTimerView(appModel: appModel)
+            }
+
             // Video Review Card
             ToolCard(
                 icon: "video.fill",
