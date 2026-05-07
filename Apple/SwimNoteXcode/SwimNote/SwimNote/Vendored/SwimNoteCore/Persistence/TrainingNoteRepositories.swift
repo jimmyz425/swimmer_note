@@ -7,30 +7,6 @@ public protocol TrainingNoteRepository: Sendable {
     func delete(userId: String, date: String) async throws
 }
 
-public actor InMemoryTrainingNoteRepository: TrainingNoteRepository {
-    private var notesByDate: [String: TrainingNote]
-
-    public init(notes: [TrainingNote] = []) {
-        self.notesByDate = Dictionary(uniqueKeysWithValues: notes.map { ("\($0.userId)_\($0.date)", $0) })
-    }
-
-    public func note(for userId: String, date: String) async -> TrainingNote? {
-        notesByDate["\(userId)_\(date)"]
-    }
-
-    public func listNotes(for userId: String) async -> [TrainingNote] {
-        notesByDate.values.filter { $0.userId == userId }.sorted { $0.date > $1.date }
-    }
-
-    public func save(_ note: TrainingNote) async throws {
-        notesByDate["\(note.userId)_\(note.date)"] = note
-    }
-
-    public func delete(userId: String, date: String) async throws {
-        notesByDate["\(userId)_\(date)"] = nil
-    }
-}
-
 public protocol FileAccessorProviding: Sendable {
     nonisolated func read(from url: URL) throws -> Data
     nonisolated func write(_ data: Data, to url: URL) throws
@@ -161,25 +137,6 @@ public actor JSONTrainingNoteRepository: TrainingNoteRepository {
 public protocol TechniqueTreeRepository: Sendable {
     func tree(for strokeId: StrokeID) async throws -> TechniqueTree
     func save(_ tree: TechniqueTree) async throws
-}
-
-public actor InMemoryTechniqueTreeRepository: TechniqueTreeRepository {
-    private var treesByStroke: [StrokeID: TechniqueTree]
-
-    public init(trees: [TechniqueTree]) {
-        self.treesByStroke = Dictionary(uniqueKeysWithValues: trees.map { ($0.strokeId, $0) })
-    }
-
-    public func tree(for strokeId: StrokeID) async throws -> TechniqueTree {
-        guard let tree = treesByStroke[strokeId] else {
-            throw SwimNotePersistenceError.missingTree(strokeId.rawValue)
-        }
-        return tree
-    }
-
-    public func save(_ tree: TechniqueTree) async throws {
-        treesByStroke[tree.strokeId] = tree
-    }
 }
 
 public enum SwimNotePersistenceError: Error, Equatable, CustomStringConvertible {

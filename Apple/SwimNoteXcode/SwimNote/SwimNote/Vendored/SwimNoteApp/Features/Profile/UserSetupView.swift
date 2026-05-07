@@ -228,7 +228,7 @@ struct UserSetupView: View {
 
         let birthdayString = SwimNoteDateFormatting.shortDateString(from: birthday)
 
-        Task {
+        Task { @MainActor in
             do {
                 _ = try await appModel.createProfile(
                     name: name,
@@ -243,6 +243,7 @@ struct UserSetupView: View {
                 )
                 appModel.showingUserSetup = false
                 isSaving = false
+                dismiss()
             } catch {
                 errorMessage = "Failed to save: \(error.localizedDescription)"
                 isSaving = false

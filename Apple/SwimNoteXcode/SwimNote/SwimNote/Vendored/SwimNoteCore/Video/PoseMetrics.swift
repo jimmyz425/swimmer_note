@@ -46,13 +46,6 @@ public struct PoseFrame: Codable, Hashable, Sendable {
     }
 }
 
-public struct RealtimeRate: Codable, Hashable, Sendable {
-    public var timestamp: Double
-    public var rateHz: Double
-    public var ratePerMinute: Double
-    public var confidence: Double
-}
-
 public struct PoseAnalysisMetrics: Codable, Hashable, Sendable {
     public var strokeRatePerMinute: Double
     public var strokeRateHz: Double
@@ -86,10 +79,6 @@ public struct VideoAnalysisRecord: Codable, Hashable, Identifiable, Sendable {
     public var createdAt: String
     public var metrics: PoseAnalysisMetrics
     public var frames: [PoseFrame]
-}
-
-public protocol PoseAnalyzer: Sendable {
-    func analyze(videoURL: URL, strokeId: StrokeID) async throws -> VideoAnalysisRecord
 }
 
 public struct PoseMetricsAnalyzer: Sendable {

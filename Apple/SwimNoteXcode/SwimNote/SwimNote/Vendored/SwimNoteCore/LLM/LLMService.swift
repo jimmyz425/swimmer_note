@@ -142,10 +142,12 @@ public protocol LLMClient: Sendable {
 public struct LLMResponse: Sendable {
     public var content: String?
     public var toolCalls: [ToolCall]?
+    public var reasoningContent: String?  // DeepSeek V4 thinking mode returns this
 
-    public init(content: String? = nil, toolCalls: [ToolCall]? = nil) {
+    public init(content: String? = nil, toolCalls: [ToolCall]? = nil, reasoningContent: String? = nil) {
         self.content = content
         self.toolCalls = toolCalls
+        self.reasoningContent = reasoningContent
     }
 
     public var hasToolCalls: Bool {
@@ -204,27 +206,33 @@ public struct OpenAIClient: LLMClient, Sendable {
             "max_tokens": 8192  // Increased for long training plan outputs
         ]
 
-        // Note: OpenAI-compatible endpoint does NOT need result_format
-        // Only the native DashScope SDK needs result_format: "message"
+        // Note: response_format json_object can interfere with tool calling, so we don't use it
+        // The prompts explicitly request JSON output format
 
         if let tools = request.tools {
             body["tools"] = tools.map { tool -> [String: Any] in
-                [
+                var functionDict: [String: Any] = [
+                    "name": tool.function.name,
+                    "description": tool.function.description,
+                    "parameters": [
+                        "type": tool.function.parameters.type,
+                        "properties": tool.function.parameters.properties.mapValues { prop -> [String: Any] in
+                            var propDict: [String: Any] = ["type": prop.type]
+                            if let desc = prop.description { propDict["description"] = desc }
+                            if let enumVals = prop.enumValues { propDict["enum"] = enumVals }
+                            return propDict
+                        },
+                        "required": tool.function.parameters.required ?? [],
+                        "additionalProperties": tool.function.parameters.additionalProperties ?? false
+                    ] as [String: Any]
+                ]
+                // DeepSeek V4 strict mode
+                if let strict = tool.function.strict {
+                    functionDict["strict"] = strict
+                }
+                return [
                     "type": tool.type,
-                    "function": [
-                        "name": tool.function.name,
-                        "description": tool.function.description,
-                        "parameters": [
-                            "type": tool.function.parameters.type,
-                            "properties": tool.function.parameters.properties.mapValues { prop -> [String: Any] in
-                                var propDict: [String: Any] = ["type": prop.type]
-                                if let desc = prop.description { propDict["description"] = desc }
-                                if let enumVals = prop.enumValues { propDict["enum"] = enumVals }
-                                return propDict
-                            },
-                            "required": tool.function.parameters.required ?? []
-                        ] as [String: Any]
-                    ]
+                    "function": functionDict
                 ]
             }
         }
@@ -255,6 +263,13 @@ public struct OpenAIClient: LLMClient, Sendable {
 
         llmLog.info("LLM Response status: \(httpResponse.statusCode)")
 
+        // Debug: Log raw response for troubleshooting
+        #if DEBUG
+        if let rawString = String(data: data, encoding: .utf8) {
+            print("🔧 Raw API response (first 500 chars): \(String(rawString.prefix(500)))")
+        }
+        #endif
+
         guard httpResponse.statusCode == 200 else {
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let error = errorJson["error"] as? [String: Any],
@@ -267,6 +282,12 @@ public struct OpenAIClient: LLMClient, Sendable {
                let message = errorJson["message"] as? String {
                 throw LLMServiceError.apiError("\(code): \(message)")
             }
+            // Log response body for non-200 errors
+            #if DEBUG
+            if let rawString = String(data: data, encoding: .utf8) {
+                print("🔧 Error response body: \(rawString)")
+            }
+            #endif
             throw LLMServiceError.httpError(httpResponse.statusCode)
         }
 
@@ -274,6 +295,9 @@ public struct OpenAIClient: LLMClient, Sendable {
               let choices = json["choices"] as? [[String: Any]],
               let firstChoice = choices.first,
               let message = firstChoice["message"] as? [String: Any] else {
+            #if DEBUG
+            print("🔧 Failed to parse response: missing choices or message")
+            #endif
             throw LLMServiceError.invalidResponse
         }
 
@@ -289,29 +313,31 @@ public struct OpenAIClient: LLMClient, Sendable {
                 }
                 return ToolCall(id: id, type: type, function: ToolCallFunction(name: name, arguments: arguments))
             }
+            // Extract reasoning_content for DeepSeek V4 thinking mode round-trip
+            let reasoningContent = message["reasoning_content"] as? String
             #if DEBUG
-            // Log reasoning if present (qwen3.5-plus feature)
-            if let reasoning = message["reasoning_content"] as? String {
+            if let reasoning = reasoningContent {
                 print("🔧 Model reasoning: \(String(reasoning.prefix(200)))")
             }
             #endif
-            return LLMResponse(content: nil, toolCalls: toolCalls)
+            return LLMResponse(content: nil, toolCalls: toolCalls, reasoningContent: reasoningContent)
         }
 
         // Return text content (may be empty string)
         let content = message["content"] as? String
+        let reasoningContent = message["reasoning_content"] as? String
 
         #if DEBUG
         // Log reasoning if present and content is empty
         if content == nil || content?.isEmpty == true {
-            if let reasoning = message["reasoning_content"] as? String {
+            if let reasoning = reasoningContent {
                 print("🔧 Model reasoning (no content): \(String(reasoning.prefix(200)))")
             }
         }
         #endif
 
         // Return response - content may be nil or empty
-        return LLMResponse(content: content, toolCalls: nil)
+        return LLMResponse(content: content, toolCalls: nil, reasoningContent: reasoningContent)
     }
 }
 
@@ -424,56 +450,6 @@ public enum LLMServiceError: Error, Equatable {
     case httpError(Int)
     case apiError(String)
     case maxIterationsReached
-}
-
-public struct CoachingPromptBuilder: Sendable {
-    public init() {}
-
-    public func request(for node: TechniqueTreeNode) -> LLMRequest {
-        let revisitLine = node.revisit ? "Note: This is a fundamental technique to practice regularly." : ""
-        let prompt = """
-        You are an expert swimming coach. A swimmer wants to focus on "\(node.name)".
-
-        Technique: \(node.description)
-        Level: \(node.level) (1=easiest)
-        \(revisitLine)
-
-        Give 3-4 bullet-point tips. Each bullet must be ONE short sentence (max 10 words).
-        Focus on: body position, timing, or common mistake to avoid.
-
-        Output ONLY bullets, no intro/outro. Format:
-        • Tip one
-        • Tip two
-        • Tip three
-        """
-
-        return LLMRequest(systemRole: "expert_swimming_coach", prompt: prompt)
-    }
-}
-
-public struct GoalSuggestionPromptBuilder: Sendable {
-    public init() {}
-
-    public func request(for note: TrainingNote, recentNotes: [TrainingNote]) -> LLMRequest {
-        let history = recentNotes
-            .prefix(7)
-            .map { "\($0.date): \($0.notes)" }
-            .joined(separator: "\n")
-
-        let prompt = """
-        You are an expert swimming coach. Suggest focused training goals.
-
-        Today's notes:
-        \(note.notes.isEmpty ? "No notes yet." : note.notes)
-
-        Recent training:
-        \(history.isEmpty ? "No recent notes." : history)
-
-        Return 3 concise goals with measurable cues.
-        """
-
-        return LLMRequest(systemRole: "expert_swimming_coach", prompt: prompt)
-    }
 }
 
 public protocol SecureCredentialStore: Sendable {

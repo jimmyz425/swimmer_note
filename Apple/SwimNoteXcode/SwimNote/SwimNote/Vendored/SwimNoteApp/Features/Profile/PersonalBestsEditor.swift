@@ -243,7 +243,7 @@ struct PersonalBestsEditor: View {
         updated.profileImageData = profileImageData
         updated.profileIconName = profileIconName
 
-        Task {
+        Task { @MainActor in
             try? await appModel.updateProfile(updated)
             isSaving = false
             dismiss()

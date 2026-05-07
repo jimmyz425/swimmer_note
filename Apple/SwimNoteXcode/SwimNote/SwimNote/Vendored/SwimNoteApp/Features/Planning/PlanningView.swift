@@ -56,12 +56,12 @@ struct PlanningView: View {
     @State private var planOutline: WeeklyPlanOutline?
     @State private var isGeneratingOutline: Bool = false
     @State private var isGeneratingDetails: Bool = false
+    @State private var isGeneratingDryLand: Bool = false
     @State private var generatingSessionNumber: Int?
     @State private var showOutlineReview: Bool = false
 
-    // Plan settings
+    // Plan settings - sessions determined by tier guidance, not user selection
     @State private var poolType: PoolType = .shortCourse
-    @State private var sessionsPerWeek: Int = 3
     @State private var planType: PlanType = .mixed
     @State private var weekStartingDate: Date = nextMonday()
 
@@ -84,9 +84,9 @@ struct PlanningView: View {
                     CollapsibleSettingsCard(
                         isExpanded: isSettingsExpanded,
                         poolType: $poolType,
-                        sessionsPerWeek: $sessionsPerWeek,
                         planType: $planType,
                         weekStartingDate: $weekStartingDate,
+                        skillLevel: appModel.activeProfile?.skillLevel ?? .beginner,
                         isGenerating: isGeneratingOutline,
                         onToggle: { isSettingsExpanded.toggle() },
                         onGenerate: { Task { await generateOutline() } },
@@ -463,9 +463,6 @@ struct PlanningView: View {
         let strategy = PlanStrategyFactory.strategy(for: planType)
         let planContext = buildPlanContext()
 
-        // Determine if this is the last session (dry land generation happens here)
-        let isLastSession = sessionOutline.sessionNumber == sessionsPerWeek
-
         // Use tool calling for Phase 2 (read technique files for drills)
         let conversation = ToolCallingConversation(
             configuration: config,
@@ -479,19 +476,13 @@ struct PlanningView: View {
         do {
             let rawOutput = try await conversation.run(
                 systemRole: strategy.buildSystemRole(),
-                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext, isLastSession: isLastSession),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
                 tools: phase2Tools,
                 maxIterations: 10  // Allow technique file reads
             )
 
             // Parse detailed session JSON
             let detailedSession = try parseDetailedSessionJSON(rawOutput)
-
-            // Parse dry land exercises if this is the last session
-            if isLastSession {
-                let dryLandExercises = parseDryLandFromJSON(rawOutput)
-                accumulatedDryLand = dryLandExercises
-            }
 
             // Update outline with detailed session
             for i in currentOutline.schedule.indices {
@@ -502,8 +493,10 @@ struct PlanningView: View {
             }
             planOutline = currentOutline
 
-            // Check if all sessions are generated - convert to full plan
+            // Check if all sessions are generated - generate dryland then convert to full plan
             if currentOutline.schedule.allSatisfy({ $0.isDetailsGenerated }) {
+                // Phase 3: Generate weekly dryland based on full plan
+                await generateWeeklyDryLand(outline: currentOutline)
                 convertOutlineToFullPlan(currentOutline)
             }
         } catch LLMServiceError.maxIterationsReached {
@@ -513,6 +506,68 @@ struct PlanningView: View {
         }
 
         generatingSessionNumber = nil
+    }
+
+    // MARK: - Phase 3: Weekly Dry Land Generation
+
+    private func generateWeeklyDryLand(outline: WeeklyPlanOutline) async {
+        guard let config = appModel.llmConfiguration else {
+            errorMessage = "No LLM configuration"
+            return
+        }
+
+        let apiKey: String
+        do {
+            guard let key = try credentialStore.load(account: config.apiKeyReference) else {
+                errorMessage = "API key not found"
+                return
+            }
+            apiKey = key
+        } catch {
+            errorMessage = "Could not load API key: \(error.localizedDescription)"
+            return
+        }
+
+        isGeneratingDryLand = true
+        errorMessage = nil
+
+        let strategy = PlanStrategyFactory.strategy(for: planType)
+        let planContext = buildPlanContext()
+
+        // Use simple completion (no tools) for dryland generation
+        let request = LLMRequest(
+            systemRole: strategy.buildSystemRole(),
+            prompt: strategy.buildDryLandPrompt(outline: outline, context: planContext),
+            temperature: 0.2
+        )
+
+        let client = OpenAIClient()
+
+        do {
+            let rawOutput = try await client.complete(request, configuration: config, apiKey: apiKey)
+
+            #if DEBUG
+            print("🔧 Dryland raw output: \(String(rawOutput.prefix(500)))")
+            #endif
+
+            let dryLandExercises = parseDryLandFromJSON(rawOutput)
+
+            #if DEBUG
+            print("🔧 Parsed dryland exercises count: \(dryLandExercises.count)")
+            for exercise in dryLandExercises {
+                print("🔧 Dryland: \(exercise.stroke) - \(exercise.exercise) - \(exercise.setsReps)")
+            }
+            #endif
+
+            accumulatedDryLand = dryLandExercises
+        } catch {
+            errorMessage = "Failed to generate dry land: \(error.localizedDescription)"
+            #if DEBUG
+            print("🔧 Dryland generation error: \(error)")
+            #endif
+        }
+
+        isGeneratingDryLand = false
     }
 
     private func generateAllDetailedSessions(for outline: WeeklyPlanOutline) async {
@@ -614,10 +669,42 @@ struct PlanningView: View {
         // Repair common issues
         jsonString = repairLLMJSON(jsonString)
 
+        #if DEBUG
+        print("🔧 parseDryLandFromJSON - repaired JSON (last 300 chars): \(String(jsonString.suffix(300)))")
+        #endif
+
         // Extract dryLandExercises array from JSON
         guard let data = jsonString.data(using: .utf8),
-              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let dryLandArray = json["dryLandExercises"] as? [[String: Any]] else {
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            #if DEBUG
+            print("🔧 parseDryLandFromJSON - failed to parse JSON object")
+            #endif
+            return []
+        }
+
+        #if DEBUG
+        print("🔧 parseDryLandFromJSON - JSON keys: \(json.keys)")
+        #endif
+
+        guard let dryLandArray = json["dryLandExercises"] as? [[String: Any]] else {
+            #if DEBUG
+            print("🔧 parseDryLandFromJSON - dryLandExercises key not found or not array")
+            // Try alternate key names
+            if let alternate = json["dry_land_exercises"] as? [[String: Any]] {
+                print("🔧 parseDryLandFromJSON - found dry_land_exercises (snake_case)")
+                // Process alternate
+                let decoder = JSONDecoder()
+                var exercises: [MinimalDryLandExercise] = []
+                for exerciseJson in alternate {
+                    guard let exerciseData = try? JSONSerialization.data(withJSONObject: exerciseJson),
+                          let exercise = try? decoder.decode(MinimalDryLandExercise.self, from: exerciseData) else {
+                        continue
+                    }
+                    exercises.append(exercise)
+                }
+                return exercises
+            }
+            #endif
             return []
         }
 
@@ -627,6 +714,9 @@ struct PlanningView: View {
         for exerciseJson in dryLandArray {
             guard let exerciseData = try? JSONSerialization.data(withJSONObject: exerciseJson),
                   let exercise = try? decoder.decode(MinimalDryLandExercise.self, from: exerciseData) else {
+                #if DEBUG
+                print("🔧 parseDryLandFromJSON - failed to decode exercise: \(exerciseJson)")
+                #endif
                 continue
             }
             exercises.append(exercise)
@@ -635,67 +725,118 @@ struct PlanningView: View {
         return exercises
     }
 
-    /// Enrich dry land exercises from markdown files
-    private func enrichDryLandFromMarkdown(_ minimalExercises: [MinimalDryLandExercise]) -> [DryLandExercisePlan] {
-        let contentLoader = BundleContentLoader.bundled()
-        let parser = TechniqueMarkdownParser()
+    // MARK: - Dry Land JSON Models
 
-        var enriched: [DryLandExercisePlan] = []
+    /// JSON structure for unified dry land exercises
+    private struct DryLandExerciseJSON: Codable {
+        let name: String
+        let aliases: [String]?  // Alternative names LLM might use
+        let description: String
+        let strokeFocusPoints: [String: String]  // Stroke-specific focus points
+        let category: String
+        let defaultSetsReps: String
+    }
 
-        for minimal in minimalExercises {
-            // Load dry land markdown file
-            let filename = "\(minimal.stroke)-dry-land-training.md"
-            guard let content = try? contentLoader.loadMarkdown(filename: filename) else {
-                // If file not found, use minimal info
-                enriched.append(DryLandExercisePlan(
+    private struct DryLandTrainingData: Codable {
+        let version: String
+        let exercises: [DryLandExerciseJSON]
+    }
+
+    /// Enrich dry land exercises from unified pre-parsed JSON file
+    private func enrichDryLandFromJSON(_ minimalExercises: [MinimalDryLandExercise]) -> [DryLandExercisePlan] {
+        let decoder = JSONDecoder()
+
+        // Load the unified dry land JSON file once
+        let filename = "dry-land-exercises.json"
+
+        guard let url = Bundle.main.url(forResource: filename, withExtension: nil, subdirectory: "swimming-strokes") ??
+                      Bundle.main.url(forResource: filename, withExtension: nil, subdirectory: "Resources/swimming-strokes") ??
+                      Bundle.main.url(forResource: String(filename.dropLast(5)), withExtension: "json") else {
+            #if DEBUG
+            print("🔧 enrichDryLandJSON - unified file not found: \(filename)")
+            #endif
+            // Return minimal exercises without enrichment
+            return minimalExercises.map { minimal in
+                DryLandExercisePlan(
                     exercise: minimal.exercise,
                     setsReps: minimal.setsReps,
                     focus: nil,
                     techniqueSupport: nil
+                )
+            }
+        }
+
+        guard let data = try? Data(contentsOf: url),
+              let trainingData = try? decoder.decode(DryLandTrainingData.self, from: data) else {
+            #if DEBUG
+            print("🔧 enrichDryLandJSON - failed to decode unified file: \(filename)")
+            #endif
+            return minimalExercises.map { minimal in
+                DryLandExercisePlan(
+                    exercise: minimal.exercise,
+                    setsReps: minimal.setsReps,
+                    focus: nil,
+                    techniqueSupport: nil
+                )
+            }
+        }
+
+        #if DEBUG
+        print("🔧 enrichDryLandJSON - loaded \(trainingData.exercises.count) exercises from unified file")
+        #endif
+
+        var enriched: [DryLandExercisePlan] = []
+
+        for minimal in minimalExercises {
+            let normalizedInput = minimal.exercise.lowercased().trimmingCharacters(in: .whitespaces)
+
+            // Find matching exercise by name or aliases
+            let matchingExercise = trainingData.exercises.first { exercise in
+                // Exact match on name
+                let normalizedName = exercise.name.lowercased().trimmingCharacters(in: .whitespaces)
+                if normalizedName == normalizedInput {
+                    return true
+                }
+
+                // Match on aliases
+                if let aliases = exercise.aliases {
+                    for alias in aliases {
+                        if alias.lowercased().trimmingCharacters(in: .whitespaces) == normalizedInput {
+                            return true
+                        }
+                    }
+                }
+
+                // Substring match (name contains input or vice versa)
+                if normalizedName.contains(normalizedInput) || normalizedInput.contains(normalizedName) {
+                    return true
+                }
+
+                return false
+            }
+
+            #if DEBUG
+            if let match = matchingExercise {
+                print("🔧 enrichDryLandJSON - matched: \(match.name) -> \(minimal.exercise)")
+            } else {
+                print("🔧 enrichDryLandJSON - SKIPPING (no match): \(minimal.exercise)")
+            }
+            #endif
+
+            // Only add matched exercises - skip if no match found
+            if let exercise = matchingExercise {
+                // Get stroke-specific focus points
+                let focusPoints = exercise.strokeFocusPoints[minimal.stroke]
+                enriched.append(DryLandExercisePlan(
+                    exercise: exercise.name,  // Use canonical name, not LLM's input
+                    setsReps: minimal.setsReps,
+                    focus: exercise.category,
+                    techniqueSupport: focusPoints
                 ))
-                continue
             }
-
-            // Parse drills using existing parser
-            let parsed = parser.parse(filename: filename, rawContent: content)
-
-            // Find matching drill by name (flexible matching)
-            let matchingDrill = parsed.specificDrills.first { drill in
-                drill.name.lowercased().contains(minimal.exercise.lowercased()) ||
-                minimal.exercise.lowercased().contains(drill.name.lowercased())
-            }
-
-            // Extract focus area from section header
-            let focusArea = extractFocusArea(content, drillName: minimal.exercise)
-
-            // Build DryLandExercisePlan with enriched info
-            enriched.append(DryLandExercisePlan(
-                exercise: minimal.exercise,
-                setsReps: minimal.setsReps,
-                focus: focusArea,
-                techniqueSupport: matchingDrill?.description.components(separatedBy: " | Focus:").first?.trimmingCharacters(in: .whitespaces) ?? nil
-            ))
         }
 
         return enriched
-    }
-
-    /// Extract focus area from section header (e.g., "Core & Body Position Drills")
-    private func extractFocusArea(_ content: String, drillName: String) -> String? {
-        let lines = content.split(separator: "\n")
-        var currentSection: String?
-
-        for line in lines {
-            let trimmed = line.trimmingCharacters(in: .whitespaces)
-            if trimmed.hasPrefix("## ") && trimmed.hasSuffix("Drills") {
-                // Extract section name: "## Core & Body Position Drills" -> "Core & Body Position"
-                currentSection = trimmed.dropFirst(3).dropLast(6).trimmingCharacters(in: .whitespaces)
-            }
-            if line.contains(drillName) {
-                return currentSection
-            }
-        }
-        return nil
     }
 
     private func enrichOutlineWithDates(
@@ -744,7 +885,7 @@ struct PlanningView: View {
         }
 
         // Enrich and spread dry land exercises across all 7 days
-        let enrichedDryLand = enrichDryLandFromMarkdown(accumulatedDryLand)
+        let enrichedDryLand = enrichDryLandFromJSON(accumulatedDryLand)
         let spreadDryLand = spreadDryLandAcrossWeek(enrichedDryLand, weekStarting: weekStartingDate)
 
         let plan = WeeklyTrainingPlan(
@@ -771,7 +912,6 @@ struct PlanningView: View {
         // Enrich with computed fields
         parsedPlan = enrichPlanWithComputedFields(
             plan: plan,
-            sessionsPerWeek: sessionsPerWeek,
             poolType: poolType,
             profile: appModel.activeProfile
         )
@@ -1187,65 +1327,17 @@ struct PlanningView: View {
                 .font(.headline)
                 .foregroundStyle(PoolTheme.deep)
 
-            LazyVGrid(columns: [
-                GridItem(.flexible()),
-                GridItem(.flexible())
-            ], spacing: 12) {
+            VStack(spacing: 8) {
                 ForEach(exercises) { exercise in
-                    dryLandExerciseTile(exercise)
+                    DryLandExerciseRow(
+                        exercise: exercise,
+                        onDateChange: { newDate in updateDryLandDate(exerciseId: exercise.id, date: newDate) },
+                        referenceDate: weekStartingDate
+                    )
                 }
             }
         }
         .poolCard()
-    }
-
-    private func dryLandExerciseTile(_ exercise: DryLandExercisePlan) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            // Exercise name
-            Text(exercise.exercise)
-                .font(.subheadline.bold())
-                .foregroundStyle(PoolTheme.deep)
-                .lineLimit(2)
-
-            // Sets/Reps badge
-            Text(exercise.setsReps)
-                .font(.caption.bold())
-                .foregroundStyle(PoolTheme.mid)
-
-            // Focus area
-            Text(exercise.focus ?? "")
-                .font(.caption)
-                .foregroundStyle(PoolTheme.smoke)
-
-            // Technique support
-            if let support = exercise.techniqueSupport {
-                Text("→ \(support)")
-                    .font(.caption2)
-                    .foregroundStyle(PoolTheme.smoke)
-            }
-
-            // Date picker
-            HStack(spacing: 4) {
-                Image(systemName: "calendar")
-                    .font(.caption2)
-                    .foregroundStyle(PoolTheme.smoke)
-
-                DatePicker(
-                    "",
-                    selection: Binding(
-                        get: { exercise.scheduledDate ?? weekStartingDate },
-                        set: { newDate in updateDryLandDate(exerciseId: exercise.id, date: newDate) }
-                    ),
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-                .scaleEffect(0.85)
-            }
-        }
-        .padding(10)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(PoolTheme.light.opacity(0.2))
-        .cornerRadius(8)
     }
 
     // MARK: - Notes Card
@@ -1349,7 +1441,7 @@ struct PlanningView: View {
 
             generatedPlan = rawOutput
             var plan = try parsePlanJSON(rawOutput)
-            plan = enrichPlanWithComputedFields(plan: plan, sessionsPerWeek: sessionsPerWeek, poolType: poolType, profile: appModel.activeProfile)
+            plan = enrichPlanWithComputedFields(plan: plan, poolType: poolType, profile: appModel.activeProfile)
             parsedPlan = plan
             savedStatus = nil // Reset save status when new plan generated
         } catch LLMServiceError.maxIterationsReached {
@@ -1369,11 +1461,19 @@ struct PlanningView: View {
         // Analyze goal progress
         let goalProgress = analyzeGoalProgressInfo(appModel.notes)
 
+        // Debug: Log context data to verify no leakage
+        #if DEBUG
+        print("[PlanContext] Profile: \(appModel.activeProfile?.id ?? "none")")
+        print("[PlanContext] Notes count: \(recentNotes.count)")
+        let userIds = Set(recentNotes.map { $0.userId })
+        print("[PlanContext] Notes userIds: \(userIds)")
+        #endif
+
+        // sessionsPerWeek = 0 (not determined) - LLM will decide based on tier guidance from USA Swimming structure
         return PlanContext(
             profile: appModel.activeProfile,
             notes: recentNotes,
             poolType: poolType,
-            sessionsPerWeek: sessionsPerWeek,
             strokeBalance: strokeBalance,
             goalProgress: goalProgress
         )
@@ -1601,7 +1701,7 @@ struct PlanningView: View {
             let rawString = String(data: data, encoding: .utf8) ?? ""
             generatedPlan = rawString
             var plan = try parsePlanJSON(rawString)
-            plan = enrichPlanWithComputedFields(plan: plan, sessionsPerWeek: sessionsPerWeek, poolType: poolType, profile: appModel.activeProfile)
+            plan = enrichPlanWithComputedFields(plan: plan, poolType: poolType, profile: appModel.activeProfile)
             parsedPlan = plan
             errorMessage = nil
             savedStatus = nil // Reset save status
@@ -1618,7 +1718,6 @@ struct PlanningView: View {
     /// Populate computed fields that shouldn't come from LLM
     private func enrichPlanWithComputedFields(
         plan: WeeklyTrainingPlan,
-        sessionsPerWeek: Int,
         poolType: PoolType,
         profile: UserProfile?
     ) -> WeeklyTrainingPlan {
@@ -1627,6 +1726,9 @@ struct PlanningView: View {
         // Set week starting date
         enriched.weekStartingDate = weekStartingDate
 
+        // Get actual session count from the plan (LLM determined from tier guidance)
+        let sessionsPerWeek = enriched.detailedSessions.count
+
         // Build swimmer summary from profile
         if let profile = profile {
             let pbs = profile.personalBests
@@ -1634,13 +1736,13 @@ struct PlanningView: View {
                 "PBs: Free \(pbs.freestyle50m ?? 0)s, Back \(pbs.backstroke50m ?? 0)s"
             enriched.overview.swimmerSummary = """
             \(profile.name), Age \(profile.age), \(profile.skillLevel.rawValue.capitalized) level.
-            Target: \(sessionsPerWeek) sessions/week.
+            Target: \(sessionsPerWeek) sessions/week (from tier guidance).
             Strokes: \(profile.preferredStrokes.map { $0.rawValue.capitalized }.joined(separator: ", "))
             \(pbText)
             """
         }
 
-        // Set session count from settings
+        // Set session count from the plan (LLM determined)
         enriched.overview.sessionCount = sessionsPerWeek
 
         // Set pool type from user selection
@@ -1883,13 +1985,22 @@ struct PlanningView: View {
 private struct CollapsibleSettingsCard: View {
     let isExpanded: Bool
     @Binding var poolType: PoolType
-    @Binding var sessionsPerWeek: Int
     @Binding var planType: PlanType
     @Binding var weekStartingDate: Date
+    let skillLevel: SkillLevel  // For filtering plan types
     let isGenerating: Bool
     let onToggle: () -> Void
     let onGenerate: () -> Void
     let onLoadSample: () -> Void
+
+    /// Filter plan types based on skill level - macrocycle phases only for Silver+ (intermediate+)
+    private var availablePlanTypes: [PlanType] {
+        let isSilverOrHigher = skillLevel == .intermediate ||
+                               skillLevel == .advanced ||
+                               skillLevel == .competitive ||
+                               skillLevel == .elite
+        return PlanType.allCases.filter { !$0.requiresAdvancedTier || isSilverOrHigher }
+    }
 
     var body: some View {
         VStack(spacing: 0) {
@@ -1910,10 +2021,10 @@ private struct CollapsibleSettingsCard: View {
                         .font(.system(size: 15, weight: .semibold, design: .rounded))
                         .foregroundStyle(PoolTheme.deep)
 
-                    // Compact summary pills
+                    // Compact summary pills - no sessions pill, LLM determines from tier
                     HStack(spacing: 6) {
                         PoolPill(poolType.shortLabel)
-                        SessionsPill(count: sessionsPerWeek)
+                        TypePill(type: planType.rawValue)
                     }
 
                     Spacer()
@@ -1974,36 +2085,20 @@ private struct CollapsibleSettingsCard: View {
                         Divider()
                             .background(PoolTheme.border)
 
-                        // Row 2: Sessions (full width)
+                        // Note about sessions - LLM determines from tier guidance
                         HStack {
-                            Text("Sessions")
-                                .font(.system(size: 11, weight: .semibold))
-                                .foregroundStyle(PoolTheme.smoke)
-                                .tracking(0.5)
-
-                            Spacer()
-
-                            HStack(spacing: 4) {
-                                ForEach([2, 3, 4, 5, 6], id: \.self) { count in
-                                    Button {
-                                        sessionsPerWeek = count
-                                    } label: {
-                                        Text("\(count)")
-                                            .font(.system(size: 12, weight: .bold, design: .rounded))
-                                            .frame(width: 28, height: 26)
-                                            .background(sessionsPerWeek == count ? PoolTheme.mid : PoolTheme.surface)
-                                            .foregroundStyle(sessionsPerWeek == count ? .white : PoolTheme.deep)
-                                            .cornerRadius(6)
-                                    }
-                                    .buttonStyle(.plain)
-                                }
-                            }
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(PoolTheme.mid)
+                            Text("Sessions determined by tier guidance from USA Swimming structure")
+                                .font(.system(size: 11, weight: .medium))
+                                .foregroundStyle(PoolTheme.smoke.opacity(0.8))
                         }
 
                         Divider()
                             .background(PoolTheme.border)
 
-                        // Row 3: Type (full width)
+                        // Row 2: Type (full width)
                         HStack {
                             Text("Type")
                                 .font(.system(size: 11, weight: .semibold))
@@ -2013,7 +2108,7 @@ private struct CollapsibleSettingsCard: View {
                             Spacer()
 
                             Menu {
-                                ForEach(PlanType.allCases) { type in
+                                ForEach(availablePlanTypes) { type in
                                     Button {
                                         planType = type
                                     } label: {
@@ -2047,7 +2142,7 @@ private struct CollapsibleSettingsCard: View {
                         Divider()
                             .background(PoolTheme.border)
 
-                        // Row 4: Dry Land + Week
+                        // Row 3: Week
                         HStack {
                             Text("Week")
                                 .font(.system(size: 11, weight: .semibold))
@@ -2137,6 +2232,23 @@ private struct PoolPill: View {
             .padding(.vertical, 3)
             .background(PoolTheme.light.opacity(0.25))
             .cornerRadius(5)
+    }
+}
+
+private struct TypePill: View {
+    let type: String
+    init(type: String) { self.type = type }
+
+    var body: some View {
+        Text(type)
+            .font(.system(size: 11, weight: .bold, design: .rounded))
+            .foregroundStyle(PoolTheme.mid)
+            .padding(.horizontal, 7)
+            .padding(.vertical, 3)
+            .background(PoolTheme.light.opacity(0.25))
+            .cornerRadius(5)
+            .lineLimit(1)
+            .truncationMode(.tail)
     }
 }
 
