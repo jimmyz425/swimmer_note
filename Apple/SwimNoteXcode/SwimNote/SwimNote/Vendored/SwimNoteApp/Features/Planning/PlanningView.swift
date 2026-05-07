@@ -133,7 +133,29 @@ struct PlanningView: View {
                     accumulatedDryLand = [] // Clear dry land - plan has its own
                 }
             }
+            // Reset all plan state when profile changes
+            .onChange(of: appModel.activeProfile?.id) { _, _ in
+                resetPlanState()
+            }
         }
+    }
+
+    /// Reset all plan generation state when switching profiles
+    private func resetPlanState() {
+        generatedPlan = nil
+        parsedPlan = nil
+        planOutline = nil
+        accumulatedDryLand = []
+        selectedHistoryPlan = nil
+        errorMessage = nil
+        savedStatus = nil
+        expandedSessions = []
+        isGenerating = false
+        isGeneratingOutline = false
+        isGeneratingDetails = false
+        isGeneratingDryLand = false
+        generatingSessionNumber = nil
+        showOutlineReview = false
     }
 
     private var headerSection: some View {

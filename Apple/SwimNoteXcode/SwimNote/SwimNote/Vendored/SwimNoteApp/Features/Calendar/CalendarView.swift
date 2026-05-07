@@ -132,6 +132,9 @@ struct CalendarView: View {
                         await appModel.reloadNotes(userId: userId)
                     }
                 }
+                // Reset profile-specific UI state
+                selectedSession = nil
+                expandedSession = true
             }
             .onChange(of: appModel.weeklyPlans.count) { _, _ in
                 // Refresh when plans are saved/loaded

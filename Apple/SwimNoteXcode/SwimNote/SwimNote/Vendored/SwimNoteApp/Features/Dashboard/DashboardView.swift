@@ -109,6 +109,14 @@ struct DashboardView: View {
                 Task {
                     note = await appModel.noteForToday()
                 }
+                // Reset UI state for new profile
+                selectedPlan = nil
+                selectedSession = nil
+                expandedGoals = []
+                showingGoalNotes = nil
+                goalNotesText = ""
+                showingSessionNotes = false
+                sessionNotesText = ""
             }
             .overlay {
                 if isLoading {
