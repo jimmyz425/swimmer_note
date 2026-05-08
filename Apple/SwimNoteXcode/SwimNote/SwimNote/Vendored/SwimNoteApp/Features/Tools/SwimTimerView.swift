@@ -273,16 +273,16 @@ struct SwimTimerView: View {
             // Large stroke counter tap zone
             VStack(spacing: 12) {
                 Image(systemName: "hand.tap.fill")
-                    .font(.system(size: 48))
+                    .font(.system(size: 40))
                     .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.mid : PoolTheme.smoke)
 
                 if stopwatchEngine.currentStrokeCount > 0 {
                     Text("\(stopwatchEngine.currentStrokeCount)")
-                        .font(.system(size: 72, weight: .black, design: .monospaced))
+                        .font(.system(size: 56, weight: .black, design: .monospaced))
                         .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
                 } else {
                     Text("STROKE")
-                        .font(.title.bold())
+                        .font(.title2.bold())
                         .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
                 }
 
@@ -293,9 +293,9 @@ struct SwimTimerView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .frame(minHeight: 200)  // Larger tap area
-            .padding(.vertical, 32)
-            .padding(.horizontal, 24)
+            .frame(minHeight: 160)
+            .padding(.vertical, 24)
+            .padding(.horizontal, 20)
             .background(stopwatchEngine.isRunning ? PoolTheme.light.opacity(0.3) : PoolTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .contentShape(RoundedRectangle(cornerRadius: 16))  // Make entire area tappable
