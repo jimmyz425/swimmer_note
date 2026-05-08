@@ -256,45 +256,62 @@ struct SwimTimerView: View {
     // MARK: - Stroke Counter
 
     private var strokeCounterSection: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
             // Instructions
             if stopwatchEngine.isRunning {
-                Text("Tap to count strokes")
+                Text("Tap = stroke, Double-tap = split")
                     .font(.caption)
                     .foregroundStyle(PoolTheme.smoke)
             }
 
             // Large stroke counter tap zone
-            Button {
-                stopwatchEngine.recordStroke()
-            } label: {
-                VStack(spacing: 8) {
-                    Image(systemName: "hand.tap.fill")
-                        .font(.system(size: 32))
-                        .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.mid : PoolTheme.smoke)
+            VStack(spacing: 12) {
+                Image(systemName: "hand.tap.fill")
+                    .font(.system(size: 48))
+                    .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.mid : PoolTheme.smoke)
 
-                    if stopwatchEngine.currentStrokeCount > 0 {
-                        Text("\(stopwatchEngine.currentStrokeCount)")
-                            .font(.system(size: 48, weight: .black, design: .monospaced))
-                            .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
-                    } else {
-                        Text("STROKE")
-                            .font(.headline)
-                            .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
-                    }
-
-                    if stopwatchEngine.currentStrokeRate > 0 && stopwatchEngine.isRunning {
-                        Text("\(stopwatchEngine.formatStrokeRate(stopwatchEngine.currentStrokeRate)) strokes/min")
-                            .font(.caption)
-                            .foregroundStyle(PoolTheme.gold)
-                    }
+                if stopwatchEngine.currentStrokeCount > 0 {
+                    Text("\(stopwatchEngine.currentStrokeCount)")
+                        .font(.system(size: 72, weight: .black, design: .monospaced))
+                        .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
+                } else {
+                    Text("STROKE")
+                        .font(.title.bold())
+                        .foregroundStyle(stopwatchEngine.isRunning ? PoolTheme.deep : PoolTheme.smoke)
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 24)
-                .background(stopwatchEngine.isRunning ? PoolTheme.light.opacity(0.3) : PoolTheme.surface)
-                .clipShape(RoundedRectangle(cornerRadius: 16))
+
+                if stopwatchEngine.currentStrokeRate > 0 && stopwatchEngine.isRunning {
+                    Text("\(stopwatchEngine.formatStrokeRate(stopwatchEngine.currentStrokeRate)) spm")
+                        .font(.subheadline)
+                        .foregroundStyle(PoolTheme.gold)
+                }
+
+                // Hint for split
+                if stopwatchEngine.isRunning {
+                    Text("Double-tap for SPLIT")
+                        .font(.caption2)
+                        .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+                }
             }
-            .buttonStyle(.plain)
+            .frame(maxWidth: .infinity)
+            .frame(minHeight: 200)  // Larger tap area
+            .padding(.vertical, 32)
+            .padding(.horizontal, 24)
+            .background(stopwatchEngine.isRunning ? PoolTheme.light.opacity(0.3) : PoolTheme.surface)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .contentShape(RoundedRectangle(cornerRadius: 16))  // Make entire area tappable
+            .onTapGesture(count: 2) {
+                // Double-tap = split
+                if stopwatchEngine.isRunning {
+                    stopwatchEngine.recordSplit()
+                }
+            }
+            .onTapGesture(count: 1) {
+                // Single tap = stroke (runs after double-tap fails)
+                if stopwatchEngine.isRunning {
+                    stopwatchEngine.recordStroke()
+                }
+            }
             .disabled(!stopwatchEngine.isRunning)
         }
         .poolCard()
@@ -306,7 +323,7 @@ struct SwimTimerView: View {
                 ContentUnavailableView(
                     "No Splits",
                     systemImage: "flag",
-                    description: Text("Tap SPLIT while timing to record lap times.")
+                    description: Text("Double-tap stroke counter or tap SPLIT button to record lap times.")
                 )
                 .frame(height: 150)
             } else {
