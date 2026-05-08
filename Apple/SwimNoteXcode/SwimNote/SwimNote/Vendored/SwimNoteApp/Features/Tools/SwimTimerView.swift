@@ -896,6 +896,58 @@ struct SaveTimerSessionSheet: View {
                     .background(.regularMaterial)
                     .clipShape(RoundedRectangle(cornerRadius: 12))
 
+                    // Split details with stroke metrics
+                    if !engine.splits.isEmpty {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Split Details")
+                                .font(.subheadline)
+                                .foregroundStyle(PoolTheme.smoke)
+
+                            ForEach(engine.splits.reversed()) { split in
+                                HStack(spacing: 8) {
+                                    Text("#\(split.splitNumber)")
+                                        .font(.system(size: 12, weight: .bold))
+                                        .foregroundStyle(.white)
+                                        .frame(width: 24, height: 24)
+                                        .background(PoolTheme.mid)
+                                        .clipShape(Circle())
+
+                                    VStack(alignment: .leading, spacing: 2) {
+                                        Text(engine.formatTime(split.lapTime))
+                                            .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                            .foregroundStyle(PoolTheme.deep)
+
+                                        if split.strokeCount > 0 {
+                                            HStack(spacing: 6) {
+                                                Text("\(split.strokeCount) str")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(PoolTheme.gold)
+
+                                                Text("\(engine.formatStrokeRate(split.strokeRate)) spm")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(PoolTheme.smoke)
+
+                                                // Show estimated stroke length based on pool length
+                                                Text("\(engine.formatStrokeLength(split.strokeLength(poolLength: poolLength))) m/st")
+                                                    .font(.caption2)
+                                                    .foregroundStyle(PoolTheme.smoke)
+                                            }
+                                        }
+                                    }
+
+                                    Spacer()
+                                }
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(PoolTheme.surface.opacity(0.5))
+                                .clipShape(RoundedRectangle(cornerRadius: 8))
+                            }
+                        }
+                        .padding()
+                        .background(.regularMaterial)
+                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                    }
+
                     // Notes
                     VStack(alignment: .leading, spacing: 8) {
                         Text("Notes")
@@ -933,6 +985,7 @@ struct SaveTimerSessionSheet: View {
 struct SplitRow: View {
     let engine: TimerEngine
     let split: TimerSplit
+    var poolLength: Int? = nil  // Optional: for stroke length calculation
 
     var body: some View {
         HStack(spacing: 12) {
@@ -973,6 +1026,13 @@ struct SplitRow: View {
 
                             if split.strokeRate > 0 {
                                 Text("@\(engine.formatStrokeRate(split.strokeRate))spm")
+                                    .font(.caption)
+                                    .foregroundStyle(PoolTheme.smoke)
+                            }
+
+                            // Stroke length if pool length provided
+                            if let poolLength = poolLength, split.strokeCount > 0 {
+                                Text("\(engine.formatStrokeLength(split.strokeLength(poolLength: poolLength)))m/st")
                                     .font(.caption)
                                     .foregroundStyle(PoolTheme.smoke)
                             }
@@ -1058,9 +1118,11 @@ struct TimerHistoryView: View {
 
 struct TimerSessionHistoryRow: View {
     let session: TimerSession
+    @State private var isExpanded: Bool = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
+            // Header row
             HStack {
                 Text(session.strokeId.rawValue.capitalized)
                     .font(.headline)
@@ -1073,6 +1135,7 @@ struct TimerSessionHistoryRow: View {
                     .foregroundStyle(PoolTheme.mid)
             }
 
+            // Summary stats
             HStack(spacing: 16) {
                 Label {
                     Text("\(session.totalDistance) \(session.distanceUnit == .meters ? "m" : "yd")")
@@ -1123,21 +1186,101 @@ struct TimerSessionHistoryRow: View {
                         .foregroundStyle(PoolTheme.mid)
 
                     Spacer()
+
+                    // Expand button if there are splits with strokes
+                    if session.splits.contains(where: { $0.strokeCount > 0 }) {
+                        Button {
+                            withAnimation {
+                                isExpanded.toggle()
+                            }
+                        } label: {
+                            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(PoolTheme.mid)
+                        }
+                        .buttonStyle(.plain)
+                    }
                 }
             }
 
+            // Pool info and date
             Text("\(session.poolLengthLabel) pool • \(session.date)")
                 .font(.caption2)
                 .foregroundStyle(PoolTheme.smoke)
 
+            // Notes
             if let notes = session.notes, !notes.isEmpty {
                 Text(notes)
                     .font(.caption)
                     .foregroundStyle(PoolTheme.smoke)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+
+            // Expanded splits with per-lap stroke metrics
+            if isExpanded && !session.splits.isEmpty {
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("Split Details")
+                        .font(.caption)
+                        .fontWeight(.semibold)
+                        .foregroundStyle(PoolTheme.smoke)
+                        .padding(.top, 4)
+
+                    ForEach(session.splits) { split in
+                        HStack(spacing: 8) {
+                            Text("#\(split.splitNumber)")
+                                .font(.system(size: 12, weight: .bold))
+                                .foregroundStyle(.white)
+                                .frame(width: 24, height: 24)
+                                .background(PoolTheme.mid)
+                                .clipShape(Circle())
+
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text(formatTime(split.lapTime))
+                                    .font(.system(size: 14, weight: .medium, design: .monospaced))
+                                    .foregroundStyle(PoolTheme.deep)
+
+                                if split.strokeCount > 0 {
+                                    HStack(spacing: 6) {
+                                        Text("\(split.strokeCount) str")
+                                            .font(.caption2)
+                                            .foregroundStyle(PoolTheme.gold)
+
+                                        Text("\(String(format: "%.0f", split.strokeRate)) spm")
+                                            .font(.caption2)
+                                            .foregroundStyle(PoolTheme.smoke)
+
+                                        Text("\(String(format: "%.2f", split.strokeLength(poolLength: session.poolLength))) m/st")
+                                            .font(.caption2)
+                                            .foregroundStyle(PoolTheme.smoke)
+                                    }
+                                }
+                            }
+
+                            Spacer()
+
+                            // Best lap indicator
+                            if isBestLap(session: session, split: split) {
+                                Image(systemName: "star.fill")
+                                    .font(.system(size: 12))
+                                    .foregroundStyle(PoolTheme.gold)
+                            }
+                        }
+                        .padding(.horizontal, 8)
+                        .padding(.vertical, 4)
+                        .background(PoolTheme.surface.opacity(0.5))
+                        .clipShape(RoundedRectangle(cornerRadius: 8))
+                    }
+                }
+                .padding(.top, 4)
+            }
         }
         .padding(.vertical, 8)
+    }
+
+    private func isBestLap(session: TimerSession, split: TimerSplit) -> Bool {
+        guard session.splits.count > 1 else { return false }
+        let minLapTime = session.splits.map { $0.lapTime }.min()
+        return split.lapTime == minLapTime
     }
 
     private func formatTime(_ time: TimeInterval) -> String {

@@ -80,10 +80,24 @@ class TimerEngine: NSObject {
         timer?.tolerance = 0
     }
 
-    /// Stop/pause the timer
+    /// Stop/pause the timer - records final split if there's unrecorded time
     func stop() {
         guard isRunning else { return }
         isRunning = false
+
+        // Record final split if there's unrecorded time after last split
+        if currentLapTime > 0 || currentStrokeCount > 0 {
+            let lapTime = splits.isEmpty ? elapsedTime : elapsedTime - splits.last!.cumulativeTime
+            let split = TimerSplit(
+                splitNumber: splits.count + 1,
+                cumulativeTime: elapsedTime,
+                lapTime: lapTime,
+                strokeCount: currentStrokeCount,
+                timestamp: Date()
+            )
+            splits.append(split)
+            currentStrokeCount = 0
+        }
 
         // Save elapsed time for resume
         accumulatedTime = elapsedTime
