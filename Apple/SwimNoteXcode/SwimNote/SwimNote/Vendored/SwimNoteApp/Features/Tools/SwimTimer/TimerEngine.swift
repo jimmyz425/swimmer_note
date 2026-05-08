@@ -1,5 +1,6 @@
 import SwiftUI
 import AVFAudio
+import UIKit
 
 /// Observable timer engine for stopwatch functionality
 /// Supports start/stop, split recording, stroke counting, and reset
@@ -60,6 +61,9 @@ class TimerEngine: NSObject {
 
     private var timer: Timer?
     private var accumulatedTime: TimeInterval = 0  // Time before current run
+    private let strokeHaptic = UIImpactFeedbackGenerator(style: .light)
+    private let splitHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let stopHaptic = UINotificationFeedbackGenerator()
 
     // MARK: - Actions
 
@@ -68,6 +72,10 @@ class TimerEngine: NSObject {
         guard !isRunning else { return }
         isRunning = true
         startTime = Date()
+
+        // Prepare haptics for immediate feedback
+        strokeHaptic.prepare()
+        splitHaptic.prepare()
 
         // Resume from accumulated time if paused
         let baseTime = accumulatedTime
@@ -106,6 +114,7 @@ class TimerEngine: NSObject {
         timer = nil
 
         playBeep()
+        stopHaptic.notificationOccurred(.success)
     }
 
     /// Reset everything
@@ -123,6 +132,7 @@ class TimerEngine: NSObject {
         guard isRunning else { return }
         currentStrokeCount += 1
         playBeep()
+        strokeHaptic.impactOccurred()
     }
 
     /// Record a split/lap
@@ -143,6 +153,7 @@ class TimerEngine: NSObject {
         currentStrokeCount = 0
 
         playBeep()
+        splitHaptic.impactOccurred()
     }
 
     // MARK: - Formatting
