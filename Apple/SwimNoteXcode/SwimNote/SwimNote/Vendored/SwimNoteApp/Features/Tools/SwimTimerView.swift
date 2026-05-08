@@ -99,6 +99,12 @@ struct SwimTimerView: View {
         } message: {
             Text("Timer session saved to your history.")
         }
+        // Hide tab bar when timer is running to prevent accidental taps
+        .toolbar(isTimerRunning ? .hidden : .visible, for: .tabBar)
+    }
+
+    private var isTimerRunning: Bool {
+        mode == .stopwatch ? stopwatchEngine.isRunning : intervalEngine.isRunning
     }
 
     // MARK: - Mode Selector
