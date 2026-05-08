@@ -61,8 +61,8 @@ class TimerEngine: NSObject {
 
     private var timer: Timer?
     private var accumulatedTime: TimeInterval = 0  // Time before current run
-    private let strokeHaptic = UIImpactFeedbackGenerator(style: .light)
-    private let splitHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let strokeHaptic = UIImpactFeedbackGenerator(style: .medium)
+    private let splitHaptic = UIImpactFeedbackGenerator(style: .heavy)
     private let stopHaptic = UINotificationFeedbackGenerator()
 
     // MARK: - Actions
