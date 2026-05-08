@@ -259,7 +259,7 @@ struct SwimTimerView: View {
         VStack(spacing: 8) {
             // Instructions
             if stopwatchEngine.isRunning {
-                Text("Tap = stroke, Double-tap = split")
+                Text("Tap=stroke, Double=split, Triple=stop")
                     .font(.caption)
                     .foregroundStyle(PoolTheme.smoke)
             }
@@ -285,13 +285,6 @@ struct SwimTimerView: View {
                         .font(.subheadline)
                         .foregroundStyle(PoolTheme.gold)
                 }
-
-                // Hint for split
-                if stopwatchEngine.isRunning {
-                    Text("Double-tap for SPLIT")
-                        .font(.caption2)
-                        .foregroundStyle(PoolTheme.smoke.opacity(0.7))
-                }
             }
             .frame(maxWidth: .infinity)
             .frame(minHeight: 200)  // Larger tap area
@@ -300,19 +293,24 @@ struct SwimTimerView: View {
             .background(stopwatchEngine.isRunning ? PoolTheme.light.opacity(0.3) : PoolTheme.surface)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .contentShape(RoundedRectangle(cornerRadius: 16))  // Make entire area tappable
+            .onTapGesture(count: 3) {
+                // Triple-tap = stop
+                if stopwatchEngine.isRunning {
+                    stopwatchEngine.stop()
+                }
+            }
             .onTapGesture(count: 2) {
-                // Double-tap = split
+                // Double-tap = split (only if running, ignored if stopped)
                 if stopwatchEngine.isRunning {
                     stopwatchEngine.recordSplit()
                 }
             }
             .onTapGesture(count: 1) {
-                // Single tap = stroke (runs after double-tap fails)
+                // Single tap = stroke (runs after double/triple-tap fails)
                 if stopwatchEngine.isRunning {
                     stopwatchEngine.recordStroke()
                 }
             }
-            .disabled(!stopwatchEngine.isRunning)
         }
         .poolCard()
     }
