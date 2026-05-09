@@ -19,6 +19,14 @@ public protocol WeeklyPlanRepository: Sendable {
     func delete(planId: String, userId: String) async throws
 }
 
+// MARK: - Outline Repository Protocol (for in-progress generation)
+
+public protocol OutlineRepository: Sendable {
+    func loadOutline(for userId: String) async -> WeeklyPlanOutline?
+    func saveOutline(_ outline: WeeklyPlanOutline, for userId: String) async throws
+    func deleteOutline(for userId: String) async throws
+}
+
 // MARK: - JSON File Implementation (Legacy TrainingPlan)
 
 public actor JSONTrainingPlanRepository: TrainingPlanRepository {
@@ -244,5 +252,49 @@ extension WeeklyTrainingPlan {
             dryLandTraining: dryLand,
             remarks: notes
         )
+    }
+}
+
+// MARK: - JSON Outline Repository (for in-progress generation)
+
+public actor JSONOutlineRepository: OutlineRepository {
+    private let outlinesDirectory: URL
+    private let encoder: JSONEncoder
+    private let decoder: JSONDecoder
+
+    public init(outlinesDirectory: URL) {
+        self.outlinesDirectory = outlinesDirectory
+        self.encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        self.decoder = JSONDecoder()
+        try? FileManager.default.createDirectory(at: outlinesDirectory, withIntermediateDirectories: true)
+    }
+
+    public func loadOutline(for userId: String) async -> WeeklyPlanOutline? {
+        let file = outlinesDirectory
+            .appendingPathComponent(userId)
+            .appendingPathComponent("in_progress.json")
+
+        guard let data = FileManager.default.contents(atPath: file.path) else { return nil }
+        return try? decoder.decode(WeeklyPlanOutline.self, from: data)
+    }
+
+    public func saveOutline(_ outline: WeeklyPlanOutline, for userId: String) async throws {
+        let userDir = outlinesDirectory.appendingPathComponent(userId)
+        try FileManager.default.createDirectory(at: userDir, withIntermediateDirectories: true)
+
+        let file = userDir.appendingPathComponent("in_progress.json")
+        let data = try encoder.encode(outline)
+        try data.write(to: file)
+    }
+
+    public func deleteOutline(for userId: String) async throws {
+        let file = outlinesDirectory
+            .appendingPathComponent(userId)
+            .appendingPathComponent("in_progress.json")
+
+        if FileManager.default.fileExists(atPath: file.path) {
+            try FileManager.default.removeItem(at: file)
+        }
     }
 }

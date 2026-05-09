@@ -30,6 +30,7 @@ public final class SwimNoteAppModel {
     private let weeklyPlanRepository: any WeeklyPlanRepository
     private let measurementRepository: any TechniqueMeasurementRepository
     private let timerSessionRepository: any TimerSessionRepository
+    private let outlineRepository: any OutlineRepository
     private let contentLoader: BundleContentLoader
     private let llmConfigurationStore = LLMConfigurationStore()
     private var parsedContentCache: [String: ParsedTechniqueContent] = [:]
@@ -42,6 +43,7 @@ public final class SwimNoteAppModel {
         weeklyPlanRepository: any WeeklyPlanRepository,
         measurementRepository: any TechniqueMeasurementRepository,
         timerSessionRepository: any TimerSessionRepository,
+        outlineRepository: any OutlineRepository,
         contentLoader: BundleContentLoader
     ) {
         self.noteRepository = noteRepository
@@ -50,6 +52,7 @@ public final class SwimNoteAppModel {
         self.weeklyPlanRepository = weeklyPlanRepository
         self.measurementRepository = measurementRepository
         self.timerSessionRepository = timerSessionRepository
+        self.outlineRepository = outlineRepository
         self.contentLoader = contentLoader
     }
 
@@ -73,6 +76,7 @@ public final class SwimNoteAppModel {
             weeklyPlanRepository: CoreDataWeeklyPlanRepository(controller: controller),
             measurementRepository: CoreDataTechniqueMeasurementRepository(controller: controller),
             timerSessionRepository: CoreDataTimerSessionRepository(controller: controller),
+            outlineRepository: JSONOutlineRepository(outlinesDirectory: appSupport.appendingPathComponent("outlines")),
             contentLoader: loader
         )
 
@@ -155,15 +159,15 @@ public final class SwimNoteAppModel {
             profileIconName: profileIconName,
             personalBests: personalBests,
             trainingGoals: [],
+            // Second createProfile method (trainingTier)
             createdAt: timestamp,
             updatedAt: timestamp
         )
         try await profileRepository.save(profile)
         profiles.append(profile)
         needsSetup = profiles.isEmpty  // Update needsSetup immediately
-        if profiles.count == 1 {
-            try await switchProfile(to: profile)
-        }
+        // Always switch to newly created profile
+        try await switchProfile(to: profile)
         return profile
     }
 
@@ -206,13 +210,13 @@ public final class SwimNoteAppModel {
             trainingGoals: [],
             createdAt: timestamp,
             updatedAt: timestamp
+        // First createProfile method (skillLevel)
         )
         try await profileRepository.save(profile)
         profiles.append(profile)
         needsSetup = profiles.isEmpty  // Update needsSetup immediately
-        if profiles.count == 1 {
-            try await switchProfile(to: profile)
-        }
+        // Always switch to newly created profile
+        try await switchProfile(to: profile)
         return profile
     }
 
@@ -403,6 +407,25 @@ public final class SwimNoteAppModel {
         let plan = weeklyPlan.toTrainingPlan(userId: userId, weekStarting: weekStarting)
         try await planRepository.save(plan)
         await reloadNotes(userId: userId)
+    }
+
+    // MARK: - Outline Persistence (for in-progress generation)
+
+    public func loadOutline() async -> WeeklyPlanOutline? {
+        guard let userId = activeProfile?.id else { return nil }
+        return await outlineRepository.loadOutline(for: userId)
+    }
+
+    public func saveOutline(_ outline: WeeklyPlanOutline) async throws {
+        guard let userId = activeProfile?.id else {
+            throw NSError(domain: "SwimNote", code: -1, userInfo: [NSLocalizedDescriptionKey: "No active profile"])
+        }
+        try await outlineRepository.saveOutline(outline, for: userId)
+    }
+
+    public func deleteOutline() async throws {
+        guard let userId = activeProfile?.id else { return }
+        try await outlineRepository.deleteOutline(for: userId)
     }
 
     public func tree(for strokeId: StrokeID) -> TechniqueTree? {

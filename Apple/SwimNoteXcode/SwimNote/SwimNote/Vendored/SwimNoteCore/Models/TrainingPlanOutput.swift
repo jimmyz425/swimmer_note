@@ -16,6 +16,9 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
     public var weekStartingDate: Date?
     public var poolTypeRaw: String?
 
+    /// Dry land exercises (populated after Phase 3 generation)
+    public var dryLandExercises: [MinimalDryLandExercise]?
+
     public init(
         overview: PlanOverview,
         schedule: [SessionOutline],
@@ -24,7 +27,8 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         planConnectionRationale: String? = nil,
         notes: String,
         weekStartingDate: Date? = nil,
-        poolTypeRaw: String? = nil
+        poolTypeRaw: String? = nil,
+        dryLandExercises: [MinimalDryLandExercise]? = nil
     ) {
         self.overview = overview
         self.schedule = schedule
@@ -34,6 +38,7 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         self.notes = notes
         self.weekStartingDate = weekStartingDate
         self.poolTypeRaw = poolTypeRaw
+        self.dryLandExercises = dryLandExercises
     }
 
     public init(from decoder: Decoder) throws {
@@ -46,11 +51,12 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         weekStartingDate = try container.decodeIfPresent(Date.self, forKey: .weekStartingDate)
         poolTypeRaw = try container.decodeIfPresent(String.self, forKey: .poolTypeRaw)
+        dryLandExercises = try container.decodeIfPresent([MinimalDryLandExercise].self, forKey: .dryLandExercises)
     }
 
     private enum CodingKeys: String, CodingKey {
         case overview, schedule, techniqueProgressPlan
-        case pastTrainingSummary, planConnectionRationale, notes, weekStartingDate, poolTypeRaw
+        case pastTrainingSummary, planConnectionRationale, notes, weekStartingDate, poolTypeRaw, dryLandExercises
     }
 }
 

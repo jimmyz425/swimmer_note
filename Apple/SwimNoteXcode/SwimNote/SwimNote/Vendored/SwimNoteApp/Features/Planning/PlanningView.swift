@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 public enum PoolType: String, CaseIterable, Identifiable {
     case shortCourse = "Short Course (25m)"
@@ -58,7 +59,11 @@ struct PlanningView: View {
     @State private var isGeneratingDetails: Bool = false
     @State private var isGeneratingDryLand: Bool = false
     @State private var generatingSessionNumber: Int?
+    @State private var generatingSessions: Set<Int> = []  // Track parallel session generation
     @State private var showOutlineReview: Bool = false
+
+    /// Max concurrent session generations (avoid API rate limits)
+    private let maxConcurrentSessions: Int = 2
 
     // Plan settings - sessions determined by tier guidance, not user selection
     @State private var poolType: PoolType = .shortCourse
@@ -137,6 +142,49 @@ struct PlanningView: View {
             .onChange(of: appModel.activeProfile?.id) { _, _ in
                 resetPlanState()
             }
+            // Load saved outline on appear (for resumption)
+            .onAppear {
+                Task {
+                    await loadSavedOutline()
+                }
+            }
+        }
+    }
+
+    /// Load saved outline for resumption if generation was interrupted
+    private func loadSavedOutline() async {
+        // Only load if there's no current outline and no generated plan
+        if planOutline == nil && parsedPlan == nil && generatedPlan == nil {
+            if let savedOutline = await appModel.loadOutline() {
+                let allSessionsComplete = savedOutline.schedule.allSatisfy { $0.isDetailsGenerated }
+                let hasDryLand = savedOutline.dryLandExercises != nil && !savedOutline.dryLandExercises!.isEmpty
+
+                if !allSessionsComplete {
+                    // Resume incomplete session generation
+                    planOutline = savedOutline
+                    // Restore accumulated dry land if present
+                    accumulatedDryLand = savedOutline.dryLandExercises ?? []
+                    #if DEBUG
+                    print("📱 Loaded saved outline with \(savedOutline.schedule.count - savedOutline.schedule.filter { $0.isDetailsGenerated }.count) incomplete sessions")
+                    #endif
+                } else if allSessionsComplete && !hasDryLand {
+                    // All sessions done but missing dry land - resume from there
+                    planOutline = savedOutline
+                    accumulatedDryLand = []  // Clear since no dry land yet
+                    #if DEBUG
+                    print("📱 Loaded saved outline - all sessions complete, missing dry land")
+                    #endif
+                } else if allSessionsComplete && hasDryLand {
+                    // Everything complete - convert to full plan
+                    planOutline = savedOutline
+                    accumulatedDryLand = savedOutline.dryLandExercises ?? []
+                    convertOutlineToFullPlan(savedOutline)
+                    try? await appModel.deleteOutline()
+                    #if DEBUG
+                    print("📱 Loaded complete outline - converted to full plan")
+                    #endif
+                }
+            }
         }
     }
 
@@ -210,6 +258,16 @@ struct PlanningView: View {
             // Phase indicator
             phaseIndicator(phase: 1, title: "Weekly Outline Review")
 
+            // Resume banner if incomplete sessions or missing dry land
+            let incompleteCount = outline.schedule.filter { !$0.isDetailsGenerated }.count
+            let hasDryLand = outline.dryLandExercises != nil && !outline.dryLandExercises!.isEmpty
+
+            if incompleteCount > 0 {
+                resumeBanner(type: .sessions(incomplete: incompleteCount, total: outline.schedule.count))
+            } else if !hasDryLand && outline.schedule.allSatisfy({ $0.isDetailsGenerated }) {
+                resumeBanner(type: .dryLand)
+            }
+
             // Overview card
             outlineOverviewCard(outline)
 
@@ -219,6 +277,66 @@ struct PlanningView: View {
             // Generate All Details button
             generateAllDetailsButton(outline)
         }
+    }
+
+    enum ResumeType: Equatable {
+        case sessions(incomplete: Int, total: Int)
+        case dryLand
+    }
+
+    private func resumeBanner(type: ResumeType) -> some View {
+        HStack(spacing: 12) {
+            Image(systemName: "clock.arrow.circlepath")
+                .font(.title2)
+                .foregroundStyle(.orange)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Incomplete Generation")
+                    .font(.headline)
+                    .foregroundStyle(PoolTheme.deep)
+                switch type {
+                case .sessions(let incomplete, let total):
+                    Text("\(incomplete) of \(total) sessions need details")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.mid)
+                case .dryLand:
+                    Text("Sessions complete, generating dry land exercises")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.mid)
+                }
+            }
+
+            Spacer()
+
+            Button {
+                switch type {
+                case .sessions:
+                    Task { await generateAllDetailedSessionsParallel(for: planOutline!) }
+                case .dryLand:
+                    Task {
+                        await generateWeeklyDryLand(outline: planOutline!)
+                        convertOutlineToFullPlan(planOutline!)
+                        try? await appModel.deleteOutline()
+                    }
+                }
+            } label: {
+                Text(type == .dryLand ? "Generate Dry Land" : "Continue")
+                    .font(.headline)
+                    .foregroundStyle(.white)
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 8)
+                    .background(.orange)
+                    .cornerRadius(8)
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .background(.orange.opacity(0.1))
+        .cornerRadius(12)
+        .overlay(
+            RoundedRectangle(cornerRadius: 12)
+                .stroke(.orange.opacity(0.3), lineWidth: 1)
+        )
     }
 
     private func phaseIndicator(phase: Int, title: String) -> some View {
@@ -340,7 +458,7 @@ struct PlanningView: View {
                 ForEach(outline.schedule) { session in
                     SessionOutlineCard(
                         session: session,
-                        isGenerating: generatingSessionNumber == session.sessionNumber,
+                        isGenerating: generatingSessions.contains(session.sessionNumber),
                         onGenerateDetails: {
                             Task { await generateDetailedSession(for: session, in: outline) }
                         }
@@ -353,8 +471,20 @@ struct PlanningView: View {
 
     private func generateAllDetailsButton(_ outline: WeeklyPlanOutline) -> some View {
         VStack(spacing: 12) {
+            // Parallel generation progress
+            if isGeneratingDetails && !generatingSessions.isEmpty {
+                HStack(spacing: 8) {
+                    ProgressView()
+                        .tint(PoolTheme.mid)
+                    Text("Generating sessions: \(generatingSessions.sorted().map { "#\($0)" }.joined(separator: ", "))")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.mid)
+                }
+                .padding(.horizontal)
+            }
+
             Button {
-                Task { await generateAllDetailedSessions(for: outline) }
+                Task { await generateAllDetailedSessionsParallel(for: outline) }
             } label: {
                 HStack(spacing: 8) {
                     if isGeneratingDetails {
@@ -363,7 +493,7 @@ struct PlanningView: View {
                     } else {
                         Image(systemName: "sparkles")
                     }
-                    Text(isGeneratingDetails ? "Generating All Details..." : "Generate All Session Details")
+                    Text(isGeneratingDetails ? "Generating..." : "Generate All Session Details")
                         .font(.headline.bold())
                 }
                 .frame(maxWidth: .infinity)
@@ -408,6 +538,13 @@ struct PlanningView: View {
         parsedPlan = nil
         accumulatedDryLand = []  // Reset dry land for new plan
 
+        // Register background task to continue execution when screen locks
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GenerateOutline") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+
         // Get strategy for selected plan type
         let strategy = PlanStrategyFactory.strategy(for: planType)
 
@@ -447,10 +584,17 @@ struct PlanningView: View {
             let outline = try parseOutlineJSON(rawOutput)
             planOutline = enrichOutlineWithDates(outline: outline, weekStarting: weekStartingDate, poolType: poolType)
             savedStatus = nil
+
+            // Save outline for resumption if interrupted
+            try? await appModel.saveOutline(planOutline!)
         } catch {
             errorMessage = "Failed to generate outline: \(error.localizedDescription)"
         }
 
+        // End background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        }
         isGeneratingOutline = false
     }
 
@@ -459,6 +603,184 @@ struct PlanningView: View {
     // Accumulated dry land exercises from last session (enriched after all sessions generated)
     @State private var accumulatedDryLand: [MinimalDryLandExercise] = []
 
+    /// Result from generating a single session
+    struct SessionGenerationResult: Sendable {
+        let sessionNumber: Int
+        let detailedSession: DetailedSession?
+        let error: Error?
+    }
+
+    /// Generate a single session (pure function - returns result without modifying state)
+    private func generateSingleSessionResult(
+        sessionOutline: SessionOutline,
+        config: LLMConfiguration,
+        apiKey: String,
+        strategy: any PlanGenerationStrategy,
+        planContext: PlanContext
+    ) async -> SessionGenerationResult {
+        // Use tool calling for Phase 2 (read technique files for drills)
+        let conversation = ToolCallingConversation(
+            configuration: config,
+            apiKey: apiKey,
+            executor: appModel.createToolExecutor()
+        )
+
+        // Tools for Phase 2: technique file reading only (user data already in prompt)
+        let phase2Tools = ResourcesNavigationTools.all
+
+        do {
+            let rawOutput = try await conversation.run(
+                systemRole: strategy.buildSystemRole(),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
+                tools: phase2Tools,
+                maxIterations: 10
+            )
+
+            let detailedSession = try parseDetailedSessionJSON(rawOutput)
+            return SessionGenerationResult(sessionNumber: sessionOutline.sessionNumber, detailedSession: detailedSession, error: nil)
+        } catch {
+            return SessionGenerationResult(sessionNumber: sessionOutline.sessionNumber, detailedSession: nil, error: error)
+        }
+    }
+
+    /// Generate all detailed sessions in parallel with throttling
+    private func generateAllDetailedSessionsParallel(for outline: WeeklyPlanOutline) async {
+        guard let config = appModel.llmConfiguration,
+              var currentOutline = planOutline else {
+            errorMessage = "Generate outline first"
+            return
+        }
+
+        // Load API key
+        let apiKey: String
+        do {
+            guard let key = try credentialStore.load(account: config.apiKeyReference) else {
+                errorMessage = "API key not found"
+                return
+            }
+            apiKey = key
+        } catch {
+            errorMessage = "Could not load API key: \(error.localizedDescription)"
+            return
+        }
+
+        isGeneratingDetails = true
+        errorMessage = nil
+        generatingSessions = []
+
+        // Register background task
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GenerateAllSessionsParallel") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+
+        let strategy = PlanStrategyFactory.strategy(for: planType)
+        let planContext = buildPlanContext()
+
+        // Get sessions that need generation
+        let sessionsToGenerate = outline.schedule.filter { !$0.isDetailsGenerated }
+
+        #if DEBUG
+        print("🔄 Starting parallel generation of \(sessionsToGenerate.count) sessions with max \(maxConcurrentSessions) concurrent")
+        #endif
+
+        // Use TaskGroup with throttling
+        var results: [SessionGenerationResult] = []
+        var errors: [String] = []
+
+        await withTaskGroup(of: SessionGenerationResult.self) { group in
+            var activeCount = 0
+            var sessionIndex = 0
+            let sessions = sessionsToGenerate
+
+            while sessionIndex < sessions.count || activeCount > 0 {
+                // Add tasks up to max concurrent
+                while activeCount < maxConcurrentSessions && sessionIndex < sessions.count {
+                    let session = sessions[sessionIndex]
+                    sessionIndex += 1
+                    activeCount += 1
+
+                    // Update UI to show this session is generating
+                    Task { @MainActor in
+                        generatingSessions.insert(session.sessionNumber)
+                    }
+
+                    group.addTask {
+                        await generateSingleSessionResult(
+                            sessionOutline: session,
+                            config: config,
+                            apiKey: apiKey,
+                            strategy: strategy,
+                            planContext: planContext
+                        )
+                    }
+                }
+
+                // Wait for one result
+                if let result = await group.next() {
+                    activeCount -= 1
+                    results.append(result)
+
+                    // Update UI
+                    Task { @MainActor in
+                        generatingSessions.remove(result.sessionNumber)
+                    }
+
+                    if let session = result.detailedSession {
+                        // Update outline with completed session
+                        for i in currentOutline.schedule.indices {
+                            if currentOutline.schedule[i].sessionNumber == result.sessionNumber {
+                                currentOutline.schedule[i].detailedSession = session
+                                currentOutline.schedule[i].isDetailsGenerated = true
+                            }
+                        }
+
+                        // Save progress after each session completes
+                        Task { @MainActor in
+                            planOutline = currentOutline
+                        }
+                        try? await appModel.saveOutline(currentOutline)
+
+                        #if DEBUG
+                        print("✅ Session #\(result.sessionNumber) completed")
+                        #endif
+                    } else if let error = result.error {
+                        errors.append("Session #\(result.sessionNumber): \(error.localizedDescription)")
+                        #if DEBUG
+                        print("❌ Session #\(result.sessionNumber) failed: \(error)")
+                        #endif
+                    }
+                }
+            }
+        }
+
+        // Update final outline
+        planOutline = currentOutline
+
+        // Report errors
+        if !errors.isEmpty {
+            errorMessage = errors.isEmpty ? nil : "Some sessions failed: " + errors.joined(separator: "; ")
+        }
+
+        // Check if all sessions complete
+        if currentOutline.schedule.allSatisfy({ $0.isDetailsGenerated }) && errors.isEmpty {
+            // Generate dry land and convert
+            await generateWeeklyDryLand(outline: currentOutline)
+            convertOutlineToFullPlan(currentOutline)
+            try? await appModel.deleteOutline()
+        }
+
+        // End background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        }
+
+        isGeneratingDetails = false
+        generatingSessions = []
+    }
+
+    /// Generate single session (for individual button tap)
     private func generateDetailedSession(for sessionOutline: SessionOutline, in outline: WeeklyPlanOutline) async {
         guard let config = appModel.llmConfiguration,
               var currentOutline = planOutline else {
@@ -481,6 +803,13 @@ struct PlanningView: View {
 
         generatingSessionNumber = sessionOutline.sessionNumber
         errorMessage = nil
+
+        // Register background task to continue execution when screen locks
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GenerateSession") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
 
         let strategy = PlanStrategyFactory.strategy(for: planType)
         let planContext = buildPlanContext()
@@ -515,11 +844,17 @@ struct PlanningView: View {
             }
             planOutline = currentOutline
 
+            // Save progress for resumption if interrupted
+            try? await appModel.saveOutline(currentOutline)
+
             // Check if all sessions are generated - generate dryland then convert to full plan
             if currentOutline.schedule.allSatisfy({ $0.isDetailsGenerated }) {
                 // Phase 3: Generate weekly dryland based on full plan
                 await generateWeeklyDryLand(outline: currentOutline)
                 convertOutlineToFullPlan(currentOutline)
+
+                // Delete outline since generation is complete
+                try? await appModel.deleteOutline()
             }
         } catch LLMServiceError.maxIterationsReached {
             errorMessage = "Session generation took too long. Try again."
@@ -527,6 +862,10 @@ struct PlanningView: View {
             errorMessage = "Failed to generate session #\(sessionOutline.sessionNumber): \(error.localizedDescription)"
         }
 
+        // End background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        }
         generatingSessionNumber = nil
     }
 
@@ -552,6 +891,13 @@ struct PlanningView: View {
 
         isGeneratingDryLand = true
         errorMessage = nil
+
+        // Register background task to continue execution when screen locks
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GenerateDryLand") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
 
         let strategy = PlanStrategyFactory.strategy(for: planType)
         let planContext = buildPlanContext()
@@ -582,6 +928,12 @@ struct PlanningView: View {
             #endif
 
             accumulatedDryLand = dryLandExercises
+
+            // Save outline with dry land exercises for resumption
+            var updatedOutline = outline
+            updatedOutline.dryLandExercises = dryLandExercises
+            planOutline = updatedOutline
+            try? await appModel.saveOutline(updatedOutline)
         } catch {
             errorMessage = "Failed to generate dry land: \(error.localizedDescription)"
             #if DEBUG
@@ -589,6 +941,10 @@ struct PlanningView: View {
             #endif
         }
 
+        // End background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        }
         isGeneratingDryLand = false
     }
 
@@ -596,12 +952,23 @@ struct PlanningView: View {
         isGeneratingDetails = true
         errorMessage = nil
 
+        // Register background task for the overall generation loop
+        var backgroundTaskID: UIBackgroundTaskIdentifier = .invalid
+        backgroundTaskID = UIApplication.shared.beginBackgroundTask(withName: "GenerateAllSessions") {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+            backgroundTaskID = .invalid
+        }
+
         for session in outline.schedule where !session.isDetailsGenerated {
             await generateDetailedSession(for: session, in: outline)
             // Small delay to avoid rate limiting
             try? await Task.sleep(for: .milliseconds(500))
         }
 
+        // End background task
+        if backgroundTaskID != .invalid {
+            UIApplication.shared.endBackgroundTask(backgroundTaskID)
+        }
         isGeneratingDetails = false
     }
 
@@ -907,7 +1274,8 @@ struct PlanningView: View {
         }
 
         // Enrich and spread dry land exercises across all 7 days
-        let enrichedDryLand = enrichDryLandFromJSON(accumulatedDryLand)
+        let dryLandToUse = outline.dryLandExercises ?? accumulatedDryLand
+        let enrichedDryLand = enrichDryLandFromJSON(dryLandToUse)
         let spreadDryLand = spreadDryLandAcrossWeek(enrichedDryLand, weekStarting: weekStartingDate)
 
         let plan = WeeklyTrainingPlan(

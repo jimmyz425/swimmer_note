@@ -75,6 +75,12 @@ struct PlanHistoryRow: View {
                 Label(plan.overview.poolType ?? "Pool", systemImage: "water.waves")
                     .font(.caption)
                     .foregroundStyle(PoolTheme.mid)
+
+                if let dryLand = plan.dryLandProgram, !dryLand.isEmpty {
+                    Label("\(dryLand.count) dry land", systemImage: "figure.strengthtraining.traditional")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.mid)
+                }
             }
         }
         .padding(.vertical, 4)
@@ -98,6 +104,9 @@ struct PlanDetailView: View {
 
                     // Sessions
                     sessionsSection
+
+                    // Dry Land (if present)
+                    dryLandSection
                 }
                 .padding()
             }
@@ -128,6 +137,10 @@ struct PlanDetailView: View {
             HStack(spacing: 16) {
                 statBadge(icon: "figure.pool.swim", value: "\(plan.detailedSessions.count)", label: "Sessions")
                 statBadge(icon: "water.waves", value: plan.overview.poolType ?? "25m", label: "Pool")
+
+                if let dryLand = plan.dryLandProgram, !dryLand.isEmpty {
+                    statBadge(icon: "figure.strengthtraining.traditional", value: "\(dryLand.count)", label: "Dry Land")
+                }
             }
         }
         .poolCard()
@@ -185,7 +198,27 @@ struct PlanDetailView: View {
         .poolCard()
     }
 
+    private var dryLandSection: some View {
+        guard let dryLand = plan.dryLandProgram, !dryLand.isEmpty else {
+            return AnyView(EmptyView())
+        }
+
+        return AnyView(
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Dry Land Exercises")
+                    .font(.headline)
+                    .foregroundStyle(PoolTheme.deep)
+
+                LazyVStack(spacing: 8) {
+                    ForEach(dryLand) { exercise in
+                        DryLandExerciseRow(exercise: exercise)
+                    }
+                }
+            }
+            .poolCard()
+        )
     }
+}
 
 #Preview("Plan History") {
     PlanHistoryView(appModel: SwimNoteAppModel.bootstrap(), selectedPlan: Binding.constant(nil))
