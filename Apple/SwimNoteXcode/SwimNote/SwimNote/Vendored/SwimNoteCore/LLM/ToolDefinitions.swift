@@ -15,11 +15,13 @@ public struct ToolFunction: Codable, Hashable, Sendable {
     public var name: String
     public var description: String
     public var parameters: JSONSchema
+    public var strict: Bool?  // DeepSeek V4 strict mode
 
-    public init(name: String, description: String, parameters: JSONSchema) {
+    public init(name: String, description: String, parameters: JSONSchema, strict: Bool? = nil) {
         self.name = name
         self.description = description
         self.parameters = parameters
+        self.strict = strict
     }
 }
 
@@ -27,15 +29,17 @@ public struct JSONSchema: Codable, Hashable, Sendable {
     public var type: String
     public var properties: [String: JSONSchemaProperty]
     public var required: [String]?
+    public var additionalProperties: Bool?  // DeepSeek V4 strict mode requires false
 
-    public init(type: String = "object", properties: [String: JSONSchemaProperty], required: [String]? = nil) {
+    public init(type: String = "object", properties: [String: JSONSchemaProperty], required: [String]? = nil, additionalProperties: Bool? = nil) {
         self.type = type
         self.properties = properties
         self.required = required
+        self.additionalProperties = additionalProperties
     }
 
     private enum CodingKeys: String, CodingKey {
-        case type, properties, required
+        case type, properties, required, additionalProperties
     }
 
     public nonisolated init(from decoder: Decoder) throws {
@@ -43,6 +47,7 @@ public struct JSONSchema: Codable, Hashable, Sendable {
         type = try container.decode(String.self, forKey: .type)
         properties = try container.decode([String: JSONSchemaProperty].self, forKey: .properties)
         required = try container.decodeIfPresent([String].self, forKey: .required)
+        additionalProperties = try container.decodeIfPresent(Bool.self, forKey: .additionalProperties)
     }
 
     public nonisolated func encode(to encoder: Encoder) throws {
@@ -50,6 +55,7 @@ public struct JSONSchema: Codable, Hashable, Sendable {
         try container.encode(type, forKey: .type)
         try container.encode(properties, forKey: .properties)
         try container.encodeIfPresent(required, forKey: .required)
+        try container.encodeIfPresent(additionalProperties, forKey: .additionalProperties)
     }
 }
 
@@ -299,7 +305,7 @@ public enum ResourcesNavigationTools {
             PROGRESSION GUIDANCE:
             - Read main file → see technique table with difficulty
             - Pick technique number matching user's skill level
-            - Each sub-file has competitive drills with tiered targets
+            - Each sub-file has competitive metrics with tiered targets
 
             STRATEGY: read_technique_file("{stroke}.md") → find technique at user's level → read sub-technique.
             """,
@@ -310,8 +316,10 @@ public enum ResourcesNavigationTools {
                         description: "File to read. Start with main files (freestyle.md) or read specific technique (freestyle-02-flutter-kick). Main files show difficulty-ranked technique tables."
                     )
                 ],
-                required: ["filename"]
-            )
+                required: ["filename"],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
         )
     )
 
@@ -326,8 +334,11 @@ public enum ResourcesNavigationTools {
                         description: "Optional stroke filter: freestyle, backstroke, breaststroke, butterfly",
                         enumValues: ["freestyle", "backstroke", "breaststroke", "butterfly"]
                     )
-                ]
-            )
+                ],
+                required: [],  // No required params - stroke is optional
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params (DeepSeek requires all properties in required array)
         )
     )
 
@@ -347,8 +358,10 @@ public enum ResourcesNavigationTools {
                         enumValues: ["freestyle", "backstroke", "breaststroke", "butterfly"]
                     )
                 ],
-                required: ["query"]
-            )
+                required: ["query"],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
         )
     )
 
@@ -363,13 +376,46 @@ public enum ResourcesNavigationTools {
                         description: "The filename to find related techniques for"
                     )
                 ],
-                required: ["filename"]
-            )
+                required: ["filename"],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
+        )
+    )
+
+    public static let getExternalFocusCues = Tool(
+        function: ToolFunction(
+            name: "get_external_focus_cues",
+            description: """
+            Get external focus cues for swimming technique issues. External cues are short, actionable prompts coaches use to help swimmers feel and execute correct movement patterns.
+
+            Returns cues organized by stroke and issue type (e.g. Freestyle → Hips Sinking → ["Stay on top of the water", "Speedboat", "Flat on the water"]). Each issue has 5-8 different cue types: images, feelings, actions, targets, rhythms, and simple directions.
+
+            REQUIRED: Call this tool when generating key points, mistakes to avoid, or coaching tips for any stroke technique. Use the returned cues to make your suggestions more concrete and swimmer-friendly. Match the issue (e.g. "head too high", "no body rotation") to the swimmer's specific technique problem.
+
+            STROKES COVERED: Freestyle (9 issues), Backstroke (6), Breaststroke (8), Butterfly (3), Starts (3), Turns (4).
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "stroke": JSONSchemaProperty(
+                        type: "string",
+                        description: "Stroke to get cues for. Use 'starts' or 'turns' for start/turn cues.",
+                        enumValues: ["freestyle", "backstroke", "breaststroke", "butterfly", "starts", "turns"]
+                    ),
+                    "issue": JSONSchemaProperty(
+                        type: "string",
+                        description: "Optional: specific issue to filter (e.g. 'hips sinking', 'head too high'). Leave empty to see all issues for the stroke."
+                    )
+                ],
+                required: ["stroke"],
+                additionalProperties: false
+            ),
+            strict: true
         )
     )
 
     public static var all: [Tool] {
-        [readTechniqueFile, listTechniqueFiles, searchContent, getRelatedTechniques]
+        [readTechniqueFile, listTechniqueFiles, searchContent, getRelatedTechniques, getExternalFocusCues]
     }
 }
 
@@ -381,8 +427,11 @@ public enum UserDataTools {
             name: "get_user_profile",
             description: "Get the current swimmer's profile including age, skill level, personal best times, weekly session target, preferred strokes, and training goals.",
             parameters: JSONSchema(
-                properties: [:]
-            )
+                properties: [:],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
         )
     )
 
@@ -400,8 +449,11 @@ public enum UserDataTools {
                         type: "boolean",
                         description: "Include goals from each session (default true)"
                     )
-                ]
-            )
+                ],
+                required: [],  // All params optional
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params
         )
     )
 
@@ -410,8 +462,11 @@ public enum UserDataTools {
             name: "get_active_goals",
             description: "Get currently active/pending goals from the swimmer's training notes. Shows what techniques they are currently working on.",
             parameters: JSONSchema(
-                properties: [:]
-            )
+                properties: [:],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
         )
     )
 
@@ -425,8 +480,11 @@ public enum UserDataTools {
                         type: "integer",
                         description: "Number of weeks to show (default 4)"
                     )
-                ]
-            )
+                ],
+                required: [],  // All params optional
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params
         )
     )
 
@@ -457,8 +515,11 @@ public enum UserDataTools {
                         description: "Optional stroke filter (freestyle, backstroke, breaststroke). Default: freestyle.",
                         enumValues: ["freestyle", "backstroke", "breaststroke"]
                     )
-                ]
-            )
+                ],
+                required: [],  // All params optional
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params
         )
     )
 
@@ -494,8 +555,11 @@ public enum UserDataTools {
                         description: "Optional section to focus on: 'zones', 'intervals', 'periodization', 'events', 'levels', 'all'",
                         enumValues: ["zones", "intervals", "periodization", "events", "levels", "all"]
                     )
-                ]
-            )
+                ],
+                required: [],  // All params optional
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params
         )
     )
 
@@ -522,17 +586,140 @@ public enum UserDataTools {
             - Zone distribution matches tier-appropriate intensity levels
             - Training focus matches developmental stage
 
-            The guidance file 'usa-swimming-club-training-structure.md' is available for detailed
-            reference if needed (call read_interval_research with section='levels' for related info).
+            For detailed tier background (time standards, sub-tier breakdowns, promotion triggers,
+            coaching philosophy), call read_usa_swimming_structure() for the full document.
             """,
             parameters: JSONSchema(
-                properties: [:]
-            )
+                properties: [:],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false  // Disabled for standard endpoint compatibility
+        )
+    )
+
+    public static let readUSASwimmingStructure = Tool(
+        function: ToolFunction(
+            name: "read_usa_swimming_structure",
+            description: """
+            Read the comprehensive USA Swimming club training structure document.
+
+            This document contains ALL detailed tier information:
+            - Complete tier definitions: Pre-Competitive, Bronze, Silver, Gold, Senior, National
+            - Sub-tier breakdowns: Pre-Comp A/B/C, Bronze 1/2/3, Silver 1/2/3 with detailed criteria
+            - Zone distribution tables per sub-tier (Zone 0-6 percentages)
+            - Volume progression by group (weekly/per-session distances in km)
+            - Training focus allocation by tier
+            - USA Swimming time standards (B/BB/A/AA/AAA/AAAA) for boys/girls by age group
+            - Promotion triggers between tiers and sub-tiers
+            - LTAD alignment (Long-Term Athlete Development stages)
+            - Coaching philosophy and research notes
+
+            REQUIRED for Phase 1: Call this to understand the swimmer's tier background fully.
+            Use this to inform weekly plan outline generation with proper:
+            - Session volumes matching tier expectations
+            - Zone distributions following tier guidelines
+            - Age-appropriate training focus
+
+            CONTENT SECTIONS:
+            - Quick-Reference Summary Table (all tiers overview)
+            - Detailed Group Breakdowns (each tier with training characteristics)
+            - Sub-Tier Breakdowns (Pre-Comp A/B/C, Bronze 1/2/3, Silver 1/2/3)
+            - Zone Distribution Summary by Group
+            - Zone Distribution Progression Across All Sub-Tiers
+            - Volume Progression by Group
+            - Age-Group-Specific Time Standards (B/BB/A/AA/AAA/AAAA times)
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "section": JSONSchemaProperty(
+                        type: "string",
+                        description: "Optional section to focus on: 'summary', 'subtiers', 'zones', 'standards', 'all'",
+                        enumValues: ["summary", "subtiers", "zones", "standards", "all"]
+                    )
+                ],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false  // Cannot use strict with optional params
+        )
+    )
+
+    public static let readEvidenceDrills = Tool(
+        function: ToolFunction(
+            name: "read_evidence_drills",
+            description: """
+            Read evidence-based swimming drills from the research-backed drill library.
+
+            Returns drills organized by stroke (freestyle, backstroke, breaststroke, butterfly) with:
+            - Drill code (e.g., F1, B3, BR2, FL5)
+            - Evidence base (research citation)
+            - Distance and equipment needed
+            - Level adjustments (Beginner/Intermediate/Advanced/Elite)
+            - Progression guidance (4-week plans)
+            - When to use each drill type
+
+            Drill types available:
+            - Tempo Ladder: Stroke rate progression (Z3→Z6) — race-finish speed
+            - Roll Explorer: Rotation angle variations — finding efficient range
+            - Differential Practice: Variable practice set — learning new patterns
+            - Build & Hold: Race-finish simulation (Z4→Z5) — lactate tolerance
+            - Constraints Circuit: Constraint-led approach — technique refinement
+            - Timing/Phase Explorer: Phase isolation — timing refinement (breast/fly)
+
+            REQUIRED: Call this when generating drillSet or secondarySet in training plans.
+            Pick the drill type that matches the session focus, then read the full details.
+
+            USAGE: read_evidence_drills(stroke="freestyle") → all freestyle evidence drills
+            read_evidence_drills(stroke="freestyle", drill="F1") → full details for one drill
+            read_evidence_drills(stroke="all") → quick reference index only
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "stroke": JSONSchemaProperty(
+                        type: "string",
+                        description: "Stroke to get evidence drills for. Use 'all' for quick index only.",
+                        enumValues: ["freestyle", "backstroke", "breaststroke", "butterfly", "all"]
+                    ),
+                    "drill": JSONSchemaProperty(
+                        type: "string",
+                        description: "Optional: specific drill code (e.g., 'F1', 'B3', 'BR2', 'FL5'). Omit to get all drills for the stroke."
+                    )
+                ],
+                required: ["stroke"],
+                additionalProperties: false
+            ),
+            strict: true
+        )
+    )
+
+    public static let getDryLandExercises = Tool(
+        function: ToolFunction(
+            name: "get_dry_land_exercises",
+            description: """
+            Get available dry land exercises for a specific stroke. Returns exercise IDs, names, categories, default sets/reps, and stroke-specific focus points.
+
+            REQUIRED for Phase 3: Call this BEFORE generating dry land exercises. You must ONLY use exercises returned by this tool - do NOT invent or create new exercises.
+
+            Return the exercise ID (e.g. 'plank-hold') in your response. The app will match IDs to full drill details including focus points.
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "stroke": JSONSchemaProperty(
+                        type: "string",
+                        description: "Stroke to get exercises for",
+                        enumValues: ["freestyle", "backstroke", "breaststroke", "butterfly"]
+                    )
+                ],
+                required: ["stroke"],
+                additionalProperties: false
+            ),
+            strict: true
         )
     )
 
     public static var all: [Tool] {
-        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance]
+        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance, readUSASwimmingStructure, readEvidenceDrills, getDryLandExercises]
     }
 }
 

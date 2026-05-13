@@ -71,6 +71,7 @@ struct SessionCard: View, Equatable {
                     SessionSummaryBar(
                         sessionType: session.sessionType,
                         scheduledDate: session.scheduledDate,
+                        timeOfDay: session.timeOfDay,
                         showDatePicker: showDatePicker,
                         onDateChange: onDateChange
                     )
@@ -94,14 +95,6 @@ struct SessionCard: View, Equatable {
                                 poolType: poolType
                             )
 
-                            SegmentView(
-                                title: "Main Set",
-                                segment: session.mainSet,
-                                icon: "flame",
-                                accentColor: .orange,
-                                poolType: poolType
-                            )
-
                             if let secondary = session.secondarySet {
                                 SegmentView(
                                     title: "Secondary",
@@ -111,6 +104,14 @@ struct SessionCard: View, Equatable {
                                     poolType: poolType
                                 )
                             }
+
+                            SegmentView(
+                                title: "Main Set",
+                                segment: session.mainSet,
+                                icon: "flame",
+                                accentColor: .orange,
+                                poolType: poolType
+                            )
 
                             SegmentView(
                                 title: "Cool-down",
@@ -305,6 +306,7 @@ private struct SessionNumberBadge: View {
 private struct SessionSummaryBar: View {
     let sessionType: String?
     let scheduledDate: Date?
+    let timeOfDay: SessionTimeOfDay?
     let showDatePicker: Bool
     let onDateChange: ((Date) -> Void)?
 
@@ -324,6 +326,16 @@ private struct SessionSummaryBar: View {
                     value: sessionType,
                     label: "Type",
                     color: PoolTheme.deep
+                )
+            }
+
+            // Time of day indicator (for double sessions)
+            if let timeOfDay = timeOfDay {
+                SummaryMetric(
+                    icon: timeOfDayIcon(timeOfDay),
+                    value: timeOfDay.displayName,
+                    label: "Time",
+                    color: timeOfDayColor(timeOfDay)
                 )
             }
 
@@ -356,6 +368,22 @@ private struct SessionSummaryBar: View {
         .background(
             PoolTheme.light.opacity(0.12)
         )
+    }
+
+    private func timeOfDayIcon(_ timeOfDay: SessionTimeOfDay) -> String {
+        switch timeOfDay {
+        case .morning: return "sunrise"
+        case .afternoon: return "sun.max"
+        case .evening: return "moon.stars"
+        }
+    }
+
+    private func timeOfDayColor(_ timeOfDay: SessionTimeOfDay) -> Color {
+        switch timeOfDay {
+        case .morning: return .orange
+        case .afternoon: return .yellow
+        case .evening: return .indigo
+        }
     }
 }
 
@@ -490,8 +518,8 @@ private struct SetRowView: View {
 
     /// Format distance with appropriate unit (yards or meters)
     private func formatDistance(_ meters: Int) -> String {
-        if let pool = poolType, pool.isYards {
-            let yards = pool.metersToYards(meters)
+        if let pool = poolType, pool == .scy {
+            let yards = Int(Double(meters) * 1.09361)
             return "\(yards)yd"
         }
         return "\(meters)m"
@@ -1023,14 +1051,14 @@ private struct DistanceDot: View {
             onToggleExpand: {},
             onDateChange: nil,
             showDatePicker: false,
-            poolType: .shortCourse
+            poolType: .scm
         )
         .padding()
         .background(PoolTheme.surface)
 
         Divider()
 
-        Text("25yd Pool (yards)")
+        Text("25yd Pool (SCY)")
             .font(.caption.bold())
         SessionCard(
             session: session,
@@ -1038,7 +1066,7 @@ private struct DistanceDot: View {
             onToggleExpand: {},
             onDateChange: nil,
             showDatePicker: false,
-            poolType: .shortCourseYards
+            poolType: .scy
         )
         .padding()
         .background(PoolTheme.surface)

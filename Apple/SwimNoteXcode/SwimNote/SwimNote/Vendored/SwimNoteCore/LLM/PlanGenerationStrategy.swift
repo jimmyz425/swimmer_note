@@ -10,8 +10,24 @@ public enum PlanType: String, CaseIterable, Identifiable, Codable {
     case dryLandOnly = "Dry Land Only"
     case racePrep = "Race Prep"
     case speed = "Speed & Sprint"
+    // Macrocycle phases (Silver+ only)
+    case generalPrep = "General Preparation"
+    case specificPrep = "Specific Preparation"
+    case preCompetition = "Pre-Competition"
+    case competition = "Competition Phase"
+    case taper = "Taper"
 
     public var id: String { rawValue }
+
+    /// Whether this plan type requires advanced tier (Silver+)
+    public var requiresAdvancedTier: Bool {
+        switch self {
+        case .generalPrep, .specificPrep, .preCompetition, .competition, .taper:
+            return true
+        default:
+            return false
+        }
+    }
 
     public var description: String {
         switch self {
@@ -22,6 +38,11 @@ public enum PlanType: String, CaseIterable, Identifiable, Codable {
         case .dryLandOnly: "No pool sessions"
         case .racePrep: "Competition readiness"
         case .speed: "Sprint and pace work"
+        case .generalPrep: "Base building (Zone 1-2 focus)"
+        case .specificPrep: "Threshold development phase"
+        case .preCompetition: "Sharpening, race-pace specificity"
+        case .competition: "Meet season, high quality"
+        case .taper: "10-21 days before major meet"
         }
     }
 
@@ -34,6 +55,11 @@ public enum PlanType: String, CaseIterable, Identifiable, Codable {
         case .dryLandOnly: "figure.strengthtraining.traditional"
         case .racePrep: "flag"
         case .speed: "bolt"
+        case .generalPrep: "chart.line.uptrend.xyaxis"
+        case .specificPrep: "flame"
+        case .preCompetition: "trophy"
+        case .competition: "medal"
+        case .taper: "sparkles"
         }
     }
 }
@@ -44,7 +70,7 @@ public struct PlanContext: Sendable {
     public let profile: UserProfile?
     public let notes: [TrainingNote]
     public let poolType: PoolType
-    public let sessionsPerWeek: Int
+    public let sessionsPerWeek: Int  // 0 = not determined, LLM will decide based on tier guidance
     public let strokeBalance: [StrokeBalanceInfo]
     public let goalProgress: GoalProgressInfo
 
@@ -52,7 +78,7 @@ public struct PlanContext: Sendable {
         profile: UserProfile?,
         notes: [TrainingNote],
         poolType: PoolType,
-        sessionsPerWeek: Int,
+        sessionsPerWeek: Int = 0,  // Default 0 - LLM determines from tier guidance
         strokeBalance: [StrokeBalanceInfo],
         goalProgress: GoalProgressInfo
     ) {
@@ -107,7 +133,8 @@ public protocol PlanGenerationStrategy: Sendable {
     func buildSystemRole() -> String
     func buildUserPrompt(context: PlanContext) -> String
     func buildOutlinePrompt(context: PlanContext) -> String  // Phase 1: Rough outline
-    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool) -> String  // Phase 2: Detailed session
+    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String  // Phase 2: Detailed session
+    func buildDryLandPrompt(outline: WeeklyPlanOutline, context: PlanContext) -> String  // Phase 3: Weekly dryland
     func guidanceFiles() -> [String]
     func coachingRules() -> String
 }
@@ -120,10 +147,14 @@ extension PlanGenerationStrategy {
         return buildDefaultOutlinePrompt(context, planType: planType)
     }
 
-    /// Default Phase 2 prompt - detailed session for one outline
-    /// isLastSession: when true, appends dry land generation request
-    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool = false) -> String {
-        return buildDefaultDetailPrompt(sessionOutline, context: context, isLastSession: isLastSession)
+    /// Default Phase 2 prompt - detailed session for one outline (no dryland)
+    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String {
+        return buildDefaultDetailPrompt(sessionOutline, context: context)
+    }
+
+    /// Default Phase 3 prompt - weekly dryland based on full plan
+    public func buildDryLandPrompt(outline: WeeklyPlanOutline, context: PlanContext) -> String {
+        return buildDefaultDryLandPrompt(outline, context: context)
     }
 }
 
@@ -131,49 +162,134 @@ extension PlanGenerationStrategy {
 
 /// Build default Phase 1 outline prompt with pre-gathered data
 private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanType) -> String {
-    let weeklyTotal: Int
-    if let profile = context.profile {
-        weeklyTotal = weeklyDistanceTarget(
-            tier: profile.trainingTier,
-            subTier: profile.subTier,
-            sessionsPerWeek: context.sessionsPerWeek,
-            poolType: context.poolType
-        )
-    } else {
-        weeklyTotal = weeklyDistanceTarget(
-            skillLevel: .intermediate,
-            sessionsPerWeek: context.sessionsPerWeek,
-            poolType: context.poolType
-        )
-    }
-    let perSessionTarget = weeklyTotal / max(context.sessionsPerWeek, 1)
+    // Check if this is a macrocycle phase (requires interval training research reference)
+    let isMacrocyclePhase = planType.requiresAdvancedTier
 
     var prompt = """
     Generate a PHASE 1 WEEKLY PLAN OUTLINE for \(planType.rawValue).
     This is a ROUGH outline - NO detailed sets, just session focuses and structure.
 
+    MANDATORY FIRST STEPS - Call these tools BEFORE generating the outline:
+
+    1. Call read_usa_swimming_structure(section: "all") to get comprehensive tier background:
+       - Quick-Reference Summary Table with all tier definitions
+       - Zone distribution percentages per tier and sub-tier
+       - Volume progression (weekly/per-session distances in km)
+       - Practices per week recommendations by tier
+       - Sub-tier breakdowns with detailed criteria
+       - Training focus allocation by tier
+
+       CRITICAL: Use this document to DETERMINE:
+       - Appropriate number of sessions per week for the swimmer's tier/sub-tier
+       - Weekly distance target (in meters, convert from km in document)
+       - Per-session distance target based on practice duration guidance
+       - Zone distribution percentages to follow
+
+    2. Call get_tier_guidance() to get specific guidance for the swimmer's current tier/sub-tier.
+       This returns pre-calculated values, but cross-check with the full document for context.
+
     """
+
+    // Add macrocycle phase-specific tool call
+    if isMacrocyclePhase {
+        prompt += """
+    3. CRITICAL FOR MACROCYCLE PHASE: Call read_interval_research(section: "periodization") to get:
+       - Detailed zone distribution percentages for this specific phase
+       - Interval characteristics (distance, rest patterns) for the phase
+       - Sample week structures for each macrocycle phase
+       - Phase progression over training cycles
+
+       MACROCYCLE PHASE CONTEXT:
+       - General Preparation: High aerobic volume (60-75% Zone 1-2), threshold introduction (5-10%)
+       - Specific Preparation: Reduced aerobic, increased threshold (15-25% Zone 4), VO2max (10-15%)
+       - Pre-Competition: Race-pace specificity (15-20% Zone 5-6), reduced volume
+       - Competition Phase: High sprint/speed (20-30% Zone 6), race-pace precision
+       - Taper: Volume reduction 41-60%, intensity maintained, race-pace focus (30-40% Zone 6)
+
+    """
+    }
 
     if let profile = context.profile {
         prompt += """
         SWIMMER PROFILE:
         - Name: \(profile.name), Age: \(profile.age)
-        - Skill Level: \(profile.skillLevel.rawValue)
-        - Training Tier: \(profile.trainingTier.rawValue) \(profile.subTier.rawValue)
-        - Sessions/Week Target: \(profile.weeklySessionTarget)
+        - Training Tier: \(profile.trainingTier.displayName) (\(profile.trainingTier.fullName))
+        - Sub-Tier: \(profile.subTier.displayName)
+
+        CRITICAL: Use read_usa_swimming_structure() to understand what \(profile.trainingTier.displayName) \(profile.subTier.displayName) means.
+        The document has:
+        - Recommended practices per week for this tier/sub-tier
+        - Weekly distance ranges (in km - convert to meters: 1 km = 1000m)
+        - Per-session distance ranges based on practice duration
+        - Zone distribution percentages specific to this sub-tier
+
+        IMPORTANT: Determine sessions/week from tier guidance, NOT from user input.
+        Example: Bronze 1 typically trains 3 sessions/week, Silver 3 typically 4-5 sessions/week.
+
+        Pool Type: \(context.poolType.fullLabel)
+        Pool length: \(Int(context.poolType.poolLengthMeters))\(context.poolType == .scy ? "yd" : "m"). Adjust distance targets accordingly.
+
+        """
+    } else {
+        // Default tier description for intermediate level
+        prompt += """
+        SWIMMER PROFILE:
+        - Training Level: Intermediate (Silver / Age Group)
+        - No specific profile set - use Silver 1 defaults
+
+        Pool Type: \(context.poolType.fullLabel)
+
+        """
+    }
+
+    // Add recent training context if available
+    if !context.notes.isEmpty {
+        let recentDates = context.notes.prefix(7).map { $0.date }.joined(separator: ", ")
+        prompt += """
+        RECENT TRAINING (last 7 sessions): \(recentDates)
+
+        """
+    } else {
+        prompt += """
+        RECENT TRAINING: NO TRAINING HISTORY - This is a NEW swimmer.
+        Plan should focus on technique fundamentals and gradual volume introduction.
+        Do NOT reference any past sessions, drills, or training patterns.
 
         """
     }
 
     prompt += """
-    WEEKLY TARGETS:
-    - Weekly Total Distance: \(weeklyTotal)m across ALL sessions
-    - Per-Session Target: ~\(perSessionTarget)m
-    - Pool Type: \(context.poolType.shortLabel)
-    - Sessions to Generate: \(context.sessionsPerWeek)
+    YOUR TASK - Determine and generate:
+
+    STEP 1: From tier guidance, determine:
+    - Sessions per week (use practices_per_week recommendation from get_tier_guidance)
+    - Weekly total distance (use weekly_distance range, convert km to meters)
+    - Per-session target (use per_session_distance range)
+
+    STEP 2: Generate the weekly outline with:
+    - Number of sessions = practices_per_week recommendation for tier
+    - Each session with appropriate distance based on per_session_distance range
+    - Technique focus appropriate for tier's training focus allocation
+    - Zone distribution matching tier's zone percentages
 
     OUTPUT JSON FORMAT (outline only - NO detailed sets):
     {
+      "tierGuidance": {
+        "tier": "string - tier name from document",
+        "subTier": "string - sub-tier name",
+        "sessionsPerWeek": "int - determined from tier guidance",
+        "weeklyDistanceTarget": "int - meters (converted from km in document)",
+        "perSessionTarget": "int - meters",
+        "zoneDistribution": {
+          "zone0": "string - percentage",
+          "zone1": "string - percentage",
+          "zone2": "string - percentage",
+          "zone3": "string - percentage",
+          "zone4": "string - percentage",
+          "zone5": "string - percentage",
+          "zone6": "string - percentage"
+        }
+      },
       "overview": {
         "weekFocus": "string - main focus for the week"
       },
@@ -189,24 +305,27 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
           "techniqueFocus": "string - technique emphasis",
           "techniqueFileRef": "string - technique file reference",
           "addressesGoal": "string - which goal this addresses",
-          "estimatedDuration": "~60min",
-          "estimatedDistance": "~\(perSessionTarget)m"
+          "estimatedDuration": "string - practice duration from tier guidance",
+          "estimatedDistance": "string - distance based on per_session range"
         }
       ],
       "notes": "string - weekly rationale"
     }
 
-    Generate exactly \(context.sessionsPerWeek) pool session outlines.
-    OUTPUT ONLY JSON (no explanations).
+    RULES:
+    - Session count MUST come from tier guidance (practices_per_week), NOT arbitrary selection
+    - Weekly distance MUST align with tier's weekly_distance range
+    - Per-session distance MUST align with tier's per_session_distance range
+    - Zone distribution MUST match tier's percentages (e.g., Bronze 1 has NO Zone 4-6)
+    - OUTPUT ONLY JSON (no explanations)
     """
     return prompt
 }
 
 // MARK: - Phase 2: Detail Prompt Builder
 
-/// Build default Phase 2 detail prompt for pool sessions
-/// isLastSession: when true, appends dry land generation request to avoid duplicate generation
-private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext, isLastSession: Bool) -> String {
+/// Build default Phase 2 detail prompt for pool sessions (no dryland)
+private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext) -> String {
     let cssPace: String
     if let profile = context.profile, let cssHistory = profile.cssHistory, let latestCSS = cssHistory.latestTest {
         cssPace = latestCSS.formattedPace
@@ -216,18 +335,33 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
 
     let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
 
-    var prompt = """
+    // Extract stroke from session name for evidence-based drill lookup
+    let primaryStroke: String
+    if sessionOutline.poolSession.contains("Freestyle") { primaryStroke = "freestyle" }
+    else if sessionOutline.poolSession.contains("Backstroke") { primaryStroke = "backstroke" }
+    else if sessionOutline.poolSession.contains("Breaststroke") { primaryStroke = "breaststroke" }
+    else if sessionOutline.poolSession.contains("Butterfly") { primaryStroke = "butterfly" }
+    else { primaryStroke = "freestyle" }
+
+    let prompt = """
     Generate PHASE 2 DETAILED SESSION for session #\(sessionOutline.sessionNumber).
 
     SESSION CONTEXT:
     - Session focus: \(sessionOutline.poolSession) - \(sessionOutline.focus)
     - Technique focus: \(sessionOutline.techniqueFocus ?? "general")
     - Estimated distance: \(sessionOutline.estimatedDistance ?? "~3000m")
+    - Primary stroke: \(primaryStroke)
 
     SWIMMER CONTEXT:
     - Skill Level: \(skillLevel)
-    - Pool Type: \(context.poolType.shortLabel)
+    - Pool Type: \(context.poolType.fullLabel)
     - CSS Pace: \(cssPace)/100m
+
+    MANDATORY — Evidence-Based Secondary Drill Set:
+    1. Call read_evidence_drills(stroke="\(primaryStroke)") to get the evidence-based drill library for this stroke.
+    2. Pick ONE drill from the tool result that best matches this session's focus.
+    3. Build the secondarySet JSON using that drill's specifications (distance, equipment, level adjustment).
+    4. Include the evidence citation from the tool result in sessionNotes.
 
     OUTPUT JSON FORMAT (detailed session with sets):
     {
@@ -246,6 +380,12 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
         ],
         "zone": 2
       },
+      "secondarySet": {
+        "sets": [
+          {"repeatCount": 6, "distancePerRep": 50, "swimSeconds": 45, "item": "drill name from read_evidence_drills result", "zone": 2, "restSeconds": 15}
+        ],
+        "zone": 2
+      },
       "mainSet": {
         "sets": [
           {"repeatCount": 8, "distancePerRep": 100, "swimSeconds": 85, "item": "freestyle tempo", "zone": 3, "restSeconds": 10}
@@ -258,38 +398,300 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
         ],
         "zone": 0
       },
-      "sessionNotes": "string - coaching tips for this session",
+      "sessionNotes": "string - coaching tips for this session, include evidence-based drill source",
       "progressionRationale": "string - why this progression"
-    """
-
-    // Add dry land request ONLY for the last session to avoid duplicate generation
-    if isLastSession {
-        prompt += """
-        ,
-
-      // DRY LAND EXERCISES for the week (append ONLY to last session)
-      "dryLandExercises": [
-        {"stroke": "freestyle", "exercise": "Plank Hold", "setsReps": "3x30s"},
-        {"stroke": "freestyle", "exercise": "Medicine Ball Rotational Throws", "setsReps": "3x10"}
-      ]
-    }
-
-    DRY LAND RULES (for last session only):
-    - Generate 5-7 dry land exercises for the week's technique focus: \(sessionOutline.techniqueFocus ?? "general technique")
-    - Pick exercises from {stroke}-dry-land-training.md files
-    - Include exercises from: Core, Rotation, Shoulder/Arm, Flexibility categories
-    - Output MINIMAL info: stroke, exercise name (exact from markdown), setsReps
-    - App will read detailed instructions from markdown files
-    """
-    } else {
-        prompt += """
     }
 
     OUTPUT ONLY JSON (no explanations).
     """
-    }
 
     return prompt
+}
+
+// MARK: - Phase 3: Dry Land Prompt Builder
+
+/// Build default Phase 3 prompt for weekly dryland based on full plan
+private func buildDefaultDryLandPrompt(_ outline: WeeklyPlanOutline, context: PlanContext) -> String {
+    // Summarize the week's technique focuses
+    let techniqueFocuses = outline.schedule.compactMap { $0.techniqueFocus }.joined(separator: ", ")
+    let strokes = outline.schedule.compactMap { session -> String? in
+        // Extract stroke from poolSession if possible
+        if session.poolSession.contains("Freestyle") { return "freestyle" }
+        if session.poolSession.contains("Backstroke") { return "backstroke" }
+        if session.poolSession.contains("Breaststroke") { return "breaststroke" }
+        if session.poolSession.contains("Butterfly") { return "butterfly" }
+        return nil
+    }
+    let uniqueStrokes = Array(Set(strokes)).joined(separator: ", ")
+
+    let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
+
+    let prompt = """
+    Generate DRY LAND EXERCISES to complement this week's swimming training plan.
+
+    WEEKLY POOL TRAINING SUMMARY:
+    - Sessions: \(outline.schedule.count)
+    - Technique Focuses: \(techniqueFocuses)
+    - Strokes Covered: \(uniqueStrokes.isEmpty ? "mixed" : uniqueStrokes)
+    - Week Focus: \(outline.overview.weekFocus)
+
+    SWIMMER CONTEXT:
+    - Skill Level: \(skillLevel)
+
+    IMPORTANT: You MUST call get_dry_land_exercises for EACH stroke covered this week BEFORE generating exercises.
+    - Call: get_dry_land_exercises(stroke="freestyle") to get available exercises
+    - Call: get_dry_land_exercises(stroke="backstroke") if backstroke is covered
+    - Call: get_dry_land_exercises(stroke="breaststroke") if breaststroke is covered
+    - Call: get_dry_land_exercises(stroke="butterfly") if butterfly is covered
+
+    YOU MUST ONLY USE EXERCISES RETURNED BY THE TOOL. Do NOT invent or create new exercises. If you need an exercise that isn't in the returned list, skip it.
+
+    DRY LAND REQUIREMENTS:
+    1. Generate 5-7 exercises that complement the pool training
+    2. Target areas based on technique focuses: Core stability, Rotation power, Shoulder strength, Flexibility
+    3. Match exercises to swimmer's skill level
+    4. Use exercise IDs from tool results (e.g., "plank-hold", "medicine-ball-rotational-throws")
+
+    OUTPUT JSON FORMAT:
+    {
+      "dryLandExercises": [
+        {"stroke": "freestyle", "exerciseId": "plank-hold", "setsReps": "3x30s"},
+        {"stroke": "freestyle", "exerciseId": "medicine-ball-rotational-throws", "setsReps": "3x10"},
+        {"stroke": "backstroke", "exerciseId": "reverse-plank", "setsReps": "3x20s"}
+      ],
+      "weeklyRationale": "string - why these exercises complement the pool training"
+    }
+
+    RULES:
+    - Return exerciseId (NOT exercise name) - use IDs from get_dry_land_exercises tool (e.g., "plank-hold")
+    - Each exercise must have: stroke, exerciseId, setsReps format (e.g., "3x10", "3x30s")
+    - Distribute exercises across the week's technique focuses
+    - OUTPUT ONLY JSON (no explanations)
+    """
+
+    return prompt
+}
+
+// MARK: - Tier Description Helper
+
+/// Generate detailed tier description for LLM prompt
+private func buildTierDescription(_ tier: TrainingTier, _ subTier: SubTier) -> String {
+    let tierInfo = getTierInfo(tier)
+    let subTierInfo = getSubTierInfo(subTier, tier)
+
+    return """
+    Tier: \(tier.displayName) (\(tier.fullName))
+    Sub-tier: \(subTier.displayName)
+    Typical Age Range: \(tier.ageRange)
+    Time Standards: \(tier.timeStandardReference)
+
+    TRAINING CHARACTERISTICS:
+    - Practices per week: \(tierInfo.practicesPerWeek)
+    - Practice duration: \(tierInfo.practiceDuration)
+    - Weekly distance: \(tierInfo.weeklyDistance)
+    - Per-session target: \(tierInfo.perSessionTarget)
+
+    TRAINING FOCUS ALLOCATION:
+    - Technique: \(tierInfo.techniquePercent)%
+    - Aerobic base: \(tierInfo.aerobicPercent)%
+    - Threshold/tempo: \(tierInfo.thresholdPercent)%
+    - Race pace/sprint: \(tierInfo.sprintPercent)%
+
+    TRAINING ZONE DISTRIBUTION:
+    - Zone 0 (Recovery): \(tierInfo.zone0Percent)%
+    - Zone 1 (Aerobic base): \(tierInfo.zone1Percent)%
+    - Zone 2 (Aerobic endurance): \(tierInfo.zone2Percent)%
+    - Zone 3 (Tempo): \(tierInfo.zone3Percent)%
+    - Zone 4+ (Threshold/Sprint): \(tierInfo.zone4PlusPercent)%
+
+    SWIMMER CAPABILITIES:
+    \(tierInfo.capabilities)
+
+    SUB-TIER INDICATOR: \(subTierInfo)
+    """
+}
+
+/// Tier-specific training info
+private struct TierInfo {
+    let practicesPerWeek: String
+    let practiceDuration: String
+    let weeklyDistance: String
+    let perSessionTarget: String
+    let techniquePercent: Int
+    let aerobicPercent: Int
+    let thresholdPercent: Int
+    let sprintPercent: Int
+    let zone0Percent: Int
+    let zone1Percent: Int
+    let zone2Percent: Int
+    let zone3Percent: Int
+    let zone4PlusPercent: Int
+    let capabilities: String
+}
+
+/// Get training info for a tier
+private func getTierInfo(_ tier: TrainingTier) -> TierInfo {
+    switch tier {
+    case .preCompetitive:
+        return TierInfo(
+            practicesPerWeek: "2-3",
+            practiceDuration: "45-60 min",
+            weeklyDistance: "3-8 km (3,000-8,000m)",
+            perSessionTarget: "1,500-2,500m",
+            techniquePercent: 65,
+            aerobicPercent: 20,
+            thresholdPercent: 5,
+            sprintPercent: 0,
+            zone0Percent: 15,
+            zone1Percent: 60,
+            zone2Percent: 20,
+            zone3Percent: 5,
+            zone4PlusPercent: 0,
+            capabilities: """
+            - Learning water comfort and basic stroke mechanics
+            - Developing all four strokes with focus on freestyle and backstroke
+            - Can swim 25 yards freestyle with side breathing
+            - Can swim 25 yards backstroke with alternating arm motion
+            - Tread water 1-2 minutes, submerge face and blow bubbles
+            - No time standards required - focus on skill acquisition and fun
+            """
+        )
+    case .bronze:
+        return TierInfo(
+            practicesPerWeek: "3-4",
+            practiceDuration: "60-75 min",
+            weeklyDistance: "8-18 km (8,000-18,000m)",
+            perSessionTarget: "2,500-4,500m",
+            techniquePercent: 45,
+            aerobicPercent: 25,
+            thresholdPercent: 10,
+            sprintPercent: 5,
+            zone0Percent: 10,
+            zone1Percent: 55,
+            zone2Percent: 20,
+            zone3Percent: 10,
+            zone4PlusPercent: 5,
+            capabilities: """
+            - Proficient in all four strokes (25 yards each, legal technique)
+            - Can swim 100-200 yards continuously without stopping
+            - Basic flip turn (may not be fast, but legal)
+            - Working toward first B times
+            - Focus: stroke refinement, all 4 strokes, starts/turns
+            """
+        )
+    case .silver:
+        return TierInfo(
+            practicesPerWeek: "4-5",
+            practiceDuration: "75-90 min",
+            weeklyDistance: "15-28 km (15,000-28,000m)",
+            perSessionTarget: "4,000-6,000m",
+            techniquePercent: 35,
+            aerobicPercent: 35,
+            thresholdPercent: 15,
+            sprintPercent: 10,
+            zone0Percent: 10,
+            zone1Percent: 50,
+            zone2Percent: 25,
+            zone3Percent: 10,
+            zone4PlusPercent: 5,
+            capabilities: """
+            - Solid stroke technique in all four strokes
+            - Can handle interval training (swimming on send-off times)
+            - Developing aerobic endurance base
+            - Working toward A and AA time standards
+            - Focus: refinement, aerobic base building, threshold introduction
+            """
+        )
+    case .gold:
+        return TierInfo(
+            practicesPerWeek: "5-6",
+            practiceDuration: "90-105 min",
+            weeklyDistance: "25-40 km (25,000-40,000m)",
+            perSessionTarget: "5,000-7,000m",
+            techniquePercent: 25,
+            aerobicPercent: 35,
+            thresholdPercent: 20,
+            sprintPercent: 15,
+            zone0Percent: 5,
+            zone1Percent: 40,
+            zone2Percent: 30,
+            zone3Percent: 15,
+            zone4PlusPercent: 10,
+            capabilities: """
+            - Strong technique foundation, stroke-specific refinements
+            - CSS pace understanding and training zone work
+            - Threshold training introduced
+            - Working toward AA and AAA times, Zone qualifiers
+            - Focus: threshold introduction, race strategy, volume increase
+            """
+        )
+    case .senior:
+        return TierInfo(
+            practicesPerWeek: "6-8",
+            practiceDuration: "90-120 min",
+            weeklyDistance: "40-60 km (40,000-60,000m)",
+            perSessionTarget: "6,000-8,000m",
+            techniquePercent: 20,
+            aerobicPercent: 30,
+            thresholdPercent: 25,
+            sprintPercent: 20,
+            zone0Percent: 5,
+            zone1Percent: 30,
+            zone2Percent: 25,
+            zone3Percent: 20,
+            zone4PlusPercent: 20,
+            capabilities: """
+            - Advanced stroke technique at race pace
+            - High-volume aerobic training
+            - Threshold and VO2max work
+            - Working toward AAA-AAAA times, Junior/Senior Nationals
+            - Focus: race pace, lactate tolerance, event specialization
+            """
+        )
+    case .national:
+        return TierInfo(
+            practicesPerWeek: "8-12",
+            practiceDuration: "120-180 min",
+            weeklyDistance: "50-80+ km (50,000-80,000m+)",
+            perSessionTarget: "7,000-10,000m",
+            techniquePercent: 15,
+            aerobicPercent: 25,
+            thresholdPercent: 30,
+            sprintPercent: 25,
+            zone0Percent: 5,
+            zone1Percent: 25,
+            zone2Percent: 20,
+            zone3Percent: 25,
+            zone4PlusPercent: 25,
+            capabilities: """
+            - Elite-level technique, fine-tuning race mechanics
+            - Peak performance training
+            - Race simulation and taper expertise
+            - AAAA times, National cuts, International qualifiers
+            - Focus: peak performance, event specialization, mental preparation
+            """
+        )
+    }
+}
+
+/// Get sub-tier indicator description
+private func getSubTierInfo(_ subTier: SubTier, _ tier: TrainingTier) -> String {
+    switch subTier {
+    case .a:
+        return "A - Developing, newest to this tier group, still building foundational skills"
+    case .b:
+        return "B - Progressing, mid-level within tier, showing consistent improvement"
+    case .c:
+        return "C - Advancing, ready for promotion to next tier, meeting most criteria"
+    case .one:
+        return "1 - Entry level in this tier, building volume and skills for the group"
+    case .two:
+        return "2 - Mid-level, comfortable with tier expectations, steady improvement"
+    case .three:
+        return "3 - Top of tier, ready for next group, meeting time standards"
+    case .none:
+        return "Single-level tier (no sub-tiers)"
+    }
 }
 
 // MARK: - Strategy Factory
@@ -304,6 +706,12 @@ public struct PlanStrategyFactory: Sendable {
         case .dryLandOnly: return DryLandOnlyStrategy()
         case .racePrep: return RacePrepStrategy()
         case .speed: return SpeedSprintStrategy()
+        // Macrocycle phases (Silver+ only)
+        case .generalPrep: return GeneralPrepStrategy()
+        case .specificPrep: return SpecificPrepStrategy()
+        case .preCompetition: return PreCompetitionStrategy()
+        case .competition: return CompetitionPhaseStrategy()
+        case .taper: return TaperStrategy()
         }
     }
 }
@@ -575,6 +983,18 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
 
             """
 
+            // Include user's revisit nodes if any
+            if !profile.revisitNodes.isEmpty {
+                let revisitList = profile.revisitNodes.flatMap { strokeId, nodeIds in
+                    nodeIds.map { nodeId in "\(strokeId):\(nodeId)" }
+                }.joined(separator: ", ")
+                prompt += """
+                USER REVISIT FOCUS: The swimmer has marked these techniques for regular practice: \(revisitList)
+                Prioritize these in fundamental revisit sessions.
+
+                """
+            }
+
             // Include CSS summary if available
             if let cssHistory = profile.cssHistory, let latestCSS = cssHistory.latestTest {
                 prompt += """
@@ -623,7 +1043,7 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         """
 
         // Stroke balance
-        if !context.strokeBalance.isEmpty {
+        if !context.strokeBalance.isEmpty && context.strokeBalance.contains(where: { $0.sessions > 0 }) {
             prompt += "STROKE BALANCE (last 14 days):\n"
             for balance in context.strokeBalance {
                 prompt += "- \(balance.stroke): \(balance.sessions) sessions (\(balance.percentage)%)\n"
@@ -632,6 +1052,8 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
             if !neglected.isEmpty {
                 prompt += "NEGLECTED: \(neglected.joined(separator: ", ")) - include this week\n"
             }
+        } else {
+            prompt += "STROKE BALANCE: NO TRAINING HISTORY - New swimmer, no stroke focus data available.\n"
         }
 
         // Goals
@@ -641,9 +1063,12 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         if !context.goalProgress.struggling.isEmpty {
             prompt += "STRUGGLING: \(context.goalProgress.struggling.map { "\($0.stroke ?? "general"): \($0.description)" }.joined(separator: "; ")) → easier prerequisite\n"
         }
+        if context.goalProgress.achieved.isEmpty && context.goalProgress.struggling.isEmpty && context.goalProgress.inProgress.isEmpty {
+            prompt += "GOALS: NO ACTIVE GOALS - New swimmer, focus on technique basics first.\n"
+        }
 
         // Settings
-        prompt += "SETTINGS: Pool \(context.poolType.shortLabel), \(context.sessionsPerWeek) sessions\n"
+        prompt += "SETTINGS: Pool \(context.poolType.fullLabel), \(context.sessionsPerWeek) sessions\n"
 
         return prompt
     }
@@ -670,8 +1095,8 @@ private func weeklyDistanceTarget(skillLevel: SkillLevel, sessionsPerWeek: Int, 
         baseWeekly = 40000
     }
 
-    // Adjust for pool type (long course = 2x distance for same time)
-    let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
+    // Adjust for pool type (LCM = 2x distance for same time)
+    let adjusted = poolType == .lcm ? baseWeekly * 2 : baseWeekly
 
     // Scale by sessions per week (3 sessions is baseline)
     return adjusted * sessionsPerWeek / 3
@@ -711,8 +1136,8 @@ private func weeklyDistanceTarget(tier: TrainingTier, subTier: SubTier, sessions
         baseWeekly = 65000
     }
 
-    // Adjust for pool type (long course = 2x distance for same time)
-    let adjusted = poolType == .longCourse ? baseWeekly * 2 : baseWeekly
+    // Adjust for pool type (LCM = 2x distance for same time)
+    let adjusted = poolType == .lcm ? baseWeekly * 2 : baseWeekly
 
     // Scale by sessions per week (use tier-specific baseline)
     let baselineSessions: Int
@@ -1269,5 +1694,254 @@ public struct SpeedSprintStrategy: PlanGenerationStrategy, Sendable {
     private func buildBasePrompt(_ context: PlanContext) -> String {
         return MixedTrainingStrategy().buildUserPrompt(context: context)
             .replacingOccurrences(of: "Generate a weekly training plan.", with: "Generate a SPEED & SPRINT training plan.")
+    }
+}
+
+// MARK: - Macrocycle Phase Strategies (Silver+ Only)
+
+/// General Preparation Phase (Base Building)
+/// Duration: 8-16 weeks
+/// Focus: High aerobic volume (60-75% Zone 1-2), threshold introduction (5-10%)
+public struct GeneralPrepStrategy: PlanGenerationStrategy, Sendable {
+    public var planType: PlanType { .generalPrep }
+
+    public func buildSystemRole() -> String {
+        return "expert_swimming_coach"
+    }
+
+    public func buildUserPrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType) + """
+
+        GENERAL PREPARATION PHASE RULES:
+        - Zone distribution: 60-75% Zone 1-2 (aerobic base), 10-15% Zone 3 (tempo), 5-10% Zone 4 (threshold introduction)
+        - Long repetitions: 200-500m intervals for aerobic development
+        - Long rest relative to work: low metabolic stress, focus on technique consistency
+        - High total session volume: building aerobic foundation
+        - Primary focus: mitochondrial density, capillary networks, stroke efficiency
+        - Volume: highest of all phases, building base for later phases
+
+        CALL read_interval_research(section: "periodization") to get:
+        - Zone distribution percentages for Phase 1 (General Preparation)
+        - Sample week structures for base building
+        - Interval characteristics for this phase
+
+        SESSION TYPES: aerobic base / tempo introduction / technique maintenance
+
+        OUTPUT ONLY JSON.
+        """
+    }
+
+    public func guidanceFiles() -> [String] {
+        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+    }
+
+    public func coachingRules() -> String {
+        return """
+        GENERAL PREP PHASE:
+        - Primary: Zone 1-2 aerobic swimming (CSS + 5-15s/100m)
+        - Long reps: 200-500m at conversational pace
+        - Weekly volume: building toward peak
+        - Technique: quality under moderate fatigue
+        - NO sprint work in this phase - save neuromuscular reserves
+        """
+    }
+}
+
+/// Specific Preparation Phase (Build Phase)
+/// Duration: 6-12 weeks
+/// Focus: Threshold work becomes primary (15-25% Zone 4), VO2max introduction (10-15%)
+public struct SpecificPrepStrategy: PlanGenerationStrategy, Sendable {
+    public var planType: PlanType { .specificPrep }
+
+    public func buildSystemRole() -> String {
+        return "expert_swimming_coach"
+    }
+
+    public func buildUserPrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType) + """
+
+        SPECIFIC PREPARATION PHASE RULES:
+        - Zone distribution: 40-50% Zone 1-2 (maintained aerobic), 15-20% Zone 3 (tempo), 15-25% Zone 4 (PRIMARY - threshold), 10-15% Zone 5 (VO2max introduction)
+        - Moderate repetitions: 100-300m intervals at threshold
+        - Moderate rest: increasing metabolic stress
+        - Threshold work is the centerpiece of this phase
+        - Primary focus: lactate threshold pace improvement, buffering capacity
+
+        CALL read_interval_research(section: "periodization") to get:
+        - Zone distribution percentages for Phase 2 (Specific Preparation)
+        - Threshold interval characteristics
+        - Sample threshold sets with rest intervals
+
+        SESSION TYPES: threshold main set / tempo bridge / VO2max introduction
+
+        OUTPUT ONLY JSON.
+        """
+    }
+
+    public func guidanceFiles() -> [String] {
+        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+    }
+
+    public func coachingRules() -> String {
+        return """
+        SPECIFIC PREP PHASE:
+        - Primary: Zone 4 threshold work (CSS to CSS - 2s/100m)
+        - Threshold reps: 100-200m at threshold pace
+        - Key sets: 10x100m on tight send-offs
+        - Tempo: Zone 3 as bridge work
+        - VO2max: limited introduction (10-15%)
+        - This is where fitness translates to performance capability
+        """
+    }
+}
+
+/// Pre-Competition Phase (Sharpening)
+/// Duration: 4-8 weeks
+/// Focus: Race-pace specificity (15-20% Zone 5-6), reduced aerobic volume
+public struct PreCompetitionStrategy: PlanGenerationStrategy, Sendable {
+    public var planType: PlanType { .preCompetition }
+
+    public func buildSystemRole() -> String {
+        return "expert_swimming_coach"
+    }
+
+    public func buildUserPrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType) + """
+
+        PRE-COMPETITION PHASE RULES:
+        - Zone distribution: 25-35% Zone 1-2 (significantly reduced aerobic), 15-20% Zone 3, 15-20% Zone 4, 15-20% Zone 5 (INCREASED VO2max), 10-15% Zone 6 (sprint introduction)
+        - Short to moderate repetitions: 25-200m
+        - Race-pace specificity increases dramatically
+        - Total volume decreases - quality over quantity
+        - Primary focus: neuromuscular patterning at race pace, pace awareness
+
+        CALL read_interval_research(section: "periodization") to get:
+        - Zone distribution for Phase 3 (Pre-Competition)
+        - Race-pace interval design
+        - VO2max and sprint integration
+
+        SESSION TYPES: race-pace rehearsal / VO2max sets / sharpening sprints
+
+        OUTPUT ONLY JSON.
+        """
+    }
+
+    public func guidanceFiles() -> [String] {
+        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+    }
+
+    public func coachingRules() -> String {
+        return """
+        PRE-COMPETITION PHASE:
+        - Primary: Zone 5 VO2max (CSS - 3-6s/100m) and race-pace work
+        - Race-pace reps: exact target race pace
+        - Volume: decreasing, intensity increasing
+        - Sprint: Zone 6 introduction (10-15%)
+        - Focus: quality over quantity
+        - Neuromuscular: learning race pace without clock
+        """
+    }
+}
+
+/// Competition Phase (Meet Season)
+/// Focus: High sprint/speed (20-30% Zone 6), race-pace precision, low volume
+public struct CompetitionPhaseStrategy: PlanGenerationStrategy, Sendable {
+    public var planType: PlanType { .competition }
+
+    public func buildSystemRole() -> String {
+        return "expert_swimming_coach"
+    }
+
+    public func buildUserPrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType) + """
+
+        COMPETITION PHASE RULES:
+        - Zone distribution: 15-25% Zone 1-2 (maintenance only), 10-15% Zone 3, 10-15% Zone 4, 15-20% Zone 5, 20-30% Zone 6 (PRIMARY - sprint)
+        - Very short repetitions: 10-100m
+        - Full or near-full recovery between reps
+        - Race-pace precision is paramount
+        - Low total volume, very high quality
+        - Primary focus: meet performance, race readiness, peak speed
+
+        CALL read_interval_research(section: "periodization") to get:
+        - Zone distribution for Phase 4 (Competition)
+        - Sprint interval design with full recovery
+        - Race-pace exactness guidance
+
+        SESSION TYPES: race rehearsal / meet simulation / speed maintenance
+
+        OUTPUT ONLY JSON.
+        """
+    }
+
+    public func guidanceFiles() -> [String] {
+        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+    }
+
+    public func coachingRules() -> String {
+        return """
+        COMPETITION PHASE:
+        - Primary: Zone 6 sprint (race pace and faster)
+        - Very short reps: 10-50m with full recovery
+        - Volume: lowest of all phases
+        - Recovery: critical - 10-15% of training
+        - Race rehearsal: practice meet routine
+        - Intensity maintained, volume minimal
+        """
+    }
+}
+
+/// Taper Phase (10-21 days before major meet)
+/// Focus: Volume reduction 41-60%, intensity maintained, race-pace focus (30-40% Zone 6)
+public struct TaperStrategy: PlanGenerationStrategy, Sendable {
+    public var planType: PlanType { .taper }
+
+    public func buildSystemRole() -> String {
+        return "expert_swimming_coach"
+    }
+
+    public func buildUserPrompt(context: PlanContext) -> String {
+        return buildDefaultOutlinePrompt(context, planType: planType) + """
+
+        TAPER PHASE RULES (10-21 days before major competition):
+        - Volume reduction: 41-60% from pre-taper volume
+        - Intensity MAINTAINED: race-pace and faster work is maintained or slightly increased
+        - Frequency MAINTAINED: training frequency is not significantly reduced (to maintain neuromuscular patterns)
+        - Zone distribution Week 1: 30-40% Zone 1-2, 15-20% Zone 5, 20-25% Zone 6
+        - Zone distribution Week 2: 20-30% Zone 1-2, 15-20% Zone 5, 25-30% Zone 6
+        - Competition Week: 15-20% Zone 1-2, 15-20% Zone 5, 30-40% Zone 6
+
+        CRITICAL: Training load should NOT be reduced at the expense of intensity during taper.
+        - Very short, sharp repetitions
+        - Race-pace exactness
+        - Full recovery between reps
+        - Total session distance reduced by 40-60%
+
+        CALL read_interval_research(section: "periodization") to get:
+        - Taper protocol from research (Mujika 2010)
+        - Zone distribution progression during taper
+        - Taper interval characteristics
+
+        SESSION TYPES: race-pace touch-ups / activation sprints / recovery focus
+
+        OUTPUT ONLY JSON.
+        """
+    }
+
+    public func guidanceFiles() -> [String] {
+        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+    }
+
+    public func coachingRules() -> String {
+        return """
+        TAPER PHASE:
+        - Volume: reduce 41-60% from pre-taper
+        - Intensity: MAINTAIN or increase slightly
+        - Frequency: maintain (don't skip sessions)
+        - Primary: Zone 6 race-pace work (30-40%)
+        - Recovery: 15-20% of training
+        - Focus: feeling fast, race-ready
+        - Key principle: "Training load should not be reduced at the expense of intensity during the taper"
+        """
     }
 }

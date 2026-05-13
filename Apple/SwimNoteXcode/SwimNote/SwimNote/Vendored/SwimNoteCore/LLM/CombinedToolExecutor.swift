@@ -55,6 +55,25 @@ public final class CombinedToolExecutor: Sendable {
         case "get_tier_guidance":
             return try getTierGuidance()
 
+        // USA Swimming structure document
+        case "read_usa_swimming_structure":
+            return try readUSASwimmingStructure(section: args["section"] as? String)
+
+        // Dry land exercises tool
+        case "get_dry_land_exercises":
+            return try getDryLandExercises(stroke: args["stroke"] as? String)
+
+        // Evidence-based drills tool
+        case "read_evidence_drills":
+            return try readEvidenceDrills(stroke: args["stroke"] as? String, drill: args["drill"] as? String)
+
+        // External focus cues tool
+        case "get_external_focus_cues":
+            return try getExternalFocusCues(
+                stroke: args["stroke"] as? String,
+                issue: args["issue"] as? String
+            )
+
         default:
             throw ToolError.unknownTool(toolCall.function.name)
         }
@@ -106,12 +125,12 @@ public final class CombinedToolExecutor: Sendable {
             ])
         }
 
-        // Competitive drills with tiered targets
-        for drill in parsed.competitiveDrills {
+        // Competitive metrics with tiered targets
+        for metric in parsed.competitiveMetrics {
             allDrills.append([
-                "name": drill.name,
+                "name": metric.name,
                 "type": "competitive",
-                "targets": drill.tieredTargets
+                "targets": metric.tieredTargets
             ])
         }
 
@@ -838,6 +857,80 @@ public final class CombinedToolExecutor: Sendable {
         return tier.displayName
     }
 
+    // MARK: - USA Swimming Structure Document
+
+    private func readUSASwimmingStructure(section: String?) throws -> String {
+        let sectionParam = section ?? "all"
+
+        // Load the USA Swimming structure document
+        let filename = "usa-swimming-club-training-structure.md"
+        let content = try contentLoader.loadMarkdown(filename: filename)
+
+        // If requesting all, return a structured summary with key sections
+        if sectionParam == "all" {
+            // Extract key sections for Phase 1 context
+            let summaryTable = extractUSASwimmingSection(content: content, sectionMarker: "## Quick-Reference Summary Table")
+            let zoneDistribution = extractUSASwimmingSection(content: content, sectionMarker: "## Training Zone Distribution Summary by Group")
+            let volumeProgression = extractUSASwimmingSection(content: content, sectionMarker: "## Volume Progression by Group")
+
+            let result: [String: Any] = [
+                "document": "usa-swimming-club-training-structure",
+                "section": "all",
+                "summary_table": summaryTable,
+                "zone_distribution_summary": zoneDistribution,
+                "volume_progression": volumeProgression,
+                "note": "Full document has detailed sub-tier breakdowns, time standards, and coaching philosophy. Call with specific section (subtiers, zones, standards) for focused content."
+            ]
+            return try encodeJSON(result)
+        }
+
+        // Extract specific section based on parameter
+        let sectionContent = extractUSASwimmingSectionByParam(content: content, section: sectionParam)
+
+        let result: [String: Any] = [
+            "document": "usa-swimming-club-training-structure",
+            "section_requested": sectionParam,
+            "content": sectionContent
+        ]
+
+        return try encodeJSON(result)
+    }
+
+    private func extractUSASwimmingSection(content: String, sectionMarker: String) -> String {
+        // Find the section start
+        guard let sectionStart = content.range(of: sectionMarker) else {
+            return "Section not found"
+        }
+
+        // Find the next major section (## ) to determine end
+        let remainingContent = String(content[sectionStart.lowerBound...])
+        let nextSectionPattern = "\n## "
+
+        if let nextSectionRange = remainingContent.range(of: nextSectionPattern, options: .regularExpression) {
+            let sectionContent = String(remainingContent[..<nextSectionRange.lowerBound])
+            // Cap at 1500 chars for reasonable context
+            return String(sectionContent.prefix(1500))
+        } else {
+            // Last section - return remaining content (capped)
+            return String(remainingContent.prefix(1500))
+        }
+    }
+
+    private func extractUSASwimmingSectionByParam(content: String, section: String) -> String {
+        let sectionMarkers: [String: String] = [
+            "summary": "## Quick-Reference Summary Table",
+            "subtiers": "## Detailed Sub-Tier Breakdowns",
+            "zones": "## Training Zone Distribution Summary by Group",
+            "standards": "## Age-Group-Specific Time Standards Reference"
+        ]
+
+        guard let marker = sectionMarkers[section] else {
+            return "Section not found. Available sections: summary, subtiers, zones, standards, all"
+        }
+
+        return extractUSASwimmingSection(content: content, sectionMarker: marker)
+    }
+
     // MARK: - Helpers
 
     private func extractSection(content: String, section: String) -> String {
@@ -873,6 +966,75 @@ public final class CombinedToolExecutor: Sendable {
         }
     }
 
+    // MARK: - Dry Land Exercises Tool
+
+    private func getDryLandExercises(stroke: String?) throws -> String {
+        guard let stroke else {
+            throw ToolError.missingParameter("stroke")
+        }
+
+        // Validate stroke
+        let validStrokes = ["freestyle", "backstroke", "breaststroke", "butterfly"]
+        guard validStrokes.contains(stroke.lowercased()) else {
+            throw ToolError.invalidParameter("stroke", stroke)
+        }
+
+        // Load the unified dry land JSON file
+        let filename = "dry-land-exercises.json"
+
+        // Try to find the file in bundle
+        guard let url = Bundle.main.url(forResource: "dry-land-exercises", withExtension: "json", subdirectory: "swimming-strokes") ??
+                        Bundle.main.url(forResource: "dry-land-exercises", withExtension: "json", subdirectory: "Resources/swimming-strokes") ??
+                        Bundle.main.url(forResource: "dry-land-exercises", withExtension: "json") else {
+            throw ToolError.executionError("Could not find \(filename)")
+        }
+
+        guard let data = try? Data(contentsOf: url) else {
+            throw ToolError.executionError("Could not read \(filename)")
+        }
+
+        // Parse JSON
+        struct DryLandExercise: Codable {
+            let id: String
+            let name: String
+            let category: String
+            let defaultSetsReps: String
+            let strokeFocusPoints: [String: String]?
+        }
+
+        struct DryLandData: Codable {
+            let version: String
+            let exercises: [DryLandExercise]
+        }
+
+        guard let dryLandData = try? JSONDecoder().decode(DryLandData.self, from: data) else {
+            throw ToolError.executionError("Could not parse \(filename)")
+        }
+
+        // Filter exercises that have focus points for this stroke
+        let exercisesForStroke = dryLandData.exercises.filter { exercise in
+            exercise.strokeFocusPoints?[stroke.lowercased()] != nil
+        }
+
+        // Return with id and stroke-specific focus for LLM to choose
+        let result: [[String: String]] = exercisesForStroke.map { exercise in
+            [
+                "id": exercise.id,
+                "name": exercise.name,
+                "category": exercise.category,
+                "defaultSetsReps": exercise.defaultSetsReps,
+                "focus": exercise.strokeFocusPoints?[stroke.lowercased()] ?? ""
+            ]
+        }
+
+        return try encodeJSON([
+            "stroke": stroke,
+            "count": result.count,
+            "exercises": result,
+            "note": "Return ONLY the exercise ID (e.g. 'plank-hold'). The app will match IDs to full drill details."
+        ])
+    }
+
     private func parseArguments(_ toolCall: ToolCall) throws -> [String: Any] {
         guard let data = toolCall.function.arguments.data(using: .utf8) else {
             throw ToolError.executionError("Could not decode arguments")
@@ -889,6 +1051,319 @@ public final class CombinedToolExecutor: Sendable {
             throw ToolError.executionError("Could not encode result as JSON")
         }
         return string
+    }
+
+    // MARK: - External Focus Cues Tool
+
+    private func getExternalFocusCues(stroke: String?, issue: String?) throws -> String {
+        guard let stroke else {
+            throw ToolError.missingParameter("stroke")
+        }
+
+        let validStrokes = ["freestyle", "backstroke", "breaststroke", "butterfly", "starts", "turns"]
+        guard validStrokes.contains(stroke.lowercased()) else {
+            throw ToolError.invalidParameter("stroke", stroke)
+        }
+
+        // Load the external focus cues file
+        let filename = "swimming_external_focus_cues_8yo.md"
+        let content = try contentLoader.loadMarkdown(filename: filename)
+
+        // If no specific issue, return the full stroke section
+        if issue == nil || issue?.isEmpty == true {
+            let sectionContent = extractFocusCuesSection(content: content, stroke: stroke.lowercased())
+            let result: [String: Any] = [
+                "stroke": stroke,
+                "issues": sectionContent
+            ]
+            return try encodeJSON(result)
+        }
+
+        // If specific issue, find and return matching cues
+        let result = findFocusCuesForIssue(content: content, stroke: stroke.lowercased(), issue: issue!)
+        return try encodeJSON(result)
+    }
+
+    private func extractFocusCuesSection(content: String, stroke: String) -> [[String: Any]] {
+        let sectionHeaders: [String: String] = [
+            "freestyle": "## Freestyle",
+            "backstroke": "## Backstroke",
+            "breaststroke": "## Breaststroke",
+            "butterfly": "## Butterfly",
+            "starts": "## Starts",
+            "turns": "## Turns"
+        ]
+
+        guard let header = sectionHeaders[stroke] else { return [] }
+
+        // Find section start
+        guard let sectionStart = content.range(of: header) else { return [] }
+        let afterStart = content[sectionStart.upperBound...]
+
+        // Find next major section (## ) or end of file
+        var sectionText: String
+        if let nextSection = afterStart.range(of: "\n## ", options: .regularExpression) {
+            sectionText = String(afterStart[..<nextSection.lowerBound])
+        } else {
+            sectionText = String(afterStart)
+        }
+
+        // Parse issues and their cues
+        var issues: [[String: Any]] = []
+        let lines = sectionText.split(separator: "\n", omittingEmptySubsequences: false)
+
+        var currentIssue: String?
+        var currentCues: [[String: String]] = []
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            // Issue header: ### Issue Name
+            if trimmed.hasPrefix("### ") {
+                // Save previous issue
+                if let issue = currentIssue, !currentCues.isEmpty {
+                    issues.append(["issue": issue, "cues": currentCues])
+                }
+                currentIssue = String(trimmed.dropFirst(4))
+                currentCues = []
+                continue
+            }
+
+            // Table row: | N | Cue text | Type |
+            if trimmed.hasPrefix("|") && trimmed.contains("|") {
+                let parts = trimmed.split(separator: "|").map { $0.trimmingCharacters(in: .whitespaces) }
+                if parts.count >= 3, let number = Int(parts[0]), number > 0 {
+                    currentCues.append([
+                        "cue": parts[1],
+                        "type": parts[2]
+                    ])
+                }
+            }
+        }
+
+        // Save last issue
+        if let issue = currentIssue, !currentCues.isEmpty {
+            issues.append(["issue": issue, "cues": currentCues])
+        }
+
+        return issues
+    }
+
+    private func findFocusCuesForIssue(content: String, stroke: String, issue: String) -> [String: Any] {
+        let issues = extractFocusCuesSection(content: content, stroke: stroke)
+        let searchTerm = issue.lowercased()
+
+        // Try exact match first, then partial match
+        if let exactMatch = issues.first(where: {
+            $0["issue"] as? String == searchTerm
+        }) {
+            return ["stroke": stroke, "issue": issue, "cues": exactMatch["cues"]!]
+        }
+
+        if let partialMatch = issues.first(where: {
+            ($0["issue"] as? String ?? "").lowercased().contains(searchTerm)
+        }) {
+            return ["stroke": stroke, "issue": partialMatch["issue"] as! String, "cues": partialMatch["cues"]!]
+        }
+
+        // No match found - return available issues for this stroke
+        let availableIssues = issues.compactMap { $0["issue"] as? String }
+        return [
+            "stroke": stroke,
+            "issue_searched": issue,
+            "error": "No matching issue found",
+            "available_issues": availableIssues
+        ]
+    }
+
+    // MARK: - Evidence-Based Drills Tool
+
+    private func readEvidenceDrills(stroke: String?, drill: String?) throws -> String {
+        guard let stroke else {
+            throw ToolError.missingParameter("stroke")
+        }
+
+        let validStrokes = ["freestyle", "backstroke", "breaststroke", "butterfly", "all"]
+        guard validStrokes.contains(stroke.lowercased()) else {
+            throw ToolError.invalidParameter("stroke", stroke)
+        }
+
+        // Load the evidence-based drills document
+        let filename = "stroke-evidence-based-drills.md"
+
+        // Try to find the file in bundle
+        guard let url = Bundle.main.url(forResource: "stroke-evidence-based-drills", withExtension: "md", subdirectory: "swimming-strokes") ??
+                        Bundle.main.url(forResource: "stroke-evidence-based-drills", withExtension: "md", subdirectory: "Resources/swimming-strokes") ??
+                        Bundle.main.url(forResource: "stroke-evidence-based-drills", withExtension: "md") else {
+            throw ToolError.executionError("Could not find \(filename)")
+        }
+
+        guard let content = try? String(contentsOf: url, encoding: .utf8) else {
+            throw ToolError.executionError("Could not read \(filename)")
+        }
+
+        // "all" returns just the quick reference index
+        if stroke.lowercased() == "all" {
+            let indexContent = extractEvidenceDrillIndex(content: content)
+            return try encodeJSON([
+                "scope": "all_strokes",
+                "note": "This is the quick reference. Call with stroke='freestyle' (etc.) for full drill details, or stroke='freestyle' + drill='F1' for a specific drill.",
+                "drill_index": indexContent
+            ])
+        }
+
+        // Specific stroke requested
+        if let drillCode = drill, !drillCode.isEmpty {
+            // Return a specific drill
+            let drillContent = extractEvidenceDrill(content: content, stroke: stroke.lowercased(), drill: drillCode)
+            return try encodeJSON([
+                "stroke": stroke,
+                "drill": drillCode,
+                "content": drillContent
+            ])
+        } else {
+            // Return all drills for this stroke
+            let drillsContent = extractEvidenceDrillsForStroke(content: content, stroke: stroke.lowercased())
+            return try encodeJSON([
+                "stroke": stroke,
+                "drills_count": drillsContent.count,
+                "drills": drillsContent,
+                "note": "Each drill entry has code, name, evidence, distance, equipment, and when_to_use. Call with drill='F1' (etc.) for full set details."
+            ])
+        }
+    }
+
+    /// Extract the quick reference index (compact table) for "all" requests
+    private func extractEvidenceDrillIndex(content: String) -> String {
+        // Extract from "## Drill Quick Reference" to the next major section
+        guard let start = content.range(of: "## Drill Quick Reference — LLM Index") else {
+            return "Drill index not found"
+        }
+        guard let end = content[start.lowerBound...].range(of: "\n## Freestyle Drills") else {
+            return String(content[start.lowerBound...].prefix(2000))
+        }
+        return String(content[start.lowerBound..<end.lowerBound])
+    }
+
+    /// Extract all drills for a specific stroke
+    private func extractEvidenceDrillsForStroke(content: String, stroke: String) -> [[String: String]] {
+        let strokeHeaders: [String: String] = [
+            "freestyle": "## Freestyle Drills",
+            "backstroke": "## Backstroke Drills",
+            "breaststroke": "## Breaststroke Drills",
+            "butterfly": "## Butterfly Drills"
+        ]
+
+        guard let header = strokeHeaders[stroke] else { return [] }
+
+        guard let sectionStart = content.range(of: header) else { return [] }
+
+        // Find the end of this stroke section (next major stroke section or "## Quick Reference")
+        let sectionContent = String(content[sectionStart.lowerBound...])
+        let nextSectionPatterns = ["## Backstroke Drills", "## Breaststroke Drills", "## Butterfly Drills", "## Quick Reference: All Drills"]
+
+        var minOffset: Int? = nil
+        for pattern in nextSectionPatterns {
+            if let range = sectionContent.range(of: pattern) {
+                let offset = sectionContent.distance(from: sectionContent.startIndex, to: range.lowerBound)
+                if minOffset == nil || offset < minOffset! {
+                    minOffset = offset
+                }
+            }
+        }
+
+        let endPosition: String.Index
+        if let offset = minOffset {
+            endPosition = content.index(sectionStart.lowerBound, offsetBy: offset)
+        } else {
+            endPosition = content.endIndex
+        }
+
+        let sectionText = String(content[sectionStart.lowerBound..<endPosition])
+
+        // Parse individual drills: "### Drill F1: ..."
+        var drills: [[String: String]] = []
+        let lines = sectionText.split(separator: "\n", omittingEmptySubsequences: false)
+
+        var currentDrill: [String: String]?
+        var evidence: String?
+
+        for line in lines {
+            let trimmed = line.trimmingCharacters(in: .whitespaces)
+
+            if trimmed.hasPrefix("### Drill ") {
+                // Save previous drill
+                if let drill = currentDrill {
+                    drills.append(drill)
+                }
+
+                // Parse drill code and name: "### Drill F1: Tempo Ladder (Progressive Stroke Rate Build)"
+                let drillPart = String(trimmed.dropFirst(9)) // after "### Drill "
+                if let colonRange = drillPart.firstIndex(of: ":") {
+                    let code = String(drillPart[..<colonRange]).trimmingCharacters(in: .whitespaces)
+                    let name = String(drillPart[drillPart.index(after: colonRange)...]).trimmingCharacters(in: .whitespaces)
+                    currentDrill = ["code": code, "name": name]
+                }
+            } else if trimmed.hasPrefix("**Evidence:**") {
+                evidence = String(trimmed.dropFirst(11)).trimmingCharacters(in: .whitespaces)
+                currentDrill?["evidence"] = evidence
+            } else if trimmed.hasPrefix("**Base:**") {
+                let base = String(trimmed.dropFirst(8)).trimmingCharacters(in: .whitespaces)
+                currentDrill?["base"] = base
+            }
+        }
+
+        // Don't forget the last drill
+        if let drill = currentDrill {
+            drills.append(drill)
+        }
+
+        return drills
+    }
+
+    /// Extract full details of a specific drill
+    private func extractEvidenceDrill(content: String, stroke: String, drill: String) -> String {
+        let strokeHeaders: [String: String] = [
+            "freestyle": "## Freestyle Drills",
+            "backstroke": "## Backstroke Drills",
+            "breaststroke": "## Breaststroke Drills",
+            "butterfly": "## Butterfly Drills"
+        ]
+
+        guard let header = strokeHeaders[stroke] else { return "Stroke not found: \(stroke)" }
+        guard let sectionStart = content.range(of: header) else { return "Stroke section not found" }
+
+        // Find the specific drill
+        let drillMarker = "### Drill \(drill):"
+        guard let drillStart = String(content[sectionStart.lowerBound...]).range(of: drillMarker) else {
+            return "Drill \(drill) not found in \(stroke). Available: search for '### Drill X:' patterns."
+        }
+
+        let drillOffset = content.distance(from: sectionStart.lowerBound, to: drillStart.lowerBound)
+        let absoluteDrillStart = content.index(sectionStart.lowerBound, offsetBy: drillOffset)
+
+        // Find the end of this drill (next "### Drill" or next major section)
+        let remainingContent = String(content[absoluteDrillStart...])
+        let endPatterns = ["\n### Drill ", "\n## "]
+
+        var minOffset: Int? = nil
+        for pattern in endPatterns {
+            if let range = remainingContent.range(of: pattern) {
+                let offset = remainingContent.distance(from: remainingContent.startIndex, to: range.lowerBound)
+                if minOffset == nil || offset < minOffset! {
+                    minOffset = offset
+                }
+            }
+        }
+
+        let endPosition: String.Index
+        if let offset = minOffset {
+            endPosition = content.index(absoluteDrillStart, offsetBy: offset)
+        } else {
+            endPosition = content.endIndex
+        }
+
+        return String(content[absoluteDrillStart..<endPosition])
     }
 
     private func getMostCommonStrokes(from notes: [TrainingNote]) -> [String] {

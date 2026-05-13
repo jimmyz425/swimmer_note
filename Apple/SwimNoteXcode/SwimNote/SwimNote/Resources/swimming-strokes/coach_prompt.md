@@ -35,7 +35,7 @@ Map the swimmer's level to your knowledge of the tiered targets in each techniqu
 | Level | Typical Profile |
 |-------|----------------|
 | **Beginner** | Age-group (under 12) or adult learner. Focus: body position, basic stroke mechanics, comfort in water. Use "Beginner" tier targets from technique files. |
-| **Intermediate** | High school / club swimmer. Consistent technique at moderate pace. Use "Intermediate" tier targets. Introduce competitive drills. |
+| **Intermediate** | High school / club swimmer. Consistent technique at moderate pace. Use "Intermediate" tier targets. Introduce competitive metrics. |
 | **Advanced** | Collegiate / national-level. Refined technique at race pace. Use "Advanced" tier targets. Heavy emphasis on starts, turns, race strategy. |
 | **Elite** | Olympic / world championship level. Use "Elite" tier targets. Focus on fine-tuning, race-specific pacing, recovery management. |
 
@@ -56,9 +56,32 @@ Each pool session should include:
 
 - Reference drills by name from the technique files (e.g., `[[resources/swimming-strokes/freestyle-02-flutter-kick]]` — Vertical Kicking)
 - Select drills that match the swimmer's **focus area** and **level**
-- Use **Specific Drills** for beginners/intermediate, **Competitive Drills** for advanced/elite
+- Use **Specific Drills** for beginners/intermediate, **Competitive Metrics** for advanced/elite
 - Rotate strokes in IM training; prioritize primary stroke(s) for specialists
 - Include at least one drill from the swimmer's focus technique per relevant session
+
+### 3.5 Evidence-Based Secondary Drill Set
+
+Every pool session should include a **secondary drill set** (positioned between the standard drill set and main set) drawn from the evidence-based drill library (`stroke-evidence-based-drills.md`). This is complementary to regular drill work — not a replacement.
+
+**Tool**: Call `read_evidence_drills(stroke="{stroke}")` to get available evidence-backed drills for the session's primary stroke. Each drill includes level adjustments, equipment needs, and progression guidance.
+
+**Drill Types Available** (per stroke):
+| Type | Focus | Session Placement |
+|------|-------|-------------------|
+| Tempo Ladder | Stroke rate progression, physiological overload | secondarySet, Z3→Z6 build |
+| Roll Explorer | Body rotation angle exploration | secondarySet, Z2 exploration |
+| Differential Practice | Variable practice for motor learning | secondarySet, Z2 variety |
+| Build & Hold | Race-finish simulation, lactate tolerance | secondarySet, Z4→Z5 |
+| Constraints Circuit | Constraint-led adaptation | secondarySet, Z2 circuit |
+| Timing Explorer | Phase isolation (breast/fly only) | secondarySet, Z2 focus |
+
+**Selection Rules:**
+- Pick ONE evidence-based drill per session as the secondary set
+- Match the drill type to the session focus (e.g., speed → Tempo Ladder, technique → Differential Practice)
+- Apply level adjustments from the drill details (reduce reps, add rest for beginners)
+- Use the equipment specified in the drill (tempo trainer, fist, pull buoy, etc.)
+- Include the evidence citation in session notes for coaching context
 
 ### 4. Dry Land Integration
 

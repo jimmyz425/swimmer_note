@@ -2,39 +2,29 @@ import SwiftUI
 import UIKit
 
 public enum PoolType: String, CaseIterable, Identifiable {
-    case shortCourse = "Short Course (25m)"
-    case shortCourseYards = "Short Course (25yd)"
-    case longCourse = "Long Course (50m)"
-    case longCourseYards = "Long Course (50yd)"
+    case scy = "SCY"
+    case scm = "SCM"
+    case lcm = "LCM"
 
     public var id: String { rawValue }
 
-    public var shortLabel: String {
+    public var shortLabel: String { rawValue }
+
+    public var fullLabel: String {
         switch self {
-        case .shortCourse: "25m"
-        case .shortCourseYards: "25yd"
-        case .longCourse: "50m"
-        case .longCourseYards: "50yd"
+        case .scy: "Short Course Yards (25yd)"
+        case .scm: "Short Course Meters (25m)"
+        case .lcm: "Long Course Meters (50m)"
         }
     }
 
-    /// Whether this pool uses yards (needs conversion for display)
-    public var isYards: Bool {
-        self == .shortCourseYards || self == .longCourseYards
-    }
-
-    /// Convert meters to yards for display (1m = 1.09361yd, round to nearest)
-    public func metersToYards(_ meters: Int) -> Int {
-        Int(Double(meters) * 1.09361)
-    }
-
-    /// Format distance with appropriate unit
-    public func formatDistance(_ meters: Int) -> String {
-        if isYards {
-            let yards = metersToYards(meters)
-            return "\(yards)yd"
+    /// Base pool length in meters for distance calculations
+    public var poolLengthMeters: Double {
+        switch self {
+        case .scy: 22.86  // 25 yards
+        case .scm: 25.0
+        case .lcm: 50.0
         }
-        return "\(meters)m"
     }
 }
 
@@ -66,7 +56,7 @@ struct PlanningView: View {
     private let maxConcurrentSessions: Int = 2
 
     // Plan settings - sessions determined by tier guidance, not user selection
-    @State private var poolType: PoolType = .shortCourse
+    @State private var poolType: PoolType = .scm
     @State private var planType: PlanType = .mixed
     @State private var weekStartingDate: Date = nextMonday()
 
@@ -625,8 +615,8 @@ struct PlanningView: View {
             executor: appModel.createToolExecutor()
         )
 
-        // Tools for Phase 2: technique file reading only (user data already in prompt)
-        let phase2Tools = ResourcesNavigationTools.all
+        // Tools for Phase 2: technique file reading + evidence-based drills (user data already in prompt)
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
 
         do {
             let rawOutput = try await conversation.run(
@@ -821,8 +811,8 @@ struct PlanningView: View {
             executor: appModel.createToolExecutor()
         )
 
-        // Tools for Phase 2: technique file reading only (user data already in prompt)
-        let phase2Tools = ResourcesNavigationTools.all
+        // Tools for Phase 2: technique file reading + evidence-based drills (user data already in prompt)
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
 
         do {
             let rawOutput = try await conversation.run(
@@ -923,7 +913,7 @@ struct PlanningView: View {
             #if DEBUG
             print("🔧 Parsed dryland exercises count: \(dryLandExercises.count)")
             for exercise in dryLandExercises {
-                print("🔧 Dryland: \(exercise.stroke) - \(exercise.exercise) - \(exercise.setsReps)")
+                print("🔧 Dryland: \(exercise.stroke) - \(exercise.exerciseId) - \(exercise.setsReps)")
             }
             #endif
 
@@ -1118,6 +1108,7 @@ struct PlanningView: View {
 
     /// JSON structure for unified dry land exercises
     private struct DryLandExerciseJSON: Codable {
+        let id: String  // Unique identifier for exercise matching
         let name: String
         let aliases: [String]?  // Alternative names LLM might use
         let description: String
@@ -1131,7 +1122,7 @@ struct PlanningView: View {
         let exercises: [DryLandExerciseJSON]
     }
 
-    /// Enrich dry land exercises from unified pre-parsed JSON file
+    /// Enrich dry land exercises from unified pre-parsed JSON file using ID matching
     private func enrichDryLandFromJSON(_ minimalExercises: [MinimalDryLandExercise]) -> [DryLandExercisePlan] {
         let decoder = JSONDecoder()
 
@@ -1147,7 +1138,7 @@ struct PlanningView: View {
             // Return minimal exercises without enrichment
             return minimalExercises.map { minimal in
                 DryLandExercisePlan(
-                    exercise: minimal.exercise,
+                    exercise: minimal.exerciseId,
                     setsReps: minimal.setsReps,
                     focus: nil,
                     techniqueSupport: nil
@@ -1162,7 +1153,7 @@ struct PlanningView: View {
             #endif
             return minimalExercises.map { minimal in
                 DryLandExercisePlan(
-                    exercise: minimal.exercise,
+                    exercise: minimal.exerciseId,
                     setsReps: minimal.setsReps,
                     focus: nil,
                     techniqueSupport: nil
@@ -1177,38 +1168,16 @@ struct PlanningView: View {
         var enriched: [DryLandExercisePlan] = []
 
         for minimal in minimalExercises {
-            let normalizedInput = minimal.exercise.lowercased().trimmingCharacters(in: .whitespaces)
-
-            // Find matching exercise by name or aliases
+            // Find matching exercise by ID
             let matchingExercise = trainingData.exercises.first { exercise in
-                // Exact match on name
-                let normalizedName = exercise.name.lowercased().trimmingCharacters(in: .whitespaces)
-                if normalizedName == normalizedInput {
-                    return true
-                }
-
-                // Match on aliases
-                if let aliases = exercise.aliases {
-                    for alias in aliases {
-                        if alias.lowercased().trimmingCharacters(in: .whitespaces) == normalizedInput {
-                            return true
-                        }
-                    }
-                }
-
-                // Substring match (name contains input or vice versa)
-                if normalizedName.contains(normalizedInput) || normalizedInput.contains(normalizedName) {
-                    return true
-                }
-
-                return false
+                exercise.id == minimal.exerciseId
             }
 
             #if DEBUG
             if let match = matchingExercise {
-                print("🔧 enrichDryLandJSON - matched: \(match.name) -> \(minimal.exercise)")
+                print("🔧 enrichDryLandJSON - matched ID: \(minimal.exerciseId) -> \(match.name)")
             } else {
-                print("🔧 enrichDryLandJSON - SKIPPING (no match): \(minimal.exercise)")
+                print("🔧 enrichDryLandJSON - SKIPPING (no match for ID): \(minimal.exerciseId)")
             }
             #endif
 
@@ -1217,7 +1186,7 @@ struct PlanningView: View {
                 // Get stroke-specific focus points
                 let focusPoints = exercise.strokeFocusPoints[minimal.stroke]
                 enriched.append(DryLandExercisePlan(
-                    exercise: exercise.name,  // Use canonical name, not LLM's input
+                    exercise: exercise.name,  // Use canonical name from JSON
                     setsReps: minimal.setsReps,
                     focus: exercise.category,
                     techniqueSupport: focusPoints
@@ -1243,7 +1212,8 @@ struct PlanningView: View {
 
         for (index, _) in enriched.schedule.enumerated() {
             if index < dayOffsets.count {
-                let date = calendar.date(byAdding: .day, value: dayOffsets[index], to: weekStarting) ?? weekStarting
+                let (dayOffset, _) = dayOffsets[index]
+                let date = calendar.date(byAdding: .day, value: dayOffset, to: weekStarting) ?? weekStarting
                 let weekday = DateFormatter.weekdayShort.string(from: date)
                 enriched.schedule[index].dayOfWeek = weekday
             }
@@ -1258,15 +1228,18 @@ struct PlanningView: View {
         for sessionOutline in outline.schedule {
             if let detailed = sessionOutline.detailedSession {
                 var session = detailed
-                // Assign date based on session number
+                // Assign date and time of day based on session number
                 let dayOffsets = dayOffsetsForSessions(count: outline.schedule.count)
                 let calendar = Calendar.current
-                if sessionOutline.sessionNumber - 1 < dayOffsets.count {
+                let sessionIndex = sessionOutline.sessionNumber - 1
+                if sessionIndex < dayOffsets.count {
+                    let (dayOffset, timeOfDay) = dayOffsets[sessionIndex]
                     session.scheduledDate = calendar.date(
                         byAdding: .day,
-                        value: dayOffsets[sessionOutline.sessionNumber - 1],
+                        value: dayOffset,
                         to: weekStartingDate
                     )
+                    session.timeOfDay = timeOfDay
                     session.isAssigned = true
                 }
                 detailedSessions.append(session)
@@ -2167,8 +2140,10 @@ struct PlanningView: View {
             }
             return sessionDistance
         }
-        // Format total distance with appropriate unit (meters or yards)
-        enriched.overview.totalDistance = "~\(poolType.formatDistance(totalMeters))"
+        // Format total distance with pool unit
+        let unit = poolType == .scy ? "yd" : "m"
+        let displayDistance = poolType == .scy ? Int(Double(totalMeters) * 1.09361) : totalMeters
+        enriched.overview.totalDistance = "~\(displayDistance)\(unit)"
 
         // Assign dates to sessions
         enriched.detailedSessions = assignSessionDates(
@@ -2232,11 +2207,16 @@ struct PlanningView: View {
     private func fixSegmentDistance(_ segment: SessionSegment, poolType: PoolType) -> SessionSegment {
         var fixed = segment
 
+        func formatDist(_ meters: Int) -> String {
+            let unit = poolType == .scy ? "yd" : "m"
+            let display = poolType == .scy ? Int(Double(meters) * 1.09361) : meters
+            return "\(display)\(unit)"
+        }
+
         // Preferred: Use structured sets array for accurate calculation
         if let sets = segment.sets, !sets.isEmpty {
             let calculatedMeters = sets.reduce(0) { $0 + $1.totalDistance }
-            // Format distance with appropriate unit (yards or meters)
-            fixed.distance = poolType.formatDistance(calculatedMeters)
+            fixed.distance = formatDist(calculatedMeters)
 
             // Build description from sets for display
             fixed.description = sets.map { $0.formatted }.joined(separator: "\n")
@@ -2252,10 +2232,10 @@ struct PlanningView: View {
             let statedDistance = parseDistance(segment.distance)
 
             if calculatedMeters > 0 && (statedDistance == 0 || abs(calculatedMeters - statedDistance) > 50) {
-                fixed.distance = poolType.formatDistance(calculatedMeters)
+                fixed.distance = formatDist(calculatedMeters)
             } else if statedDistance > 0 {
                 // Re-format stated distance with correct unit
-                fixed.distance = poolType.formatDistance(statedDistance)
+                fixed.distance = formatDist(statedDistance)
             }
         }
 
@@ -2335,19 +2315,21 @@ struct PlanningView: View {
         let calendar = Calendar.current
 
         // Distribution: spread sessions evenly across the week
-        // 3 sessions: Mon, Wed, Fri
-        // 4 sessions: Mon, Tue, Thu, Fri
-        // 5 sessions: Mon, Tue, Wed, Thu, Fri
-        // 6 sessions: Mon, Tue, Wed, Thu, Fri, Sat
+        // Supports double sessions (morning + afternoon) for higher training tiers
         let dayOffsets = dayOffsetsForSessions(count: sessionsPerWeek)
 
         for (index, _) in assigned.enumerated() {
             if index < dayOffsets.count {
-                assigned[index].scheduledDate = calendar.date(byAdding: .day, value: dayOffsets[index], to: weekStarting)
+                let (dayOffset, timeOfDay) = dayOffsets[index]
+                assigned[index].scheduledDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStarting)
+                assigned[index].timeOfDay = timeOfDay
                 assigned[index].isAssigned = true  // Mark as assigned when auto-scheduled
             } else {
-                // Fallback: assign to consecutive days
-                assigned[index].scheduledDate = calendar.date(byAdding: .day, value: index, to: weekStarting)
+                // Fallback: assign to consecutive days with cycling time of day
+                let dayOffset = index % 7
+                let timeOfDay: SessionTimeOfDay = index >= 7 ? .afternoon : .morning
+                assigned[index].scheduledDate = calendar.date(byAdding: .day, value: dayOffset, to: weekStarting)
+                assigned[index].timeOfDay = timeOfDay
                 assigned[index].isAssigned = true
             }
         }
@@ -2355,17 +2337,73 @@ struct PlanningView: View {
         return assigned
     }
 
-    /// Get day offsets for even session distribution
-    private func dayOffsetsForSessions(count: Int) -> [Int] {
+    /// Get day offsets and time of day for session distribution
+    /// Supports double sessions (morning + afternoon) for higher training tiers
+    private func dayOffsetsForSessions(count: Int) -> [(dayOffset: Int, timeOfDay: SessionTimeOfDay)] {
         switch count {
-        case 1: return [0] // Monday only
-        case 2: return [0, 2] // Mon, Wed
-        case 3: return [0, 2, 4] // Mon, Wed, Fri
-        case 4: return [0, 1, 3, 4] // Mon, Tue, Thu, Fri
-        case 5: return [0, 1, 2, 3, 4] // Mon-Fri
-        case 6: return [0, 1, 2, 3, 4, 5] // Mon-Sat
-        case 7: return [0, 1, 2, 3, 4, 5, 6] // All week
-        default: return Array(0..<count)
+        case 1:
+            return [(0, .morning)] // Monday morning
+        case 2:
+            return [(0, .morning), (2, .morning)] // Mon AM, Wed AM
+        case 3:
+            return [(0, .morning), (2, .morning), (4, .morning)] // Mon, Wed, Fri AM
+        case 4:
+            return [(0, .morning), (1, .morning), (3, .morning), (4, .morning)] // Mon, Tue, Thu, Fri AM
+        case 5:
+            return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning)] // Mon-Fri AM
+        case 6:
+            return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning), (5, .morning)] // Mon-Sat AM
+        case 7:
+            return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning), (5, .morning), (6, .morning)] // All week AM
+        case 8:
+            // 6 days with 1 double day (Mon-Sat, with Wed having morning + afternoon)
+            return [
+                (0, .morning), (1, .morning), (2, .morning), (2, .afternoon),  // Mon, Tue, Wed AM+PM
+                (3, .morning), (4, .morning), (5, .morning), (6, .morning)     // Thu-Sun AM
+            ]
+        case 9:
+            // 7 days with 2 double days
+            return [
+                (0, .morning), (1, .morning), (2, .morning), (2, .afternoon),  // Mon, Tue, Wed AM+PM
+                (3, .morning), (3, .afternoon), (4, .morning),                 // Thu AM+PM, Fri AM
+                (5, .morning), (6, .morning)                                    // Sat, Sun AM
+            ]
+        case 10:
+            // 7 days with 3 double days (common for National tier)
+            return [
+                (0, .morning), (0, .afternoon),  // Mon AM+PM
+                (1, .morning), (2, .morning), (2, .afternoon),  // Tue, Wed AM+PM
+                (3, .morning), (4, .morning), (4, .afternoon),  // Thu, Fri AM+PM
+                (5, .morning), (6, .morning)     // Sat, Sun AM
+            ]
+        case 11:
+            // 7 days with 4 double days
+            return [
+                (0, .morning), (0, .afternoon),  // Mon AM+PM
+                (1, .morning), (1, .afternoon),  // Tue AM+PM
+                (2, .morning), (3, .morning), (3, .afternoon),  // Wed, Thu AM+PM
+                (4, .morning), (4, .afternoon),  // Fri AM+PM
+                (5, .morning), (6, .morning)     // Sat, Sun AM
+            ]
+        case 12:
+            // 6 days with all doubles (National elite: morning + afternoon every day except Sunday)
+            return [
+                (0, .morning), (0, .afternoon),  // Mon AM+PM
+                (1, .morning), (1, .afternoon),  // Tue AM+PM
+                (2, .morning), (2, .afternoon),  // Wed AM+PM
+                (3, .morning), (3, .afternoon),  // Thu AM+PM
+                (4, .morning), (4, .afternoon),  // Fri AM+PM
+                (5, .morning), (5, .afternoon),  // Sat AM+PM
+                (6, .morning)                    // Sun AM (rest day PM)
+            ]
+        default:
+            // For counts > 12, cycle through days with doubles
+            return Array(0..<count).map { index in
+                let dayOffset = index % 7
+                let isSecondSession = index >= 7
+                let timeOfDay: SessionTimeOfDay = isSecondSession ? .afternoon : .morning
+                return (dayOffset, timeOfDay)
+            }
         }
     }
 }
@@ -2448,7 +2486,7 @@ private struct CollapsibleSettingsCard: View {
 
                             // Segmented buttons
                             HStack(spacing: 2) {
-                                ForEach([PoolType.shortCourse, PoolType.shortCourseYards, PoolType.longCourse, PoolType.longCourseYards], id: \.self) { type in
+                                ForEach(PoolType.allCases, id: \.self) { type in
                                     Button {
                                         poolType = type
                                     } label: {
