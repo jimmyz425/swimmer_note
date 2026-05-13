@@ -345,7 +345,7 @@ public enum ResourcesNavigationTools {
     public static let searchContent = Tool(
         function: ToolFunction(
             name: "search_content",
-            description: "Search for keywords across technique files. Returns matching files with excerpts.",
+            description: "Search for keywords across technique files. Returns structured matches organized by section (title, key_points, drills, competitive_drills) rather than raw text excerpts. Use get_technique_drills when you only need drills.",
             parameters: JSONSchema(
                 properties: [
                     "query": JSONSchemaProperty(
@@ -414,8 +414,33 @@ public enum ResourcesNavigationTools {
         )
     )
 
+    public static let getTechniqueDrills = Tool(
+        function: ToolFunction(
+            name: "get_technique_drills",
+            description: """
+            Extract only the drills section from a technique markdown file. Returns specific drills and competitive drills with tiered targets. Use this when you need drill names and targets for training plan generation — it's faster and more focused than read_technique_file.
+
+            REQUIRED: Call this when selecting drills for drillSet or secondarySet in training plans. Returns drill names, descriptions, and tiered targets (Beginner/Intermediate/Advanced/Elite).
+
+            USAGE: get_technique_drills("freestyle-02-flutter-kick") → drills for that technique
+            get_technique_drills("freestyle.md") → technique table + any drills from main file
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "filename": JSONSchemaProperty(
+                        type: "string",
+                        description: "Technique file to extract drills from (e.g., 'freestyle-02-flutter-kick', 'backstroke-03-flutter-kick')"
+                    )
+                ],
+                required: ["filename"],
+                additionalProperties: false
+            ),
+            strict: true
+        )
+    )
+
     public static var all: [Tool] {
-        [readTechniqueFile, listTechniqueFiles, searchContent, getRelatedTechniques, getExternalFocusCues]
+        [readTechniqueFile, listTechniqueFiles, searchContent, getRelatedTechniques, getExternalFocusCues, getTechniqueDrills]
     }
 }
 
@@ -602,33 +627,33 @@ public enum UserDataTools {
         function: ToolFunction(
             name: "read_usa_swimming_structure",
             description: """
-            Read the comprehensive USA Swimming club training structure document.
+            Read the USA Swimming club training structure reference document.
 
-            This document contains ALL detailed tier information:
-            - Complete tier definitions: Pre-Competitive, Bronze, Silver, Gold, Senior, National
-            - Sub-tier breakdowns: Pre-Comp A/B/C, Bronze 1/2/3, Silver 1/2/3 with detailed criteria
-            - Zone distribution tables per sub-tier (Zone 0-6 percentages)
-            - Volume progression by group (weekly/per-session distances in km)
-            - Training focus allocation by tier
-            - USA Swimming time standards (B/BB/A/AA/AAA/AAAA) for boys/girls by age group
-            - Promotion triggers between tiers and sub-tiers
-            - LTAD alignment (Long-Term Athlete Development stages)
-            - Coaching philosophy and research notes
+            This document is a condensed, LLM-optimized reference extracted from the full
+            USA Swimming club training guide. It contains the factual data (tables, criteria,
+            distributions) without commentary or citations.
 
-            REQUIRED for Phase 1: Call this to understand the swimmer's tier background fully.
-            Use this to inform weekly plan outline generation with proper:
-            - Session volumes matching tier expectations
-            - Zone distributions following tier guidelines
-            - Age-appropriate training focus
+            WHAT IT COVERS:
+            - 6 training tiers: Pre-Competitive → Bronze → Silver → Gold → Senior → National
+            - For each tier: age range, practices/week, practice duration, weekly distance,
+              training focus breakdown, and training zone distribution (Zone 0-6)
+            - Sub-tier details: Pre-Comp A/B/C, Bronze 1/2/3, Silver 1/2/3
+            - USA Swimming time standards (B/BB/A/AA/AAA/AAAA) for boys and girls,
+              ages 10&U through 17-18, for 50/100/200 Free, 100 Back/Breast/Fly (SCY)
+            - Volume progression by age and LTAD stage mapping
 
-            CONTENT SECTIONS:
-            - Quick-Reference Summary Table (all tiers overview)
-            - Detailed Group Breakdowns (each tier with training characteristics)
-            - Sub-Tier Breakdowns (Pre-Comp A/B/C, Bronze 1/2/3, Silver 1/2/3)
-            - Zone Distribution Summary by Group
-            - Zone Distribution Progression Across All Sub-Tiers
-            - Volume Progression by Group
-            - Age-Group-Specific Time Standards (B/BB/A/AA/AAA/AAAA times)
+            HOW TO USE:
+            - Call with section="summary" for the quick-reference overview table
+            - Call with section="zones" for Zone 0-6 distribution across all tiers
+            - Call with section="subtiers" for Pre-Comp/Bronze/Silver sub-tier detail tables
+            - Call with section="standards" for the full time-standards tables (boys + girls)
+            - Omit section (or use "all") for a compact overview with summary, zones, and volume
+
+            TYPICAL USAGE: When generating a plan for a Bronze-tier swimmer, call
+            read_usa_swimming_structure(section:"subtiers") to get Bronze 1/2/3 details and
+            read_usa_swimming_structure(section:"zones") for the zone distribution — you don't
+            need the Gold/Senior/National sections. Use section parameter to read only what's
+            relevant to the swimmer's tier and avoid wasting context on irrelevant tiers.
             """,
             parameters: JSONSchema(
                 properties: [

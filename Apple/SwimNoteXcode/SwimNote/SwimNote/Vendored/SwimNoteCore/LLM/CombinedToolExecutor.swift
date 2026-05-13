@@ -7,15 +7,20 @@ public final class CombinedToolExecutor: Sendable {
     private let markdownParser = TechniqueMarkdownParser()
     private let profile: UserProfile?
     private let notes: [TrainingNote]
+    /// Reference date for time-relative queries (e.g., "last N days", "calendar").
+    /// Defaults to Date() so standalone tool calls use current time.
+    private let referenceDate: Date
 
     public init(
         contentLoader: BundleContentLoader,
         profile: UserProfile?,
-        notes: [TrainingNote]
+        notes: [TrainingNote],
+        referenceDate: Date? = nil
     ) {
         self.contentLoader = contentLoader
         self.profile = profile
         self.notes = notes
+        self.referenceDate = referenceDate ?? Date()
     }
 
     public func execute(_ toolCall: ToolCall) async throws -> String {
@@ -66,6 +71,10 @@ public final class CombinedToolExecutor: Sendable {
         // Evidence-based drills tool
         case "read_evidence_drills":
             return try readEvidenceDrills(stroke: args["stroke"] as? String, drill: args["drill"] as? String)
+
+        // Technique drills extraction tool
+        case "get_technique_drills":
+            return try getTechniqueDrills(filename: args["filename"] as? String)
 
         // External focus cues tool
         case "get_external_focus_cues":
@@ -170,6 +179,56 @@ public final class CombinedToolExecutor: Sendable {
         return try encodeJSON(result)
     }
 
+    private func getTechniqueDrills(filename: String?) throws -> String {
+        guard let filename else {
+            throw ToolError.missingParameter("filename")
+        }
+
+        let normalizedFilename = filename.hasSuffix(".md") ? filename : "\(filename).md"
+
+        let content = try contentLoader.loadMarkdown(filename: normalizedFilename)
+        let parsed = markdownParser.parse(filename: normalizedFilename, rawContent: content)
+
+        var result: [String: Any] = [
+            "filename": normalizedFilename,
+            "title": parsed.title,
+            "difficulty": parsed.difficulty
+        ]
+
+        // Specific drills
+        if !parsed.specificDrills.isEmpty {
+            result["specific_drills"] = parsed.specificDrills.map { drill in
+                [
+                    "name": drill.name,
+                    "description": drill.description
+                ]
+            }
+        }
+
+        // Competitive drills with tiered targets
+        if !parsed.competitiveMetrics.isEmpty {
+            result["competitive_drills"] = parsed.competitiveMetrics.map { metric in
+                var entry: [String: Any] = [
+                    "name": metric.name,
+                    "self_check": metric.selfCheck
+                ]
+                if !metric.tieredTargets.isEmpty {
+                    entry["tiered_targets"] = metric.tieredTargets
+                }
+                if !metric.videoChecks.isEmpty {
+                    entry["video_checks"] = metric.videoChecks
+                }
+                return entry
+            }
+        }
+
+        if parsed.specificDrills.isEmpty && parsed.competitiveMetrics.isEmpty {
+            result["note"] = "No drills defined for this technique"
+        }
+
+        return try encodeJSON(result)
+    }
+
     private func searchContent(query: String?, stroke: String?) throws -> String {
         guard let query else {
             throw ToolError.missingParameter("query")
@@ -184,30 +243,70 @@ public final class CombinedToolExecutor: Sendable {
 
         for file in filteredFiles {
             let content = try contentLoader.loadMarkdown(filename: file.filename)
-            let lowercased = content.lowercased()
+            let parsed = markdownParser.parse(filename: file.filename, rawContent: content)
 
-            let hasMatch = searchTerms.contains(where: { term in lowercased.contains(term) })
-            if !hasMatch { continue }
-
-            let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
-            var excerpts: [String] = []
-
-            for line in lines {
-                let lineLower = line.lowercased()
-                if searchTerms.contains(where: { term in lineLower.contains(term) }) {
-                    let excerpt = String(line).trimmingCharacters(in: .whitespaces)
-                    if excerpt.count > 10 && excerpts.count < 3 {
-                        excerpts.append(excerpt)
-                    }
-                }
+            // Search within structured fields instead of raw text
+            var matchedSections: [String: Any] = [:]
+            let titleLower = parsed.title.lowercased()
+            let titleMatch = searchTerms.contains(where: { term in titleLower.contains(term) })
+            if titleMatch {
+                matchedSections["title"] = parsed.title
             }
 
-            if !excerpts.isEmpty {
-                matches.append([
+            let keyPointMatches = parsed.keyPoints.compactMap { kp -> String? in
+                let kpLower = kp.lowercased()
+                if searchTerms.contains(where: { term in kpLower.contains(term) }) {
+                    return String(kp.prefix(100))
+                }
+                return nil
+            }
+            if !keyPointMatches.isEmpty {
+                matchedSections["key_points"] = keyPointMatches
+            }
+
+            let drillMatches = parsed.specificDrills.compactMap { drill -> [String: Any]? in
+                let combined = (drill.name + " " + drill.description).lowercased()
+                if searchTerms.contains(where: { term in combined.contains(term) }) {
+                    return [
+                        "name": drill.name,
+                        "description": String(drill.description.prefix(100))
+                    ]
+                }
+                return nil
+            }
+            if !drillMatches.isEmpty {
+                matchedSections["drills"] = drillMatches
+            }
+
+            let metricMatches = parsed.competitiveMetrics.compactMap { metric -> [String: Any]? in
+                let combined = (metric.name + " " + metric.selfCheck).lowercased()
+                if searchTerms.contains(where: { term in combined.contains(term) }) {
+                    var entry: [String: Any] = ["name": metric.name]
+                    if !metric.tieredTargets.isEmpty {
+                        entry["tiered_targets"] = metric.tieredTargets
+                    }
+                    return entry
+                }
+                return nil
+            }
+            if !metricMatches.isEmpty {
+                matchedSections["competitive_drills"] = metricMatches
+            }
+
+            if !matchedSections.isEmpty {
+                var matchEntry: [String: Any] = [
                     "filename": file.filename,
-                    "title": file.title,
-                    "excerpts": excerpts
-                ])
+                    "title": parsed.title,
+                    "difficulty": parsed.difficulty,
+                    "matched_sections": matchedSections
+                ]
+                if let prev = parsed.prevFile {
+                    matchEntry["prev_file"] = prev
+                }
+                if let next = parsed.nextFile {
+                    matchEntry["next_file"] = next
+                }
+                matches.append(matchEntry)
             }
         }
 
@@ -348,14 +447,13 @@ public final class CombinedToolExecutor: Sendable {
 
     private func getTrainingCalendar(weeks: Int) throws -> String {
         let calendar = Calendar.current
-        let today = Date()
-        let startDate = calendar.date(byAdding: .weekOfYear, value: -weeks, to: today) ?? today
+        let startDate = calendar.date(byAdding: .weekOfYear, value: -weeks, to: referenceDate) ?? referenceDate
 
         // Build calendar data
         var calendarData: [[String: Any]] = []
         var currentDate = startDate
 
-        while currentDate <= today {
+        while currentDate <= referenceDate {
             let dateStr = SwimNoteDateFormatting.shortDateString(from: currentDate)
             let hasSession = notes.contains(where: { $0.date == dateStr })
             let noteForDate = notes.first { $0.date == dateStr }
@@ -512,7 +610,7 @@ public final class CombinedToolExecutor: Sendable {
             "practices_per_week": practicesPerWeek,
             "zone_distribution": zoneDistribution,
             "training_focus": trainingFocus,
-            "guidance_source": "usa-swimming-club-training-structure.md",
+            "guidance_source": "club-training-reference.md",
             "critical_notes": [
                 "Zone distribution must be followed - higher tiers can handle more intensity",
                 "Session total distance should not exceed per_session_distance max",
@@ -863,7 +961,7 @@ public final class CombinedToolExecutor: Sendable {
         let sectionParam = section ?? "all"
 
         // Load the USA Swimming structure document
-        let filename = "usa-swimming-club-training-structure.md"
+        let filename = "club-training-reference.md"
         let content = try contentLoader.loadMarkdown(filename: filename)
 
         // If requesting all, return a structured summary with key sections
@@ -874,7 +972,7 @@ public final class CombinedToolExecutor: Sendable {
             let volumeProgression = extractUSASwimmingSection(content: content, sectionMarker: "## Volume Progression by Group")
 
             let result: [String: Any] = [
-                "document": "usa-swimming-club-training-structure",
+                "document": "club-training-reference",
                 "section": "all",
                 "summary_table": summaryTable,
                 "zone_distribution_summary": zoneDistribution,
@@ -888,7 +986,7 @@ public final class CombinedToolExecutor: Sendable {
         let sectionContent = extractUSASwimmingSectionByParam(content: content, section: sectionParam)
 
         let result: [String: Any] = [
-            "document": "usa-swimming-club-training-structure",
+            "document": "club-training-reference",
             "section_requested": sectionParam,
             "content": sectionContent
         ]
@@ -919,9 +1017,9 @@ public final class CombinedToolExecutor: Sendable {
     private func extractUSASwimmingSectionByParam(content: String, section: String) -> String {
         let sectionMarkers: [String: String] = [
             "summary": "## Quick-Reference Summary Table",
-            "subtiers": "## Detailed Sub-Tier Breakdowns",
+            "subtiers": "## Sub-Tier Breakdowns",
             "zones": "## Training Zone Distribution Summary by Group",
-            "standards": "## Age-Group-Specific Time Standards Reference"
+            "standards": "## Age-Group Time Standards (SCY"
         ]
 
         guard let marker = sectionMarkers[section] else {
