@@ -420,7 +420,7 @@ public enum ResourcesNavigationTools {
             description: """
             Extract only the drills section from a technique markdown file. Returns specific drills and competitive drills with tiered targets. Use this when you need drill names and targets for training plan generation — it's faster and more focused than read_technique_file.
 
-            REQUIRED: Call this when selecting drills for drillSet or secondarySet in training plans. Returns drill names, descriptions, and tiered targets (Beginner/Intermediate/Advanced/Elite).
+            REQUIRED: Call this when selecting drills for drillSet (standard technique work) in training plans. Do NOT use this tool for secondarySet — the evidence-based secondary set MUST come only from read_evidence_drills (stroke-evidence-based-drills.md). Returns drill names, descriptions, and tiered targets (Beginner/Intermediate/Advanced/Elite).
 
             USAGE: get_technique_drills("freestyle-02-flutter-kick") → drills for that technique
             get_technique_drills("freestyle.md") → technique table + any drills from main file
@@ -692,8 +692,10 @@ public enum UserDataTools {
             - Constraints Circuit: Constraint-led approach — technique refinement
             - Timing/Phase Explorer: Phase isolation — timing refinement (breast/fly)
 
-            REQUIRED: Call this when generating drillSet or secondarySet in training plans.
-            Pick the drill type that matches the session focus, then read the full details.
+            REQUIRED: Call this when generating secondarySet (evidence-based block only). For standard drillSet use get_technique_drills instead.
+            After choosing a drill code (F1, B2, etc.), call again with drill="F1" (etc.) to load the full set table before writing JSON.
+
+            secondarySet rules: exactly ONE evidence drill per session. Expand it into separate JSON set objects — one entry per numbered row (#) in the drill's main table (match Reps × Distance, zone, rest, equipment per row). Never collapse multiple different row descriptions into a single set with a long improvised item string, and never invent hybrid drills (e.g. do not merge unrelated constraints or classic technique drills like 6-3-6 into this block unless that exact combination appears in the returned drill text).
 
             USAGE: read_evidence_drills(stroke="freestyle") → all freestyle evidence drills
             read_evidence_drills(stroke="freestyle", drill="F1") → full details for one drill
@@ -766,7 +768,7 @@ public enum TrainingPlanTools {
 
 // MARK: - Tool Error
 
-public enum ToolError: Error, Equatable, CustomStringConvertible {
+public enum ToolError: Error, Equatable, CustomStringConvertible, LocalizedError {
     case unknownTool(String)
     case missingParameter(String)
     case invalidParameter(String, String)
@@ -784,4 +786,6 @@ public enum ToolError: Error, Equatable, CustomStringConvertible {
             return "Tool execution error: \(message)"
         }
     }
+
+    public var errorDescription: String? { description }
 }

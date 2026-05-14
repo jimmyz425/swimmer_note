@@ -78,6 +78,7 @@ public class GoalEntity: NSManagedObject {
     @NSManaged public var goalNotes: String?
     @NSManaged public var goalKindRaw: String?
     @NSManaged public var competitiveDrillSnapshotJSON: String?
+    @NSManaged public var suggestedCuesJSON: String?
     @NSManaged public var createdAt: String
     @NSManaged public var updatedAt: String
     @NSManaged public var trainingNote: TrainingNoteEntity?
@@ -284,6 +285,13 @@ extension GoalEntity {
             competitiveMetricSnapshot = nil
         }
 
+        let suggestedCues: [String]?
+        if let json = suggestedCuesJSON, let data = json.data(using: .utf8) {
+            suggestedCues = try? decoder.decode([String].self, from: data)
+        } else {
+            suggestedCues = nil
+        }
+
         return Goal(
             id: id,
             type: GoalType(rawValue: typeRaw) ?? .general,
@@ -296,6 +304,7 @@ extension GoalEntity {
             techniqueNodeId: techniqueNodeId,
             coachingTips: coachingTips,
             notes: goalNotes,
+            suggestedCues: suggestedCues,
             goalKind: goalKindRaw != nil ? GoalKind(rawValue: goalKindRaw!) : nil,
             competitiveMetricSnapshot: competitiveMetricSnapshot,
             createdAt: createdAt,

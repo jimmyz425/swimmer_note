@@ -88,7 +88,7 @@ struct LLMServiceTests {
 
         #expect(config.timeoutSeconds == 60)
         #expect(config.maxRetries == 3)
-        #expect(config.maxToolIterations == 8) // P2-2B
+        #expect(config.maxToolIterations == 16)
         #expect(config.baseURL == nil)
     }
 
@@ -105,7 +105,7 @@ struct LLMServiceTests {
         }
         """.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(LLMConfiguration.self, from: legacyJSON)
-        #expect(decoded.maxToolIterations == 8)
+        #expect(decoded.maxToolIterations == 16)
     }
 
     @Test("LLMConfiguration is Codable")
@@ -151,7 +151,7 @@ struct LLMServiceTests {
             toolChoice: .auto
         )
 
-        #expect(request.tools?.count == 4)
+        #expect(request.tools?.count == tools.count)
         #expect(request.toolChoice != nil)
     }
 
@@ -171,17 +171,17 @@ struct LLMServiceTests {
         let defaultRequest = LLMRequest(systemRole: "Coach", prompt: "Help")
         #expect(defaultRequest.maxTokens == nil)
 
-        let outline = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 2048)
-        let detail = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 4096)
-        let dryland = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 1536)
+        let outline = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 8192)
+        let detail = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 12288)
+        let dryland = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 4096)
 
-        #expect(outline.maxTokens == 2048)
-        #expect(detail.maxTokens == 4096)
-        #expect(dryland.maxTokens == 1536)
+        #expect(outline.maxTokens == 8192)
+        #expect(detail.maxTokens == 12288)
+        #expect(dryland.maxTokens == 4096)
 
         // maxTokens differences must propagate through Equatable so callers can't accidentally
         // share request hashes when their token caps diverge.
-        let outlineTwin = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 2048)
+        let outlineTwin = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 8192)
         #expect(outline == outlineTwin)
         #expect(outline != detail)
     }
@@ -308,21 +308,21 @@ struct LLMServiceTests {
     /// store keeps every save/load atomic.
     @Test("InMemoryCredentialStore is safe under concurrent load")
     func inMemoryCredentialStoreConcurrent() async throws {
-        let store = InMemoryCredentialStore()
+        let store = await InMemoryCredentialStore()
         let account = "race-account"
 
         await withTaskGroup(of: Void.self) { group in
             for i in 0..<200 {
                 group.addTask {
-                    try? store.save("value-\(i)", for: account)
-                    _ = try? store.load(account: account)
+                    try? await store.save("value-\(i)", for: account)
+                    _ = try? await store.load(account: account)
                 }
             }
         }
 
         // The exact final value is non-deterministic (last writer wins), but
         // it must be one of the values we wrote and must not crash on load.
-        let final = try store.load(account: account)
+        let final = try await store.load(account: account)
         try #require(final != nil)
         #expect(final?.hasPrefix("value-") == true)
     }

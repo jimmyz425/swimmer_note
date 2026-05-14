@@ -17,6 +17,11 @@ struct PlanningView: View {
     @State var selectedHistoryPlan: WeeklyTrainingPlan?
     @State var isSettingsExpanded: Bool = true
 
+    /// Present share sheet after writing a PDF to a temp file.
+    @State var pdfShareFile: ShareableFile?
+    @State var isExportingPDF: Bool = false
+    @State var pdfExportError: String?
+
     // Two-phase generation state
     @State var planOutline: WeeklyPlanOutline?
     @State var isGeneratingOutline: Bool = false
@@ -101,6 +106,20 @@ struct PlanningView: View {
             }
             .sheet(item: $selectedHistoryPlan) { plan in
                 PlanDetailView(plan: plan, appModel: appModel)
+            }
+            .sheet(item: $pdfShareFile) { file in
+                ActivityView(activityItems: [file.url])
+            }
+            .alert(
+                "Export failed",
+                isPresented: Binding(
+                    get: { pdfExportError != nil },
+                    set: { if !$0 { pdfExportError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { pdfExportError = nil }
+            } message: {
+                Text(pdfExportError ?? "")
             }
             .onChange(of: selectedHistoryPlan) { _, newPlan in
                 if let plan = newPlan {

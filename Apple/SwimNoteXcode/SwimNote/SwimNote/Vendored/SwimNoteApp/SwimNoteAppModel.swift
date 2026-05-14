@@ -374,7 +374,7 @@ public final class SwimNoteAppModel {
 
         Use the get_external_focus_cues tool to look up cues for the given stroke and issue. Then select 3-5 that best match the swimmer's focus area. You can adapt or combine them, but keep them short and punchy.
 
-        Return ONLY a JSON array of strings, nothing else. Example: ["Speedboat", "Stay on top of the water", "Flat on the water"]
+        Return a single JSON array of strings only (no markdown fences, no commentary). Example: ["Speedboat", "Stay on top of the water", "Flat on the water"]
         """
 
         let userPrompt = """
@@ -384,26 +384,20 @@ public final class SwimNoteAppModel {
         Look up external focus cues for this focus area and return 3-5 cues as a JSON array.
         """
 
-        let tools = ResourcesNavigationTools.all.filter { $0.function.name == "get_external_focus_cues" } + [getFocusAreaCuesTool()]
+        // Only `get_external_focus_cues` — executor implements it (see CombinedToolExecutor).
+        // A duplicate `get_focus_area_cues` registration previously caused unknownTool + iteration burn.
+        let tools = ResourcesNavigationTools.all.filter { $0.function.name == "get_external_focus_cues" }
 
         do {
             let result = try await conversation.run(
                 systemRole: systemPrompt,
                 userPrompt: userPrompt,
                 tools: tools,
-                maxIterations: 3
+                maxIterations: 16,
+                maxTokens: 4096
             )
 
-            // Parse JSON array response
-            let trimmed = result.trimmingCharacters(in: .whitespacesAndNewlines)
-            let jsonText = trimmed.hasPrefix("[") ? trimmed : trimmed.components(separatedBy: "\n").first { $0.trimmingCharacters(in: .whitespaces).hasPrefix("[") }?.trimmingCharacters(in: .whitespaces) ?? trimmed
-
-            if let data = jsonText.data(using: .utf8),
-               let cues = try? JSONSerialization.jsonObject(with: data) as? [String] {
-                return cues
-            }
-
-            return nil
+            return Self.parseFocusCuesJSONArray(from: result)
         } catch {
             #if DEBUG
             print("🔧 Focus cues generation failed: \(error)")
@@ -412,23 +406,37 @@ public final class SwimNoteAppModel {
         }
     }
 
-    // Helper tool: get focus area cues by description matching
-    private func getFocusAreaCuesTool() -> Tool {
-        Tool(
-            function: ToolFunction(
-                name: "get_focus_area_cues",
-                description: "Get external focus cues for a specific issue within a stroke. Returns matching cues from the coaching cue library.",
-                parameters: JSONSchema(
-                    properties: [
-                        "stroke": JSONSchemaProperty(type: "string", description: "Stroke name: freestyle, backstroke, breaststroke, butterfly, starts, turns"),
-                        "issue": JSONSchemaProperty(type: "string", description: "The specific technique issue to find cues for (e.g. 'hips sinking', 'head too high', 'no body rotation')")
-                    ],
-                    required: ["stroke", "issue"],
-                    additionalProperties: false
-                ),
-                strict: true
-            )
-        )
+    /// Extracts `["cue", ...]` from model output: tolerates markdown fences, leading labels, and multi-line JSON.
+    private static func parseFocusCuesJSONArray(from raw: String) -> [String]? {
+        var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.hasPrefix("```") {
+            text.removeFirst(3)
+            text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            if text.lowercased().hasPrefix("json") {
+                text.removeFirst(4)
+                text = text.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines)
+            }
+            if let fence = text.range(of: "```", options: .backwards) {
+                text = String(text[..<fence.lowerBound]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+
+        guard let open = text.firstIndex(of: "["),
+              let close = text.lastIndex(of: "]"),
+              open < close
+        else { return nil }
+
+        let slice = String(text[open...close])
+        guard let data = slice.data(using: .utf8) else { return nil }
+
+        if let cues = try? JSONSerialization.jsonObject(with: data) as? [String] {
+            return cues
+        }
+        if let any = try? JSONSerialization.jsonObject(with: data) as? [Any] {
+            let strings = any.compactMap { $0 as? String }.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            return strings.isEmpty ? nil : strings
+        }
+        return nil
     }
 
     // MARK: - Weekly Training Plan Methods

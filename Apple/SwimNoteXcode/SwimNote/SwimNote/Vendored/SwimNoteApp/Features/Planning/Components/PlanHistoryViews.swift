@@ -94,6 +94,9 @@ struct PlanDetailView: View {
     let appModel: SwimNoteAppModel
     @Environment(\.dismiss) private var dismiss
     @State private var expandedSessions: Set<Int> = []
+    @State private var pdfShareFile: ShareableFile?
+    @State private var isExportingPDF = false
+    @State private var pdfExportError: String?
 
     var body: some View {
         NavigationStack {
@@ -113,9 +116,36 @@ struct PlanDetailView: View {
             .navigationTitle("Plan Details")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        exportPlanPDF()
+                    } label: {
+                        if isExportingPDF {
+                            ProgressView()
+                        } else {
+                            Image(systemName: "square.and.arrow.up")
+                        }
+                    }
+                    .disabled(isExportingPDF)
+                    .accessibilityLabel("Export PDF")
+                }
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }
                 }
+            }
+            .sheet(item: $pdfShareFile) { file in
+                ActivityView(activityItems: [file.url])
+            }
+            .alert(
+                "Export failed",
+                isPresented: Binding(
+                    get: { pdfExportError != nil },
+                    set: { if !$0 { pdfExportError = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) { pdfExportError = nil }
+            } message: {
+                Text(pdfExportError ?? "")
             }
         }
     }
@@ -143,7 +173,26 @@ struct PlanDetailView: View {
                 }
             }
         }
-        .poolCard()
+        .poolCard(        )
+    }
+
+    private func exportPlanPDF() {
+        isExportingPDF = true
+        pdfExportError = nil
+        Task { @MainActor in
+            let data = WeeklyTrainingPlanPDFExporter.pdfData(for: plan)
+            let url = WeeklyTrainingPlanPDFExporter.suggestedFileURL(for: plan)
+            do {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
+                try data.write(to: url, options: .atomic)
+                pdfShareFile = ShareableFile(url: url)
+            } catch {
+                pdfExportError = error.localizedDescription
+            }
+            isExportingPDF = false
+        }
     }
 
     private func formatWeekRange() -> String {

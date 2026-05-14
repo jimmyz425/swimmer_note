@@ -578,8 +578,9 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
     public var distancePerRep: Int?    // Distance in meters per repetition (nil for timed/non-distance items)
     public var swimSeconds: Int?       // Swim time per rep in seconds (calculated from zone+CSS or explicit)
     public var restSeconds: Int?       // Rest time in seconds between repetitions (from interval research)
-    public var item: String            // Description of what to do (e.g., "breaststroke swim", "streamline push-off")
-    public var notes: String?          // Additional notes (e.g., "with fins", "build")
+    public var item: String            // Primary description (evidence drills: Description column from the table)
+    public var equipment: String?      // Equipment for this set (evidence drills: Equipment column; omit or "none" if none)
+    public var notes: String?          // Coaching / table notes (evidence drills: Notes column)
     public var zone: Int?              // Training zone (0-6 based on CSS zones)
 
     /// Calculate total distance for this set
@@ -619,11 +620,14 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
         } else if let rest = restSeconds {
             extras.append("rest \(rest)s")
         }
-        if let notes = notes {
+        if let eq = equipment?.trimmingCharacters(in: .whitespacesAndNewlines), !eq.isEmpty, eq.lowercased() != "none" {
+            extras.append("equipment: \(eq)")
+        }
+        if let notes = notes, !notes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
             extras.append(notes)
         }
 
-        let itemStr = extras.isEmpty ? "" : " (\(extras.joined(separator: ", ")))"
+        let itemStr = extras.isEmpty ? "" : " (\(extras.joined(separator: "; ")))"
         return "\(base) \(item)\(itemStr)"
     }
 
@@ -633,6 +637,7 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
         swimSeconds: Int? = nil,
         restSeconds: Int? = nil,
         item: String,
+        equipment: String? = nil,
         notes: String? = nil,
         zone: Int? = nil
     ) {
@@ -641,6 +646,7 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
         self.swimSeconds = swimSeconds
         self.restSeconds = restSeconds
         self.item = item
+        self.equipment = equipment
         self.notes = notes
         self.zone = zone
     }
@@ -653,12 +659,13 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
         swimSeconds = try container.decodeIfPresent(Int.self, forKey: .swimSeconds)
         restSeconds = try container.decodeIfPresent(Int.self, forKey: .restSeconds)
         item = try container.decodeIfPresent(String.self, forKey: .item) ?? ""
+        equipment = try container.decodeIfPresent(String.self, forKey: .equipment)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
         zone = try container.decodeIfPresent(Int.self, forKey: .zone)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, repeatCount, distancePerRep, swimSeconds, restSeconds, item, notes, zone
+        case id, repeatCount, distancePerRep, swimSeconds, restSeconds, item, equipment, notes, zone
     }
 }
 

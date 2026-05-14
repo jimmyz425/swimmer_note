@@ -264,6 +264,15 @@ struct CompetitiveGoalRow: View, Equatable {
                         .font(.caption)
                         .foregroundStyle(PoolTheme.smoke)
                 }
+
+                if let cues = goal.suggestedCues, !cues.isEmpty, !isExpanded {
+                    Text(cues.joined(separator: " · "))
+                        .font(.caption2)
+                        .foregroundStyle(PoolTheme.deep)
+                        .italic()
+                        .lineLimit(2)
+                        .padding(.top, 2)
+                }
             }
 
             Spacer()

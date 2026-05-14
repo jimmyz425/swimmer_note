@@ -6,7 +6,7 @@ import UIKit
 /// If the cap is N and round N returns tools, `runStreaming` throws `maxIterationsReached` — session
 /// 5-style failures when the coach reads many technique files before answering.
 private enum PlanningPhase2LLM {
-    static let maxToolIterations = 16
+    static let maxToolIterations = 24
 }
 
 extension PlanningView {
@@ -70,8 +70,8 @@ extension PlanningView {
             let request = LLMRequest(
                 systemRole: strategy.buildSystemRole(),
                 prompt: strategy.buildOutlinePrompt(context: planContext),
-                // Outline JSON is large (tierGuidance + overview + schedule + technique plan); 2048 often cuts mid-string.
-                maxTokens: 4096
+                // Outline JSON is large (tierGuidance + overview + schedule + technique plan).
+                maxTokens: 8192
             )
             let rawOutput = try await streamNonToolCompletionToString(
                 request: request,
@@ -133,7 +133,7 @@ extension PlanningView {
                 userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, weeklyOutline: weeklyOutline, context: planContext),
                 tools: phase2Tools,
                 maxIterations: PlanningPhase2LLM.maxToolIterations,
-                maxTokens: 4096
+                maxTokens: 12_288
             )
 
             let detailedSession = try parseDetailedSessionJSON(rawOutput)
@@ -333,7 +333,7 @@ extension PlanningView {
                 userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, weeklyOutline: currentOutline, context: planContext),
                 tools: phase2Tools,
                 maxIterations: PlanningPhase2LLM.maxToolIterations,
-                maxTokens: 4096
+                maxTokens: 12_288
             )
 
             // Parse detailed session JSON
@@ -413,7 +413,7 @@ extension PlanningView {
             systemRole: strategy.buildSystemRole(),
             prompt: strategy.buildDryLandPrompt(outline: outline, context: planContext),
             temperature: 0.2,
-            maxTokens: 1536
+            maxTokens: 4096
         )
 
         do {

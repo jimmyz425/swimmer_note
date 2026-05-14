@@ -54,8 +54,8 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
     /// `maxToolIterations`, which counts agent-style tool rounds. P2-2B wired
     /// this through `withTransportRetry` in `OpenAIClient.completeWithTools`.
     public var maxRetries: Int
-    /// How many tool-calling rounds the agent loop may take per call. Default 8
-    /// matches typical OpenAI agent budgets. Call sites can still override via
+    /// How many tool-calling rounds the agent loop may take per call. Default 16
+    /// gives headroom for multi-tool planning flows. Call sites can still override via
     /// `ToolCallingConversation.run(maxIterations:)`.
     public var maxToolIterations: Int
 
@@ -66,7 +66,7 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         modelName: String,
         timeoutSeconds: TimeInterval = 60,
         maxRetries: Int = 3,
-        maxToolIterations: Int = 8
+        maxToolIterations: Int = 16
     ) throws {
         if let baseURL, baseURL.scheme?.lowercased() != "https" {
             throw LLMConfigurationError.insecureBaseURL
@@ -92,7 +92,7 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         modelName = try container.decode(String.self, forKey: .modelName)
         timeoutSeconds = try container.decodeIfPresent(TimeInterval.self, forKey: .timeoutSeconds) ?? 60
         maxRetries = try container.decodeIfPresent(Int.self, forKey: .maxRetries) ?? 3
-        maxToolIterations = try container.decodeIfPresent(Int.self, forKey: .maxToolIterations) ?? 8
+        maxToolIterations = try container.decodeIfPresent(Int.self, forKey: .maxToolIterations) ?? 16
         if let baseURL, baseURL.scheme?.lowercased() != "https" {
             throw LLMConfigurationError.insecureBaseURL
         }
@@ -122,8 +122,8 @@ public nonisolated struct LLMRequest: Hashable, Sendable {
     public var toolChoice: ToolChoice?
     public var messages: [ConversationMessage]?  // Full conversation history for tool calling
     /// Per-request OpenAI `max_tokens` cap. When `nil`, the client falls back
-    /// to a generous default. Planning uses per phase (outline 4096, detail 4096,
-    /// dryland 1536) so large outline JSON (e.g. tierGuidance + schedule) is not cut off.
+    /// to a generous default. Planning uses per phase (outline 8192, detail 8192,
+    /// dryland 4096) so large outline JSON (e.g. tierGuidance + schedule) is not cut off.
     public var maxTokens: Int?
 
     public init(
@@ -357,8 +357,8 @@ public struct OpenAIClient: LLMClient, Sendable {
             ]
         }
 
-        // P2-2C: per-request cap if the caller supplied one (outline 4096,
-        // detail 4096, dryland 1536, etc.); fall back to the historical 8192
+        // P2-2C: per-request cap if the caller supplied one (outline 8192,
+        // detail 8192, dryland 4096, etc.); fall back to the historical 8192
         // for callers that didn't opt in yet.
         var body: [String: Any] = [
             "model": configuration.modelName,

@@ -573,6 +573,13 @@ struct DashboardView: View {
         note = updatedNote
         generatingCuesGoalId = nil
 
+        // Competitive goals render cues only in the expanded section — open the row so new cues are visible.
+        if updatedNote.goals[index].competitiveMetricSnapshot != nil {
+            _ = withAnimation(.easeInOut(duration: 0.25)) {
+                expandedGoals.insert(goal.id)
+            }
+        }
+
         Task { await appModel.saveNote(updatedNote) }
     }
 

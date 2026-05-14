@@ -137,7 +137,33 @@ extension PlanningView {
                 .foregroundStyle(.white)
                 .cornerRadius(12)
             }
-            .disabled(isSaving)
+            .disabled(isSaving || isExportingPDF)
+            .poolCard()
+
+            Button {
+                exportPlanToPDF(plan)
+            } label: {
+                HStack {
+                    if isExportingPDF {
+                        ProgressView()
+                            .tint(PoolTheme.mid)
+                    } else {
+                        Image(systemName: "doc.richtext")
+                    }
+                    Text(isExportingPDF ? "Preparing PDF..." : "Export PDF")
+                        .font(.headline.bold())
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 14)
+                .background(PoolTheme.surface)
+                .foregroundStyle(PoolTheme.mid)
+                .cornerRadius(12)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 12)
+                        .stroke(PoolTheme.mid.opacity(0.35), lineWidth: 1)
+                )
+            }
+            .disabled(isSaving || isExportingPDF)
             .poolCard()
 
             Text("Sessions will appear in Calendar on their scheduled dates")
@@ -158,6 +184,25 @@ extension PlanningView {
                 savedStatus = "Failed to save: \(error.localizedDescription)"
             }
             isSaving = false
+        }
+    }
+
+    func exportPlanToPDF(_ plan: WeeklyTrainingPlan) {
+        isExportingPDF = true
+        pdfExportError = nil
+        Task { @MainActor in
+            let data = WeeklyTrainingPlanPDFExporter.pdfData(for: plan)
+            let url = WeeklyTrainingPlanPDFExporter.suggestedFileURL(for: plan)
+            do {
+                if FileManager.default.fileExists(atPath: url.path) {
+                    try FileManager.default.removeItem(at: url)
+                }
+                try data.write(to: url, options: .atomic)
+                pdfShareFile = ShareableFile(url: url)
+            } catch {
+                pdfExportError = error.localizedDescription
+            }
+            isExportingPDF = false
         }
     }
 

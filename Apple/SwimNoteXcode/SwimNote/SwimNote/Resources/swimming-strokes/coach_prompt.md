@@ -77,8 +77,11 @@ Every pool session should include a **secondary drill set** (positioned between 
 | Timing Explorer | Phase isolation (breast/fly only) | secondarySet, Z2 focus |
 
 **Selection Rules:**
-- Pick ONE evidence-based drill per session as the secondary set
-- Match the drill type to the session focus (e.g., speed → Tempo Ladder, technique → Differential Practice)
+- Pick ONE evidence-based drill per session as the secondary set (one code: F1, B2, BR3, etc.)
+- After choosing the code, call `read_evidence_drills(stroke="…", drill="F1")` (or your code) and build the workout **only** from that response’s set table: **one structured block per table row** (Reps × Distance, rest, zone, equipment) — do not merge several different rows into one “do N reps where each rep is different” prose line
+- For each row, include **Description** (work to do), **Equipment**, and **Notes** exactly as in the table; in JSON use `item`, `equipment`, and `notes` on each set so the app can show them in the session card
+- Do not put classic stroke drills from technique files (6-3-6, catch-up, single-arm, breath-to-one-side-only, etc.) into the secondary set unless that exact prescription appears in the evidence drill you selected; those belong in the standard drill set
+- Match the drill type to the session focus (e.g., speed → Tempo Ladder, technique variety → Differential Practice)
 - Apply level adjustments from the drill details (reduce reps, add rest for beginners)
 - Use the equipment specified in the drill (tempo trainer, fist, pull buoy, etc.)
 - Include the evidence citation in session notes for coaching context

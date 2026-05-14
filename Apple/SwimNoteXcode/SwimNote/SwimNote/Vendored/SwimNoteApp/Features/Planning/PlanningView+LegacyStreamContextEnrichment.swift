@@ -59,8 +59,8 @@ extension PlanningView {
                 systemRole: strategy.buildSystemRole(),
                 userPrompt: strategy.buildUserPrompt(context: planContext),
                 tools: AllTools.all,
-                maxIterations: 50,
-                maxTokens: 8192
+                maxIterations: 64,
+                maxTokens: 16384
             )
 
             generatedPlan = rawOutput

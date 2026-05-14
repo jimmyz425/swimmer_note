@@ -50,6 +50,7 @@
         <attribute name="goalNotes" optional="YES" attributeType="String"/>
         <attribute name="goalKindRaw" optional="YES" attributeType="String"/>
         <attribute name="competitiveDrillSnapshotJSON" optional="YES" attributeType="String"/>
+        <attribute name="suggestedCuesJSON" optional="YES" attributeType="String"/>
         <attribute name="createdAt" optional="NO" attributeType="String"/>
         <attribute name="updatedAt" optional="NO" attributeType="String"/>
         <relationship name="trainingNote" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="TrainingNote" inverseName="goals" inverseEntity="TrainingNote"/>

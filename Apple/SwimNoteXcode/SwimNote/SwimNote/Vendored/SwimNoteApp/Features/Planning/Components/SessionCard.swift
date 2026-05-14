@@ -84,7 +84,8 @@ struct SessionCard: View, Equatable {
                                 segment: session.warmUp,
                                 icon: "figure.walk",
                                 accentColor: .green,
-                                poolType: poolType
+                                poolType: poolType,
+                                useTableStyleSetRows: false
                             )
 
                             SegmentView(
@@ -92,7 +93,8 @@ struct SessionCard: View, Equatable {
                                 segment: session.drillSet,
                                 icon: "figure.pool.swim",
                                 accentColor: PoolTheme.mid,
-                                poolType: poolType
+                                poolType: poolType,
+                                useTableStyleSetRows: false
                             )
 
                             if let secondary = session.secondarySet {
@@ -101,7 +103,8 @@ struct SessionCard: View, Equatable {
                                     segment: secondary,
                                     icon: "plus.circle",
                                     accentColor: .purple,
-                                    poolType: poolType
+                                    poolType: poolType,
+                                    useTableStyleSetRows: true
                                 )
                             }
 
@@ -110,7 +113,8 @@ struct SessionCard: View, Equatable {
                                 segment: session.mainSet,
                                 icon: "flame",
                                 accentColor: .orange,
-                                poolType: poolType
+                                poolType: poolType,
+                                useTableStyleSetRows: false
                             )
 
                             SegmentView(
@@ -118,7 +122,8 @@ struct SessionCard: View, Equatable {
                                 segment: session.coolDown,
                                 icon: "wind",
                                 accentColor: .blue,
-                                poolType: poolType
+                                poolType: poolType,
+                                useTableStyleSetRows: false
                             )
                         }
                         .padding(Spacing.medium)
@@ -428,6 +433,8 @@ private struct SegmentView: View {
     let icon: String
     let accentColor: Color
     let poolType: PoolType?
+    /// When true, each set shows labeled Description / Equipment / Notes (for evidence-based secondary sets).
+    let useTableStyleSetRows: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.small) {
@@ -443,7 +450,12 @@ private struct SegmentView: View {
             if let sets = segment.sets, !sets.isEmpty {
                 VStack(alignment: .leading, spacing: Spacing.small) {
                     ForEach(sets) { set in
-                        SetRowView(set: set, accentColor: accentColor, poolType: poolType)
+                        SetRowView(
+                            set: set,
+                            accentColor: accentColor,
+                            poolType: poolType,
+                            useTableStyleSetRows: useTableStyleSetRows
+                        )
                     }
                 }
             } else {
@@ -502,6 +514,32 @@ private struct SetRowView: View {
     let set: SetItem
     let accentColor: Color
     let poolType: PoolType?
+    let useTableStyleSetRows: Bool
+
+    private var trimmedNotes: String? {
+        guard let n = set.notes?.trimmingCharacters(in: .whitespacesAndNewlines), !n.isEmpty else { return nil }
+        return n
+    }
+
+    /// Equipment from JSON; nil or "none" means no gear (still shown in table-style layout).
+    private var trimmedEquipment: String? {
+        guard let e = set.equipment?.trimmingCharacters(in: .whitespacesAndNewlines), !e.isEmpty else { return nil }
+        guard e.lowercased() != "none" else { return nil }
+        return e
+    }
+
+    private var equipmentLineText: String {
+        trimmedEquipment ?? "None"
+    }
+
+    private var notesLineText: String {
+        trimmedNotes ?? "—"
+    }
+
+    /// Use expanded labels when the LLM supplied table-style fields (non-secondary segments).
+    private var usesExpandedDetailLayout: Bool {
+        trimmedEquipment != nil || trimmedNotes != nil
+    }
 
     private var zoneColor: Color {
         switch set.zone ?? 0 {
@@ -584,24 +622,87 @@ private struct SetRowView: View {
                 Spacer()
             }
 
-            // Row 2: Item description + notes
-            HStack(spacing: Spacing.tight) {
+            // Row 2+: evidence secondary = full table columns; other segments = compact or optional expanded
+            HStack(alignment: .top, spacing: Spacing.tight) {
                 if set.zone != nil {
                     Spacer()
                         .frame(width: 32)
                 }
 
-                Text(set.item)
-                    .font(.system(size: 13, weight: .regular, design: .rounded))
-                    .foregroundStyle(PoolTheme.smoke)
+                if useTableStyleSetRows {
+                    VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Description")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                            Text(set.item.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "—" : set.item)
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundStyle(PoolTheme.deep)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Equipment")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                            Text(equipmentLineText)
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundStyle(PoolTheme.deep.opacity(0.92))
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Notes")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                            Text(notesLineText)
+                                .font(.system(size: 13, weight: .regular, design: .rounded))
+                                .foregroundStyle(PoolTheme.smoke)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                    }
+                } else if usesExpandedDetailLayout {
+                    VStack(alignment: .leading, spacing: 6) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text("Description")
+                                .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                            Text(set.item)
+                                .font(.system(size: 14, weight: .medium, design: .rounded))
+                                .foregroundStyle(PoolTheme.deep)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
 
-                if let notes = set.notes {
-                    Text("· \(notes)")
+                        if let equipment = trimmedEquipment {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Equipment")
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                                Text(equipment)
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .foregroundStyle(PoolTheme.deep.opacity(0.92))
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+
+                        if let notes = trimmedNotes {
+                            VStack(alignment: .leading, spacing: 2) {
+                                Text("Notes")
+                                    .font(.system(size: 10, weight: .semibold, design: .rounded))
+                                    .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                                Text(notes)
+                                    .font(.system(size: 13, weight: .regular, design: .rounded))
+                                    .foregroundStyle(PoolTheme.smoke)
+                                    .fixedSize(horizontal: false, vertical: true)
+                            }
+                        }
+                    }
+                } else {
+                    Text(set.item)
                         .font(.system(size: 13, weight: .regular, design: .rounded))
-                        .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+                        .foregroundStyle(PoolTheme.smoke)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
-                Spacer()
+                Spacer(minLength: 0)
             }
         }
     }
@@ -770,10 +871,39 @@ private struct DistanceDot: View {
             ]
         ),
         secondarySet: SessionSegment(
-            distance: "300m",
-            description: "Backstroke easy",
+            distance: "350m",
+            description: "F1 Tempo Ladder",
             sets: [
-                SetItem(repeatCount: 3, distancePerRep: 100, swimSeconds: 90, restSeconds: 15, item: "backstroke", zone: 2)
+                SetItem(
+                    repeatCount: 2,
+                    distancePerRep: 25,
+                    swimSeconds: 40,
+                    restSeconds: 15,
+                    item: "Easy swim at comfortable stroke rate",
+                    equipment: "none",
+                    notes: "CSS + 10-15s/100m; loose, relaxed",
+                    zone: 1
+                ),
+                SetItem(
+                    repeatCount: 8,
+                    distancePerRep: 25,
+                    swimSeconds: 35,
+                    restSeconds: 20,
+                    item: "Build stroke rate progressively each 25m",
+                    equipment: "tempo trainer",
+                    notes: "Start Z3 (CSS pace); end Z6 (race pace); +2-4 BPM per rep",
+                    zone: 3
+                ),
+                SetItem(
+                    repeatCount: 1,
+                    distancePerRep: 100,
+                    swimSeconds: 120,
+                    restSeconds: 0,
+                    item: "Easy, focus on technique",
+                    equipment: "none",
+                    notes: "CSS + 20-30s/100m",
+                    zone: 0
+                )
             ]
         ),
         coolDown: SessionSegment(

@@ -182,6 +182,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.goalNotes = goal.notes
         entity.goalKindRaw = goal.goalKind?.rawValue
         entity.competitiveDrillSnapshotJSON = goal.competitiveMetricSnapshot != nil ? try? encoder.encode(goal.competitiveMetricSnapshot!).utf8String : nil
+        entity.suggestedCuesJSON = goal.suggestedCues != nil ? try? encoder.encode(goal.suggestedCues!).utf8String : nil
         entity.createdAt = goal.createdAt
         entity.updatedAt = goal.updatedAt
         return entity
@@ -203,7 +204,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.notes = plan.notes
         entity.poolTypeRaw = plan.poolTypeRaw
 
-        // Create session entities via mutable setol,kmj q
+        // Create session entities via mutable set
         let sessionsSet = entity.mutableSetValue(forKey: "detailedSessions")
         for session in plan.detailedSessions {
             let sessionEntity = createDetailedSessionEntity(from: session, in: context)

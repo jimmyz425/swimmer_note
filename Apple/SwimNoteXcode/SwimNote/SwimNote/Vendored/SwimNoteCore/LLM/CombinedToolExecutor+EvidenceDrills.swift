@@ -44,7 +44,8 @@ extension CombinedToolExecutor {
             return try encodeJSON([
                 "stroke": stroke,
                 "drill": drillCode,
-                "content": drillContent
+                "content": drillContent,
+                "planning_hint": "For training-plan JSON: expand this drill into one secondarySet.sets entry per main table row (#); map Description→item, Equipment→equipment, Notes→notes on each object; do not invent hybrid drills or mix in non-library drills."
             ])
         } else {
             // Return all drills for this stroke
@@ -53,7 +54,7 @@ extension CombinedToolExecutor {
                 "stroke": stroke,
                 "drills_count": drillsContent.count,
                 "drills": drillsContent,
-                "note": "Each drill entry has code, name, evidence, distance, equipment, and when_to_use. Call with drill='F1' (etc.) for full set details."
+                "note": "Each drill entry has code, name, evidence, distance, equipment, and when_to_use. Call with drill='F1' for the full set table. For JSON secondarySet: pick one code, fetch full drill, then emit one set object per table row — no improvised multi-drill item strings."
             ])
         }
     }

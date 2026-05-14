@@ -83,6 +83,13 @@ public final class CombinedToolExecutor: Sendable {
                 issue: args["issue"] as? String
             )
 
+        // Alias used by some prompts / legacy tool registration (same implementation).
+        case "get_focus_area_cues":
+            return try getExternalFocusCues(
+                stroke: args["stroke"] as? String,
+                issue: args["issue"] as? String
+            )
+
         default:
             throw ToolError.unknownTool(toolCall.function.name)
         }

@@ -62,9 +62,9 @@ struct ToolDefinitionsTests {
 
     // MARK: - ResourcesNavigationTools Tests
 
-    @Test("ResourcesNavigationTools has 4 tools")
+    @Test("ResourcesNavigationTools has 6 tools")
     func resourcesNavigationToolsCount() {
-        #expect(ResourcesNavigationTools.all.count == 4)
+        #expect(ResourcesNavigationTools.all.count == 6)
     }
 
     @Test("read_technique_file has required filename parameter")
@@ -98,16 +98,16 @@ struct ToolDefinitionsTests {
 
     // MARK: - UserDataTools Tests
 
-    @Test("UserDataTools has 9 tools")
+    @Test("UserDataTools has 10 tools")
     func userDataToolsCount() {
-        #expect(UserDataTools.all.count == 9)
+        #expect(UserDataTools.all.count == 10)
     }
 
     @Test("get_user_profile has no parameters")
     func getUserProfileParameters() {
         let tool = UserDataTools.getUserProfile
         #expect(tool.function.parameters.properties.isEmpty)
-        #expect(tool.function.parameters.required == nil)
+        #expect(tool.function.parameters.required?.isEmpty != false)
     }
 
     @Test("get_training_history has optional parameters")
@@ -115,14 +115,14 @@ struct ToolDefinitionsTests {
         let tool = UserDataTools.getTrainingHistory
         #expect(tool.function.parameters.properties["days"] != nil)
         #expect(tool.function.parameters.properties["include_goals"] != nil)
-        #expect(tool.function.parameters.required == nil)
+        #expect(tool.function.parameters.required?.isEmpty != false)
     }
 
     @Test("get_active_goals has no parameters")
     func getActiveGoalsParameters() {
         let tool = UserDataTools.getActiveGoals
         #expect(tool.function.parameters.properties.isEmpty)
-        #expect(tool.function.parameters.required == nil)
+        #expect(tool.function.parameters.required?.isEmpty != false)
     }
 
     @Test("get_training_calendar has optional weeks parameter")
@@ -136,7 +136,7 @@ struct ToolDefinitionsTests {
 
     @Test("AllTools combines both tool sets")
     func allToolsCount() {
-        #expect(AllTools.all.count == 13)  // 4 ResourcesNavigationTools + 9 UserDataTools
+        #expect(AllTools.all.count == ResourcesNavigationTools.all.count + UserDataTools.all.count)
     }
 
     @Test("AllTools contains expected tool names")
@@ -146,6 +146,8 @@ struct ToolDefinitionsTests {
         #expect(names.contains("list_technique_files"))
         #expect(names.contains("search_content"))
         #expect(names.contains("get_related_techniques"))
+        #expect(names.contains("get_external_focus_cues"))
+        #expect(names.contains("get_technique_drills"))
         #expect(names.contains("get_user_profile"))
         #expect(names.contains("get_training_history"))
         #expect(names.contains("get_active_goals"))
@@ -154,6 +156,7 @@ struct ToolDefinitionsTests {
         #expect(names.contains("read_interval_research"))
         #expect(names.contains("get_tier_guidance"))
         #expect(names.contains("read_usa_swimming_structure"))
+        #expect(names.contains("read_evidence_drills"))
         #expect(names.contains("get_dry_land_exercises"))
     }
 

@@ -212,7 +212,7 @@ struct ToolCallingConversationTests {
             messages: messages
         )
 
-        #expect(request.tools?.count == 4)
+        #expect(request.tools?.count == ResourcesNavigationTools.all.count)
         #expect(request.temperature == 0.2)
         #expect(request.messages?.count == 2)
     }
