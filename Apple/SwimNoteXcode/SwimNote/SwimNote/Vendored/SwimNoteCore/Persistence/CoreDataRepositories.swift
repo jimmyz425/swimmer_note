@@ -1052,12 +1052,25 @@ public struct CoreDataMigration: Sendable {
         }
     }
 
-    private func clearAllData() async {
+    /// Internal access so tests can verify every entity is in the wipe list.
+    /// Production callers use it via `migrateAll()`.
+    internal func clearAllData() async {
         await MainActor.run {
             let context = controller.viewContext
 
-            // Delete all entities
-            let entities = ["UserProfile", "TrainingNote", "Goal", "WeeklyTrainingPlan", "DetailedSession", "DryLandExercisePlan", "TechniqueMeasurement"]
+            // Must list every entity in the .xcdatamodel — anything missing
+            // here leaves orphan rows after a re-migration. Keep this list in
+            // sync with SwimNote.xcdatamodel.
+            let entities = [
+                "UserProfile",
+                "TrainingNote",
+                "Goal",
+                "WeeklyTrainingPlan",
+                "DetailedSession",
+                "DryLandExercisePlan",
+                "TechniqueMeasurement",
+                "TimerSession",
+            ]
             for entityName in entities {
                 let fetchRequest = NSFetchRequest<NSFetchRequestResult>(entityName: entityName)
                 let deleteRequest = NSBatchDeleteRequest(fetchRequest: fetchRequest)

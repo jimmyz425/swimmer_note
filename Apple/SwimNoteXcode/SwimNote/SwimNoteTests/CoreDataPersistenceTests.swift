@@ -126,6 +126,151 @@ struct CoreDataPersistenceTests {
         #expect(sessions.last?.timeOfDay == .afternoon)
     }
 
+    @Test("clearAllData wipes every entity in the model (TimerSession included)")
+    @MainActor
+    func clearAllDataWipesEverything() async throws {
+        let controller = try await makeIsolatedController()
+        let context = controller.viewContext
+        let now = SwimNoteDateFormatting.string(from: Date())
+        let userId = "wipe-user"
+
+        // Insert one row of each entity declared in SwimNote.xcdatamodel.
+        let profile = UserProfile(
+            id: userId,
+            name: "Wipe Me",
+            birthday: "2000-01-01",
+            sex: .male,
+            skillLevel: .intermediate,
+            weeklySessionTarget: 3,
+            preferredStrokes: [.freestyle],
+            personalBests: PersonalBests(),
+            trainingGoals: [],
+            createdAt: now,
+            updatedAt: now
+        )
+        _ = try controller.createUserProfileEntity(from: profile, in: context)
+
+        let goal = Goal(
+            id: UUID().uuidString,
+            type: .technique,
+            description: "Wipe goal",
+            status: .planned,
+            createdAt: now,
+            updatedAt: now
+        )
+        let note = TrainingNote(
+            userId: userId,
+            date: "2026-05-04",
+            strokeFocus: [.freestyle],
+            techniqueFocus: [],
+            goals: [goal],
+            notes: "",
+            createdAt: now,
+            updatedAt: now
+        )
+        _ = try controller.createTrainingNoteEntity(from: note, in: context)
+        _ = controller.createGoalEntity(from: goal, in: context)
+
+        let segment = SessionSegment(distance: "200", description: "easy")
+        let session = DetailedSession(
+            id: UUID().uuidString,
+            sessionNumber: 1,
+            focus: "test",
+            warmUp: segment,
+            drillSet: segment,
+            mainSet: segment,
+            secondarySet: nil,
+            coolDown: segment,
+            techniqueFocus: "balance",
+            techniqueFileRef: nil,
+            addressesGoal: nil,
+            sessionType: nil,
+            progressionRationale: nil,
+            sessionNotes: nil,
+            scheduledDate: nil,
+            timeOfDay: nil,
+            isCompleted: false,
+            isAssigned: false
+        )
+        let plan = WeeklyTrainingPlan(
+            overview: PlanOverview(weekFocus: "test"),
+            schedule: [],
+            detailedSessions: [session],
+            dryLandProgram: nil,
+            weeklyGoals: nil,
+            techniqueProgressPlan: nil,
+            notes: "",
+            weekStartingDate: Self.localMidnight(yyyyMMdd: "2026-05-04"),
+            poolTypeRaw: nil
+        )
+        let planEntity = try controller.createWeeklyPlanEntity(from: plan, userId: userId, in: context)
+        let sessionEntity = controller.createDetailedSessionEntity(from: session, in: context)
+        sessionEntity.weeklyPlan = planEntity
+
+        let dryLand = DryLandExercisePlan(
+            id: UUID().uuidString,
+            exercise: "Push-ups",
+            setsReps: "3x10",
+            focus: nil,
+            techniqueSupport: nil
+        )
+        let dryEntity = controller.createDryLandEntity(from: dryLand, in: context)
+        dryEntity.weeklyPlan = planEntity
+
+        let measurement = TechniqueMeasurement(
+            id: UUID().uuidString,
+            userId: userId,
+            strokeId: .freestyle,
+            strokeCount: 14,
+            lapTime: 30.0,
+            effortZone: 3
+        )
+        _ = controller.createTechniqueMeasurementEntity(from: measurement, in: context)
+
+        let timerSession = TimerSession(
+            userId: userId,
+            strokeId: .freestyle,
+            totalDistance: 200,
+            splits: [TimerSplit(splitNumber: 1, cumulativeTime: 30, lapTime: 30)],
+            totalTime: 30
+        )
+        _ = try controller.createTimerSessionEntity(from: timerSession, in: context)
+        try context.save()
+
+        let entityNames = [
+            "UserProfile",
+            "TrainingNote",
+            "Goal",
+            "WeeklyTrainingPlan",
+            "DetailedSession",
+            "DryLandExercisePlan",
+            "TechniqueMeasurement",
+            "TimerSession",
+        ]
+        for name in entityNames {
+            let request = NSFetchRequest<NSFetchRequestResult>(entityName: name)
+            let count = try context.count(for: request)
+            #expect(count > 0, "Pre-clear \(name) should have rows")
+        }
+
+        // Use a throwaway app-support dir; clearAllData doesn't touch it but
+        // CoreDataMigration's initializer eagerly builds JSON repos against it.
+        let appSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SwimNoteWipe-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: appSupport) }
+        let migration = CoreDataMigration(controller: controller, appSupportURL: appSupport)
+        await migration.clearAllData()
+
+        // The batch delete bypasses the in-memory context, so reset it before
+        // counting to make sure we're reading the post-clear store state.
+        context.reset()
+        for name in entityNames {
+            let request = NSFetchRequest<NSFetchRequestResult>(entityName: name)
+            let count = try context.count(for: request)
+            #expect(count == 0, "\(name) should be empty after clearAllData")
+        }
+    }
+
     @Test("CoreDataMigration copies active profile id and removes JSON sources")
     @MainActor
     func migrationMovesActiveProfileAndCleansJSON() async throws {
