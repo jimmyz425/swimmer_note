@@ -16,7 +16,6 @@ struct LLMServiceTests {
     @Test("LLMProvider has correct display names")
     func llmProviderDisplayNames() {
         #expect(LLMProvider.openAI.displayName == "OpenAI")
-        #expect(LLMProvider.anthropic.displayName == "Anthropic")
         #expect(LLMProvider.openRouter.displayName == "OpenRouter")
         #expect(LLMProvider.openAICompatible.displayName == "OpenAI Compatible")
     }
@@ -24,7 +23,6 @@ struct LLMServiceTests {
     @Test("LLMProvider has correct default base URLs")
     func llmProviderDefaultURLs() {
         #expect(LLMProvider.openAI.defaultBaseURL?.absoluteString == "https://api.openai.com/v1")
-        #expect(LLMProvider.anthropic.defaultBaseURL?.absoluteString == "https://api.anthropic.com/v1")
         #expect(LLMProvider.openRouter.defaultBaseURL?.absoluteString == "https://openrouter.ai/api/v1")
         #expect(LLMProvider.openAICompatible.defaultBaseURL == nil)
     }
@@ -32,7 +30,6 @@ struct LLMServiceTests {
     @Test("LLMProvider supports tool calling")
     func llmProviderToolCalling() {
         #expect(LLMProvider.openAI.supportsToolCalling == true)
-        #expect(LLMProvider.anthropic.supportsToolCalling == true)
         #expect(LLMProvider.openRouter.supportsToolCalling == true)
         #expect(LLMProvider.openAICompatible.supportsToolCalling == true)
     }
@@ -40,8 +37,13 @@ struct LLMServiceTests {
     @Test("LLMProvider suggested models are non-empty")
     func llmProviderSuggestedModels() {
         #expect(LLMProvider.openAI.suggestedModels.isEmpty == false)
-        #expect(LLMProvider.anthropic.suggestedModels.isEmpty == false)
         #expect(LLMProvider.openRouter.suggestedModels.isEmpty == false)
+    }
+
+    @Test("LLMProvider.allCases excludes the deleted .anthropic case (P2-2A)")
+    func llmProviderAllCasesExcludesAnthropic() {
+        let raws = LLMProvider.allCases.map(\.rawValue)
+        #expect(raws.contains("anthropic") == false)
     }
 
     // MARK: - LLMConfiguration Tests
@@ -219,19 +221,8 @@ struct LLMServiceTests {
         #expect(client.baseURL(for: config2).absoluteString == "https://api.openai.com/v1")
     }
 
-    // MARK: - AnthropicClient Request Building Tests
-
-    @Test("AnthropicClient baseURL uses config or default")
-    func anthropicClientBaseURL() throws {
-        let client = AnthropicClient()
-
-        let config = try LLMConfiguration(
-            provider: .anthropic,
-            apiKeyReference: "test",
-            modelName: "claude-sonnet-4-20250514"
-        )
-        #expect(client.baseURL(for: config).absoluteString == "https://api.anthropic.com/v1")
-    }
+    // AnthropicClient request-building tests deleted in P2-2A; the type no
+    // longer exists. Claude is reachable through OpenRouter via OpenAIClient.
 
     // MARK: - Credential Store Tests
 

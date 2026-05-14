@@ -81,13 +81,14 @@ LLM client implementations for different providers.
 
 **Providers:**
 - `openAI` - OpenAI GPT models
-- `anthropic` - Claude models
-- `openRouter` - OpenRouter proxy
+- `openRouter` - OpenRouter proxy (use this to reach Claude)
 - `openAICompatible` - Any OpenAI-compatible endpoint (e.g., DashScope)
 
+> Native `AnthropicClient` / `.anthropic` were deleted in P2-2A. Persisted
+> configs are auto-migrated to `.openRouter` by `LLMConfigurationStore.load()`.
+
 **Clients:**
-- `OpenAIClient` - OpenAI/OpenRouter/compatible endpoints
-- `AnthropicClient` - Anthropic Claude API
+- `OpenAIClient` - OpenAI/OpenRouter/compatible endpoints (the only client now)
 
 **Key Types:**
 - `LLMConfiguration` - Provider, API key reference, base URL, model name, timeout

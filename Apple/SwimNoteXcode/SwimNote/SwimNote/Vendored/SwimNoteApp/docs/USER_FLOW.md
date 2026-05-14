@@ -188,7 +188,7 @@ flowchart TB
 
     subgraph SettingsFlow["Settings Flow"]
         TabSettings --> LLMSection[LLM Provider Section]
-        LLMSection --> ProviderPicker[Provider Picker: OpenAI/Anthropic/OpenAI-Compatible]
+        LLMSection --> ProviderPicker[Provider Picker: OpenAI/OpenRouter/OpenAI-Compatible]
         ProviderPicker --> ModelField[Model Name Input]
         ModelField --> APIKeyField[API Key Input]
         APIKeyField --> SaveButtonSettings[Save Configuration]
@@ -301,7 +301,7 @@ end
 - Navigate between related techniques
 
 ### 7. Settings
-- Configure LLM provider (OpenAI, Anthropic, OpenAI-Compatible)
+- Configure LLM provider (OpenAI, OpenRouter, OpenAI-Compatible) — Claude is reached through OpenRouter
 - Set model name and API key (stored in Keychain)
 - View/edit active profile
 - Switch profile via User Selection

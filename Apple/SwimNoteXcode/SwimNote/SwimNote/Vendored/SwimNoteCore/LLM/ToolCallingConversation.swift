@@ -65,12 +65,9 @@ public final class ToolCallingConversation: Sendable {
     }
 
     private func createClient() -> any LLMClient {
-        switch configuration.provider {
-        case .anthropic:
-            return AnthropicClient()
-        default:
-            return OpenAIClient()
-        }
+        // P2-2A: native Anthropic was removed; every provider now flows through
+        // `OpenAIClient` (OpenRouter speaks the OpenAI chat-completions dialect).
+        OpenAIClient()
     }
 
     public func run(

@@ -229,18 +229,8 @@ struct ToolCallingConversationTests {
         #expect(tool.function.parameters.type == "object")
     }
 
-    @Test("Anthropic tool schema format differs from OpenAI")
-    func anthropicToolSchemaFormat() {
-        // Anthropic uses "name", "description", "input_schema" instead of
-        // "type", "function", "parameters"
-        // This conversion happens in AnthropicClient.completeWithTools
-
-        // Verify our base structure works for both
-        let tool = ResourcesNavigationTools.readTechniqueFile
-        #expect(tool.function.name.isEmpty == false)
-        #expect(tool.function.description.isEmpty == false)
-        #expect(tool.function.parameters.properties.isEmpty == false)
-    }
+    // Anthropic-specific schema test removed in P2-2A; native Claude support
+    // is gone, OpenRouter speaks the OpenAI dialect handled above.
 
     // MARK: - HTTP Error Retry Tests
 

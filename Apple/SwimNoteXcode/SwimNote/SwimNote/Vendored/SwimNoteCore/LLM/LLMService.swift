@@ -4,16 +4,17 @@ import os
 
 private let llmLog = Logger(subsystem: "com.swimnote.llm", category: "LLMService")
 
+/// Native Anthropic was removed in P2-2A; reach Claude through `.openRouter`
+/// instead. Persisted configs that still say `provider: "anthropic"` are
+/// migrated to `.openRouter` in `LLMConfigurationStore.load()`.
 public enum LLMProvider: String, Codable, Hashable, Sendable, CaseIterable {
     case openAI = "openai"
-    case anthropic
     case openRouter = "openrouter"
     case openAICompatible = "openai_compatible"
 
     public var defaultBaseURL: URL? {
         switch self {
         case .openAI: return URL(string: "https://api.openai.com/v1")
-        case .anthropic: return URL(string: "https://api.anthropic.com/v1")
         case .openRouter: return URL(string: "https://openrouter.ai/api/v1")
         case .openAICompatible: return nil
         }
@@ -21,7 +22,7 @@ public enum LLMProvider: String, Codable, Hashable, Sendable, CaseIterable {
 
     public var supportsToolCalling: Bool {
         switch self {
-        case .openAI, .anthropic, .openRouter: return true
+        case .openAI, .openRouter: return true
         case .openAICompatible: return true // Depends on endpoint, but DashScope supports it
         }
     }
@@ -29,7 +30,6 @@ public enum LLMProvider: String, Codable, Hashable, Sendable, CaseIterable {
     public var displayName: String {
         switch self {
         case .openAI: return "OpenAI"
-        case .anthropic: return "Anthropic"
         case .openRouter: return "OpenRouter"
         case .openAICompatible: return "OpenAI Compatible"
         }
@@ -38,7 +38,6 @@ public enum LLMProvider: String, Codable, Hashable, Sendable, CaseIterable {
     public var suggestedModels: [String] {
         switch self {
         case .openAI: return ["gpt-4o", "gpt-4o-mini"]
-        case .anthropic: return ["claude-sonnet-4-20250514", "claude-opus-4-20250514"]
         case .openRouter: return ["anthropic/claude-sonnet-4", "openai/gpt-4o-mini", "meta-llama/llama-3.1-70b-instruct"]
         case .openAICompatible: return ["custom-model"]
         }
@@ -345,109 +344,8 @@ public struct OpenAIClient: LLMClient, Sendable {
     }
 }
 
-// MARK: - Anthropic Client (Claude)
-
-public struct AnthropicClient: LLMClient, Sendable {
-    public init() {}
-
-    public func baseURL(for configuration: LLMConfiguration) -> URL {
-        configuration.baseURL ?? URL(string: "https://api.anthropic.com/v1")!
-    }
-
-    public func complete(_ request: LLMRequest, configuration: LLMConfiguration, apiKey: String) async throws -> String {
-        let response = try await completeWithTools(request, configuration: configuration, apiKey: apiKey)
-        if let content = response.content {
-            return content
-        }
-        if response.hasToolCalls {
-            throw LLMServiceError.apiError("Received tool calls when expecting text response")
-        }
-        throw LLMServiceError.invalidResponse
-    }
-
-    public func completeWithTools(_ request: LLMRequest, configuration: LLMConfiguration, apiKey: String) async throws -> LLMResponse {
-        let url = baseURL(for: configuration).appendingPathComponent("messages")
-
-        var httpRequest = URLRequest(url: url)
-        httpRequest.httpMethod = "POST"
-        httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        httpRequest.setValue("x-api-key", forHTTPHeaderField: "x-api-key")
-        httpRequest.setValue("2023-06-01", forHTTPHeaderField: "anthropic-version")
-        httpRequest.timeoutInterval = configuration.timeoutSeconds
-
-        var body: [String: Any] = [
-            "model": configuration.modelName,
-            "max_tokens": 8192,  // Increased for long training plan outputs
-            "system": request.systemRole,
-            "messages": [
-                ["role": "user", "content": request.prompt]
-            ]
-        ]
-
-        // Anthropic uses different tool format
-        if let tools = request.tools {
-            body["tools"] = tools.map { tool -> [String: Any] in
-                [
-                    "name": tool.function.name,
-                    "description": tool.function.description,
-                    "input_schema": [
-                        "type": tool.function.parameters.type,
-                        "properties": tool.function.parameters.properties.mapValues { prop -> [String: Any] in
-                            var propDict: [String: Any] = ["type": prop.type]
-                            if let desc = prop.description { propDict["description"] = desc }
-                            if let enumVals = prop.enumValues { propDict["enum"] = enumVals }
-                            return propDict
-                        },
-                        "required": tool.function.parameters.required ?? []
-                    ] as [String: Any]
-                ]
-            }
-        }
-
-        httpRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
-
-        let (data, response) = try await URLSession.shared.data(for: httpRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            throw LLMServiceError.invalidResponse
-        }
-
-        guard httpResponse.statusCode == 200 else {
-            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-               let error = errorJson["error"] as? [String: Any],
-               let message = error["message"] as? String {
-                throw LLMServiceError.apiError(message)
-            }
-            throw LLMServiceError.httpError(httpResponse.statusCode)
-        }
-
-        guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let contentBlocks = json["content"] as? [[String: Any]] else {
-            throw LLMServiceError.invalidResponse
-        }
-
-        // Check for tool use blocks
-        let toolUseBlocks = contentBlocks.filter { ($0["type"] as? String) == "tool_use" }
-        if !toolUseBlocks.isEmpty {
-            let toolCalls = toolUseBlocks.compactMap { block -> ToolCall? in
-                guard let id = block["id"] as? String,
-                      let name = block["name"] as? String,
-                      let input = block["input"] as? [String: Any] else {
-                    return nil
-                }
-                let arguments = (try? JSONSerialization.data(withJSONObject: input)) ?? Data()
-                let argumentsString = String(data: arguments, encoding: .utf8) ?? "{}"
-                return ToolCall(id: id, type: "tool_use", function: ToolCallFunction(name: name, arguments: argumentsString))
-            }
-            return LLMResponse(content: nil, toolCalls: toolCalls)
-        }
-
-        // Get text content
-        let textBlocks = contentBlocks.filter { ($0["type"] as? String) == "text" }
-        let content = textBlocks.compactMap { $0["text"] as? String }.joined(separator: "\n")
-        return LLMResponse(content: content, toolCalls: nil)
-    }
-}
+// AnthropicClient (native Claude) deleted in P2-2A. Use `.openRouter` to
+// reach Anthropic models via `OpenAIClient` over the OpenRouter proxy.
 
 public enum LLMServiceError: Error, Equatable {
     case invalidResponse

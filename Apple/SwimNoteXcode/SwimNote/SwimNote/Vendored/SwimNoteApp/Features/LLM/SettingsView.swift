@@ -466,7 +466,9 @@ struct LLMConfigurationSheet: View {
                 temperature: 0
             )
 
-            let client: any LLMClient = provider == .anthropic ? AnthropicClient() : OpenAIClient()
+            // P2-2A: every provider — including Claude via OpenRouter — speaks
+            // the OpenAI dialect, so a single client suffices.
+            let client: any LLMClient = OpenAIClient()
             let response = try await client.complete(testRequest, configuration: configuration, apiKey: apiKey)
 
             if response.lowercased().contains("ok") {
