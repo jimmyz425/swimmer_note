@@ -244,4 +244,118 @@ public final class ToolCallingConversation: Sendable {
             return collected.sorted { $0.0 < $1.0 }.map { (toolCalls[$0.0], $0.1) }
         }
     }
+
+    // MARK: - P2-2G Streaming variant
+
+    /// P2-2G: streaming analog of `run`. Yields `LLMStreamEvent`s from the
+    /// underlying SSE stream so UI can render incremental content while the
+    /// model thinks. Tool execution still runs in parallel via P2-2F's
+    /// helper between rounds.
+    ///
+    /// The final assistant content (after all tool rounds resolve) is
+    /// emitted as `.contentDelta` if the model chose to send text on the
+    /// last round, then closed with a `.finished(LLMResponse)`.
+    ///
+    /// Errors thrown by the LLM client or tool executor surface through the
+    /// stream's error path; callers should `for try await event in stream`.
+    public func runStreaming(
+        systemRole: String,
+        userPrompt: String,
+        tools: [Tool],
+        maxIterations: Int? = nil,
+        maxTokens: Int? = nil
+    ) -> AsyncThrowingStream<LLMStreamEvent, Error> {
+        let resolvedMaxIterations = maxIterations ?? configuration.maxToolIterations
+        let resolvedMaxTokens = maxTokens
+        let configuration = self.configuration
+        let apiKey = self.apiKey
+        let executor = self.executor
+
+        return AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    var messages: [ConversationMessage] = [
+                        .system(systemRole),
+                        .user(userPrompt)
+                    ]
+                    let openAIClient = OpenAIClient()
+
+                    for iteration in 1...resolvedMaxIterations {
+                        try Task.checkCancellation()
+
+                        let request = LLMRequest(
+                            systemRole: "",
+                            prompt: "",
+                            temperature: 0.2,
+                            tools: tools,
+                            messages: messages,
+                            maxTokens: resolvedMaxTokens
+                        )
+
+                        // Stream this round; collect deltas + the final
+                        // assembled response (carrying any tool calls) from
+                        // the terminal `.finished` event.
+                        var roundResponse: LLMResponse?
+                        let stream = openAIClient.completeWithToolsStream(
+                            request,
+                            configuration: configuration,
+                            apiKey: apiKey
+                        )
+                        for try await event in stream {
+                            try Task.checkCancellation()
+                            // Forward content + usage events upstream so the
+                            // UI can render. Tool-call deltas and finished
+                            // are consumed here for control flow but also
+                            // forwarded so observers can show "calling
+                            // tool…" hints.
+                            continuation.yield(event)
+                            if case .finished(let response) = event {
+                                roundResponse = response
+                            }
+                        }
+
+                        guard let response = roundResponse else {
+                            throw LLMServiceError.invalidResponse
+                        }
+
+                        // No tool calls — terminal turn, we're done.
+                        if !response.hasToolCalls {
+                            continuation.finish()
+                            return
+                        }
+
+                        // Tool calls: append assistant turn, fan-out execute,
+                        // append results, loop.
+                        guard let toolCalls = response.toolCalls else {
+                            continuation.finish()
+                            return
+                        }
+                        messages.append(.assistantToolCalls(toolCalls, reasoningContent: response.reasoningContent))
+
+                        let results = await Self.executeToolCallsInParallel(toolCalls) { toolCall in
+                            do {
+                                return try await executor.execute(toolCall)
+                            } catch {
+                                return "Error: \(error.localizedDescription)"
+                            }
+                        }
+                        for (toolCall, result) in results {
+                            messages.append(.toolResult(toolCall.id, result))
+                        }
+
+                        if iteration == resolvedMaxIterations {
+                            throw LLMServiceError.maxIterationsReached
+                        }
+                    }
+
+                    throw LLMServiceError.maxIterationsReached
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
 }

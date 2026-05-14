@@ -525,6 +525,173 @@ public struct OpenAIClient: LLMClient, Sendable {
 // AnthropicClient (native Claude) deleted in P2-2A. Use `.openRouter` to
 // reach Anthropic models via `OpenAIClient` over the OpenRouter proxy.
 
+// MARK: - Streaming (P2-2G)
+
+extension OpenAIClient {
+    /// P2-2G: stream a chat completion as Server-Sent Events. Yields
+    /// `LLMStreamEvent` deltas as the model emits them, then a terminal
+    /// `.finished(LLMResponse)` once `[DONE]` arrives.
+    ///
+    /// Errors (non-200 status, transport failures, JSON corruption on the
+    /// envelope) are thrown into the `AsyncThrowingStream` so callers can
+    /// `for try await ... catch`.
+    ///
+    /// Cancellation: dropping the stream's iterator (or the enclosing task)
+    /// cancels the underlying `URLSession.bytes(for:)` call cleanly via
+    /// `Task.isCancelled` / `withTaskCancellationHandler`.
+    ///
+    /// Transport retries are intentionally NOT applied here — streaming is
+    /// already long-lived and a mid-stream retry would deliver duplicate
+    /// content. Callers that want resilience should retry the whole
+    /// streaming call themselves.
+    public func completeWithToolsStream(
+        _ request: LLMRequest,
+        configuration: LLMConfiguration,
+        apiKey: String
+    ) -> AsyncThrowingStream<LLMStreamEvent, Error> {
+        AsyncThrowingStream { continuation in
+            let task = Task {
+                do {
+                    try await runStream(
+                        request: request,
+                        configuration: configuration,
+                        apiKey: apiKey,
+                        continuation: continuation
+                    )
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+            continuation.onTermination = { _ in
+                task.cancel()
+            }
+        }
+    }
+
+    private func runStream(
+        request: LLMRequest,
+        configuration: LLMConfiguration,
+        apiKey: String,
+        continuation: AsyncThrowingStream<LLMStreamEvent, Error>.Continuation
+    ) async throws {
+        let url = baseURL(for: configuration).appendingPathComponent("chat/completions")
+
+        var httpRequest = URLRequest(url: url)
+        httpRequest.httpMethod = "POST"
+        httpRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        httpRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
+        httpRequest.setValue("text/event-stream", forHTTPHeaderField: "Accept")
+        httpRequest.timeoutInterval = configuration.timeoutSeconds
+
+        if configuration.provider == .openRouter {
+            httpRequest.setValue("SwimNote", forHTTPHeaderField: "X-Title")
+            httpRequest.setValue("https://swimnote.app", forHTTPHeaderField: "HTTP-Referer")
+        }
+
+        let messagesArray: [[String: Any]]
+        if let providedMessages = request.messages, !providedMessages.isEmpty {
+            messagesArray = providedMessages.map { $0.toOpenAIMessage() }
+        } else {
+            messagesArray = [
+                ["role": "system", "content": request.systemRole],
+                ["role": "user", "content": request.prompt]
+            ]
+        }
+
+        var body: [String: Any] = [
+            "model": configuration.modelName,
+            "messages": messagesArray,
+            "temperature": request.temperature,
+            "max_tokens": request.maxTokens ?? 8192,
+            "stream": true,
+            "stream_options": ["include_usage": true]
+        ]
+
+        if let tools = request.tools {
+            body["tools"] = tools.map { tool -> [String: Any] in
+                var functionDict: [String: Any] = [
+                    "name": tool.function.name,
+                    "description": tool.function.description,
+                    "parameters": [
+                        "type": tool.function.parameters.type,
+                        "properties": tool.function.parameters.properties.mapValues { prop -> [String: Any] in
+                            var propDict: [String: Any] = ["type": prop.type]
+                            if let desc = prop.description { propDict["description"] = desc }
+                            if let enumVals = prop.enumValues { propDict["enum"] = enumVals }
+                            return propDict
+                        },
+                        "required": tool.function.parameters.required ?? [],
+                        "additionalProperties": tool.function.parameters.additionalProperties ?? false
+                    ] as [String: Any]
+                ]
+                if let strict = tool.function.strict {
+                    functionDict["strict"] = strict
+                }
+                return [
+                    "type": tool.type,
+                    "function": functionDict
+                ]
+            }
+        }
+
+        if let toolChoice = request.toolChoice {
+            switch toolChoice {
+            case .auto: body["tool_choice"] = "auto"
+            case .none: body["tool_choice"] = "none"
+            case .required: body["tool_choice"] = "required"
+            case .specific(let name):
+                body["tool_choice"] = ["type": "function", "function": ["name": name]]
+            }
+        }
+
+        let bodyData = try JSONSerialization.data(withJSONObject: body)
+        httpRequest.httpBody = bodyData
+        logSanitizedRequest(url: url, bodyData: bodyData, body: body)
+
+        let (bytes, response) = try await URLSession.shared.bytes(for: httpRequest)
+
+        guard let httpResponse = response as? HTTPURLResponse else {
+            throw LLMServiceError.invalidResponse
+        }
+        guard httpResponse.statusCode == 200 else {
+            // Drain the body to surface a useful error message.
+            var data = Data()
+            for try await byte in bytes {
+                data.append(byte)
+                if data.count > 8192 { break }
+            }
+            if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+               let error = errorJson["error"] as? [String: Any],
+               let message = error["message"] as? String {
+                throw LLMServiceError.apiError(message)
+            }
+            throw LLMServiceError.httpError(httpResponse.statusCode)
+        }
+
+        var accumulator = StreamAccumulator()
+        for try await line in bytes.lines {
+            try Task.checkCancellation()
+            // SSE envelope: each event is one or more `field: value` lines
+            // followed by a blank line. We only care about `data:` lines.
+            guard line.hasPrefix("data:") else { continue }
+            let payload = String(line.dropFirst("data:".count))
+            let parsed = OpenAISSEParser.parseDataPayload(payload, accumulator: &accumulator)
+            for event in parsed.events {
+                continuation.yield(event)
+            }
+            if parsed.done {
+                continuation.yield(.finished(accumulator.makeResponse()))
+                return
+            }
+        }
+
+        // Stream ended without [DONE] (e.g. server closed connection cleanly
+        // after finish_reason). Flush whatever we accumulated.
+        continuation.yield(.finished(accumulator.makeResponse()))
+    }
+}
+
 public enum LLMServiceError: Error, Equatable {
     case invalidResponse
     case httpError(Int)
