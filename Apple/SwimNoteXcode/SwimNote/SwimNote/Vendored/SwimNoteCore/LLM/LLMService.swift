@@ -1,5 +1,6 @@
 import Foundation
 import OSLog
+import os
 
 private let llmLog = Logger(subsystem: "com.swimnote.llm", category: "LLMService")
 
@@ -461,20 +462,34 @@ public protocol SecureCredentialStore: Sendable {
     func delete(account: String) throws
 }
 
+/// Lock-backed in-memory store. The previous `@unchecked Sendable` over a
+/// bare `Dictionary` would tear (and could crash) under concurrent writes
+/// from `SwimNoteAppModel` + multiple parallel `PlanningView` tasks. We stay
+/// `final class @unchecked Sendable` so the protocol can keep its sync
+/// signatures (the alternative — actor — would force `async` through every
+/// LLM call site, which is more churn than the bug warrants). The unchecked
+/// claim is now backed by `os_unfair_lock` around every read and write.
 public final class InMemoryCredentialStore: SecureCredentialStore, @unchecked Sendable {
     private var secrets: [String: String] = [:]
+    private let lock = OSAllocatedUnfairLock()
 
     public init() {}
 
     public func save(_ secret: String, for account: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
         secrets[account] = secret
     }
 
     public func load(account: String) throws -> String? {
-        secrets[account]
+        lock.lock()
+        defer { lock.unlock() }
+        return secrets[account]
     }
 
     public func delete(account: String) throws {
+        lock.lock()
+        defer { lock.unlock() }
         secrets[account] = nil
     }
 }

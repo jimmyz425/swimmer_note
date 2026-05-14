@@ -273,6 +273,31 @@ struct LLMServiceTests {
         #expect(try store.load(account: "account1") == "new")
     }
 
+    /// P0-1F: 200 racing tasks must not crash and must converge to a
+    /// well-defined value. Pre-fix this exercised an unsynchronized Dictionary
+    /// behind `@unchecked Sendable` — undefined behaviour. The new lock-backed
+    /// store keeps every save/load atomic.
+    @Test("InMemoryCredentialStore is safe under concurrent load")
+    func inMemoryCredentialStoreConcurrent() async throws {
+        let store = InMemoryCredentialStore()
+        let account = "race-account"
+
+        await withTaskGroup(of: Void.self) { group in
+            for i in 0..<200 {
+                group.addTask {
+                    try? store.save("value-\(i)", for: account)
+                    _ = try? store.load(account: account)
+                }
+            }
+        }
+
+        // The exact final value is non-deterministic (last writer wins), but
+        // it must be one of the values we wrote and must not crash on load.
+        let final = try store.load(account: account)
+        try #require(final != nil)
+        #expect(final?.hasPrefix("value-") == true)
+    }
+
     // MARK: - LLMResponse.hasToolCalls
 
     @Test("LLMResponse.hasToolCalls handles nil, empty, and populated cases without crashing")
