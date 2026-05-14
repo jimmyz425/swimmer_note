@@ -136,25 +136,34 @@ public final class ToolCallingConversation: Sendable {
                     // Add ONE assistant message with ALL tool calls (DeepSeek V4 requires this format)
                     messages.append(.assistantToolCalls(toolCalls, reasoningContent: response.reasoningContent))
 
-                    // Execute each tool call and add results
-                    for toolCall in toolCalls {
+                    // P2-2F: execute every tool call in this round concurrently. Tool
+                    // results are correlated by `tool_call_id`, so server-side ordering
+                    // is preserved regardless of completion order — but we still
+                    // re-stitch results into the original `toolCalls` order before
+                    // appending so the conversation log stays deterministic.
+                    let executor = self.executor
+                    let results = await Self.executeToolCallsInParallel(toolCalls) { toolCall in
                         #if DEBUG
                         print("🔧 Executing tool: \(toolCall.function.name) with args: \(toolCall.function.arguments)")
                         #endif
-
                         do {
                             let result = try await executor.execute(toolCall)
                             #if DEBUG
                             print("🔧 Tool result (first 200 chars): \(String(result.prefix(200)))")
                             #endif
-                            messages.append(.toolResult(toolCall.id, result))
+                            return result
                         } catch {
                             #if DEBUG
                             print("🔧 Tool execution failed: \(error.localizedDescription)")
                             #endif
-                            // Return error as tool result so LLM can handle it
-                            messages.append(.toolResult(toolCall.id, "Error: \(error.localizedDescription)"))
+                            // Surface the error to the LLM as a tool result so it can
+                            // recover, matching the previous sequential behaviour.
+                            return "Error: \(error.localizedDescription)"
                         }
+                    }
+
+                    for (toolCall, result) in results {
+                        messages.append(.toolResult(toolCall.id, result))
                     }
                 } else {
                     // Empty response with no tool calls - might be model thinking
@@ -207,5 +216,32 @@ public final class ToolCallingConversation: Sendable {
             messages: messages,
             maxTokens: maxTokens
         )
+    }
+
+    /// P2-2F helper: fans `toolCalls` out across a `withTaskGroup`, awaits all
+    /// results, and re-orders them to match the input order so callers stay
+    /// deterministic. Errors are translated to strings by `perform`, so the
+    /// task group itself never throws and individual failures don't cancel
+    /// sibling tool executions in the same round.
+    ///
+    /// Exposed at internal visibility (not private) so tests can drive the
+    /// parallelism contract directly without wiring a fake `LLMClient`.
+    static func executeToolCallsInParallel(
+        _ toolCalls: [ToolCall],
+        perform: @Sendable @escaping (ToolCall) async -> String
+    ) async -> [(ToolCall, String)] {
+        await withTaskGroup(of: (Int, String).self) { group in
+            for (index, toolCall) in toolCalls.enumerated() {
+                group.addTask {
+                    let result = await perform(toolCall)
+                    return (index, result)
+                }
+            }
+            var collected: [(Int, String)] = []
+            for await pair in group {
+                collected.append(pair)
+            }
+            return collected.sorted { $0.0 < $1.0 }.map { (toolCalls[$0.0], $0.1) }
+        }
     }
 }

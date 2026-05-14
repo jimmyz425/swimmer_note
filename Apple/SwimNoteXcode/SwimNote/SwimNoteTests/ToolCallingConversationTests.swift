@@ -279,4 +279,72 @@ struct ToolCallingConversationTests {
         // .toolResult("call_id", errorString)
         #expect(errorString.contains("Tool execution error"))
     }
+
+    // MARK: - P2-2F Parallel Tool Execution Tests
+
+    @Test("executeToolCallsInParallel runs tool work concurrently (P2-2F)")
+    func parallelToolExecutionFinishesNearMaxLatency() async {
+        // Each fake tool sleeps for 200ms. Sequential execution of four would
+        // take ~800ms; parallel execution should finish in ~200ms plus overhead.
+        // Allow generous slack for CI noise but well below the sequential floor.
+        let toolCalls = (0..<4).map { i in
+            ToolCall(
+                id: "call_\(i)",
+                type: "function",
+                function: ToolCallFunction(name: "slow_\(i)", arguments: "{}")
+            )
+        }
+
+        let perCallDelay: UInt64 = 200_000_000 // 200ms in nanoseconds
+        let start = ContinuousClock.now
+
+        let results = await ToolCallingConversation.executeToolCallsInParallel(toolCalls) { toolCall in
+            try? await Task.sleep(nanoseconds: perCallDelay)
+            return "ok-\(toolCall.id)"
+        }
+
+        let elapsed = ContinuousClock.now - start
+
+        // Sequential floor is 4 * 200ms = 800ms. We give the parallel path up
+        // to 600ms (3x single-call latency) so the test is robust against CI
+        // jitter without ever passing under the sequential implementation.
+        #expect(elapsed < .milliseconds(600))
+        #expect(results.count == toolCalls.count)
+        // Order must match input order so the conversation log is deterministic.
+        for (index, pair) in results.enumerated() {
+            #expect(pair.0.id == toolCalls[index].id)
+            #expect(pair.1 == "ok-\(toolCalls[index].id)")
+        }
+    }
+
+    @Test("executeToolCallsInParallel preserves input order even when tasks finish out of order (P2-2F)")
+    func parallelToolExecutionPreservesOrder() async {
+        let toolCalls = [
+            ToolCall(id: "first", type: "function", function: ToolCallFunction(name: "slow", arguments: "{}")),
+            ToolCall(id: "second", type: "function", function: ToolCallFunction(name: "fast", arguments: "{}")),
+            ToolCall(id: "third", type: "function", function: ToolCallFunction(name: "medium", arguments: "{}"))
+        ]
+
+        // Make the first tool the slowest so it finishes last in wall-clock time.
+        let results = await ToolCallingConversation.executeToolCallsInParallel(toolCalls) { toolCall in
+            switch toolCall.id {
+            case "first":  try? await Task.sleep(nanoseconds: 150_000_000)
+            case "second": try? await Task.sleep(nanoseconds: 10_000_000)
+            case "third":  try? await Task.sleep(nanoseconds: 50_000_000)
+            default: break
+            }
+            return "result-\(toolCall.id)"
+        }
+
+        #expect(results.map { $0.0.id } == ["first", "second", "third"])
+        #expect(results.map { $0.1 } == ["result-first", "result-second", "result-third"])
+    }
+
+    @Test("executeToolCallsInParallel handles empty tool list (P2-2F)")
+    func parallelToolExecutionEmpty() async {
+        let results = await ToolCallingConversation.executeToolCallsInParallel([]) { _ in
+            "should-not-run"
+        }
+        #expect(results.isEmpty)
+    }
 }
