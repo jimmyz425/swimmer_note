@@ -190,6 +190,10 @@ public actor JSONWeeklyPlanRepository: WeeklyPlanRepository {
     }
 
     public func delete(planId: String, userId: String) async throws {
+        // Match the plan's own idString — the same value the Core Data backend
+        // uses for `entity.id`. The previous implementation compared `planId`
+        // against the embedded `session.id`, which only ever matched by
+        // accident and silently no-op'd otherwise.
         let userDir = plansDirectory.appendingPathComponent(userId)
         let files = (try? FileManager.default.contentsOfDirectory(atPath: userDir.path))?.filter { $0.hasSuffix(".json") } ?? []
 
@@ -197,7 +201,7 @@ public actor JSONWeeklyPlanRepository: WeeklyPlanRepository {
             let file = userDir.appendingPathComponent(filename)
             guard let data = FileManager.default.contents(atPath: file.path),
                   let plan = try? decoder.decode(WeeklyTrainingPlan.self, from: data),
-                  plan.detailedSessions.contains(where: { $0.id == planId }) else {
+                  plan.idString == planId else {
                 continue
             }
             try FileManager.default.removeItem(at: file)

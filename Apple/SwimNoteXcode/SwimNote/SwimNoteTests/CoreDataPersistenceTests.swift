@@ -342,6 +342,65 @@ struct CoreDataPersistenceTests {
         let migrated = await coreDataRepo.profile(id: profile.id)
         #expect(migrated?.name == "Migrated Swimmer")
     }
+
+    @Test("WeeklyTrainingPlan id is the source of truth on the Core Data backend")
+    @MainActor
+    func weeklyPlanIdRoundTripsAndDeletesOnCoreData() async throws {
+        let controller = try await makeIsolatedController()
+        let repo = CoreDataWeeklyPlanRepository(controller: controller)
+        let userId = "plan-id-user"
+
+        let weekStart = Self.localMidnight(yyyyMMdd: "2026-05-04")
+        let session = makeSession(sessionNumber: 1, scheduledDate: weekStart, timeOfDay: .morning)
+        let plan = makePlan(weekStarting: weekStart, sessions: [session])
+        let expectedId = plan.idString
+
+        try await repo.save(plan, for: userId)
+
+        // Loaded plan keeps the same idString as the saved one — Core Data is
+        // no longer assigning a fresh UUID per row.
+        let loaded = await repo.plan(for: userId, weekStarting: "2026-05-04")
+        try #require(loaded != nil)
+        #expect(loaded!.idString == expectedId)
+
+        // Re-save: idString must remain stable so subsequent deletes still
+        // resolve. The save() update branch re-stamps the id explicitly.
+        try await repo.save(loaded!, for: userId)
+        let reloaded = await repo.plan(for: userId, weekStarting: "2026-05-04")
+        #expect(reloaded?.idString == expectedId)
+
+        // Delete by the very same idString the caller would compute from the
+        // domain object.
+        try await repo.delete(planId: expectedId, userId: userId)
+        let afterDelete = await repo.plan(for: userId, weekStarting: "2026-05-04")
+        #expect(afterDelete == nil)
+    }
+
+    @Test("WeeklyTrainingPlan idString resolves a delete on the JSON backend")
+    @MainActor
+    func weeklyPlanIdMatchesJSONDelete() async throws {
+        let plansDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SwimNoteJSONPlans-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: plansDir) }
+
+        let repo = JSONWeeklyPlanRepository(plansDirectory: plansDir)
+        let userId = "json-id-user"
+
+        let weekStart = Self.localMidnight(yyyyMMdd: "2026-05-11")
+        let session = makeSession(sessionNumber: 1, scheduledDate: weekStart, timeOfDay: .morning)
+        let plan = makePlan(weekStarting: weekStart, sessions: [session])
+        let expectedId = plan.idString
+
+        try await repo.save(plan, for: userId)
+        let loaded = await repo.plan(for: userId, weekStarting: "2026-05-11")
+        try #require(loaded != nil)
+        #expect(loaded!.idString == expectedId)
+
+        // Pre-P0-1D this delete matched on session.id and silently no-op'd.
+        try await repo.delete(planId: expectedId, userId: userId)
+        let afterDelete = await repo.plan(for: userId, weekStarting: "2026-05-11")
+        #expect(afterDelete == nil)
+    }
 }
 
 #endif

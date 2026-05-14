@@ -158,7 +158,10 @@ public final class CoreDataPersistenceController: Sendable {
 
     public func createWeeklyPlanEntity(from plan: WeeklyTrainingPlan, userId: String, in context: NSManagedObjectContext) throws -> WeeklyTrainingPlanEntity {
         let entity = WeeklyTrainingPlanEntity(context: context)
-        entity.id = UUID().uuidString
+        // Mirror the domain id so `delete(planId:userId:)` and any other
+        // backend agree on the identity of a plan. UUIDs would diverge on
+        // every save and break the JSON-vs-Core-Data parity.
+        entity.id = plan.idString
         entity.userId = userId
         entity.weekStartingDate = plan.weekStartingDate
         // Encode JSON directly to String (no base64)
@@ -583,6 +586,11 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
 
             if let entity = existingEntity {
                 // Update existing
+                // Re-stamp the id so a row created before P0-1D (when ids were
+                // random UUIDs) is migrated to the deterministic plan.idString
+                // on the next save. After this re-stamp `delete(planId:)` can
+                // find the row by the same string both backends use.
+                entity.id = plan.idString
                 entity.overviewJSON = try? encoder.encode(plan.overview).utf8String
                 entity.scheduleJSON = try? encoder.encode(plan.schedule).utf8String
                 entity.weeklyGoalsJSON = plan.weeklyGoals != nil ? try? encoder.encode(plan.weeklyGoals!).utf8String : nil

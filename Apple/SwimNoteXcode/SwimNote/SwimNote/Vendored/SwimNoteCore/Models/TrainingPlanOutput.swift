@@ -203,6 +203,14 @@ public nonisolated struct SessionOutline: Codable, Hashable, Identifiable, Senda
 public nonisolated struct WeeklyTrainingPlan: Codable, Hashable, Identifiable, Sendable {
     public var id: Date { weekStartingDate ?? Date() }
 
+    /// Stable string form of `id` shared by every persistence backend.
+    /// Both Core Data and JSON repos use this as the row/file identifier so
+    /// `delete(planId:userId:)` resolves to the same plan regardless of
+    /// which backend the caller talked to.
+    public var idString: String {
+        SwimNoteDateFormatting.string(from: id)
+    }
+
     public var overview: PlanOverview
     public var schedule: [DaySchedule]
     public var detailedSessions: [DetailedSession]
