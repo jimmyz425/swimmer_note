@@ -1,7 +1,19 @@
 @preconcurrency import Foundation
+import OSLog
 #if canImport(CoreData)
 import CoreData
 #endif
+
+private let coreDataLog = Logger(subsystem: "com.swimnote.persistence", category: "CoreData")
+
+extension Notification.Name {
+    /// Posted (release builds only) when Core Data lightweight migration fails
+    /// and the destructive fallback is about to delete the local store. The App
+    /// can observe this to surface a banner so the user knows their device data
+    /// was reset. P0-1G: in DEBUG we `fatalError` instead so the bug surfaces
+    /// during development.
+    public static let swimNoteCoreDataMigrationFailed = Notification.Name("com.swimnote.persistence.coreDataMigrationFailed")
+}
 
 // MARK: - Core Data Persistence Controller
 
@@ -44,21 +56,39 @@ public final class CoreDataPersistenceController: Sendable {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             container.loadPersistentStores { _, error in
                 if let error {
-                    // For development: if migration fails, delete the incompatible store
                     let nsError = error as NSError
                     if nsError.code == 134140 || nsError.code == NSMigrationError || nsError.code == NSMigrationMissingSourceModelError {
-                        print("CoreData migration failed. Deleting incompatible store and recreating...")
-                        // Delete the existing store file
+                        // P0-1G: lightweight migration just failed. Pre-fix this
+                        // silently deleted the user's local store via `print` +
+                        // best-effort removeItem. That hides real model bugs in
+                        // dev (you only notice the data loss) and would silently
+                        // wipe customer data in release.
+                        //
+                        // DEBUG: crash hard so the developer sees it on the
+                        // first launch after a bad model edit.
+                        // Release: log at fault level via os.Logger, post a
+                        // notification the App can observe to surface a banner,
+                        // then proceed with the destructive recreate so the app
+                        // still becomes usable instead of bricking.
+                        coreDataLog.fault("Core Data migration failed: \(error.localizedDescription, privacy: .public) (code \(nsError.code))")
+
+                        #if DEBUG
+                        fatalError("Core Data migration failed: \(error). Bump the model version or fix the schema rather than relying on the destructive fallback.")
+                        #else
+                        NotificationCenter.default.post(
+                            name: .swimNoteCoreDataMigrationFailed,
+                            object: nil,
+                            userInfo: ["error": error]
+                        )
+
                         if let storeDescription = self.container.persistentStoreDescriptions.first,
                            let storeURL = storeDescription.url {
                             try? FileManager.default.removeItem(at: storeURL)
-                            // Also delete related files (-shm, -wal)
                             let shmURL = storeURL.deletingLastPathComponent().appendingPathComponent(storeURL.lastPathComponent + "-shm")
                             let walURL = storeURL.deletingLastPathComponent().appendingPathComponent(storeURL.lastPathComponent + "-wal")
                             try? FileManager.default.removeItem(at: shmURL)
                             try? FileManager.default.removeItem(at: walURL)
                         }
-                        // Try loading again
                         self.container.loadPersistentStores { _, retryError in
                             if let retryError {
                                 continuation.resume(throwing: retryError)
@@ -68,6 +98,7 @@ public final class CoreDataPersistenceController: Sendable {
                                 continuation.resume()
                             }
                         }
+                        #endif
                     } else {
                         continuation.resume(throwing: error)
                     }
