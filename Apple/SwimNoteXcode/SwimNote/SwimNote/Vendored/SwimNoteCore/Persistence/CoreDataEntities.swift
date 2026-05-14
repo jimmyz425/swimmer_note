@@ -114,6 +114,7 @@ public class DetailedSessionEntity: NSManagedObject {
     @NSManaged public var progressionRationale: String?
     @NSManaged public var sessionNotes: String?
     @NSManaged public var scheduledDate: Date?
+    @NSManaged public var timeOfDay: String?
     @NSManaged public var isCompleted: Bool
     @NSManaged public var isAssigned: Bool
     @NSManaged public var weeklyPlan: WeeklyTrainingPlanEntity?
@@ -420,6 +421,7 @@ extension DetailedSessionEntity {
             progressionRationale: progressionRationale,
             sessionNotes: sessionNotes,
             scheduledDate: scheduledDate,
+            timeOfDay: timeOfDay.flatMap { SessionTimeOfDay(rawValue: $0) },
             isCompleted: isCompleted,
             // Auto-set isAssigned if scheduledDate exists but isAssigned was stored as false
             isAssigned: isAssigned || (scheduledDate != nil)

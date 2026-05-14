@@ -409,6 +409,17 @@ public nonisolated enum SessionTimeOfDay: String, Codable, CaseIterable, Hashabl
         case .evening: "18:00 - 21:00"
         }
     }
+
+    /// Natural chronological ordering for sorting sessions on the same day.
+    /// (Raw values sort lexicographically as afternoon < evening < morning,
+    /// which is not what callers want.)
+    public var sortOrder: Int {
+        switch self {
+        case .morning: 0
+        case .afternoon: 1
+        case .evening: 2
+        }
+    }
 }
 
 // MARK: - Detailed Session

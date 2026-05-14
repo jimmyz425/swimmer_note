@@ -86,6 +86,7 @@
         <attribute name="progressionRationale" optional="YES" attributeType="String"/>
         <attribute name="sessionNotes" optional="YES" attributeType="String"/>
         <attribute name="scheduledDate" optional="YES" attributeType="Date"/>
+        <attribute name="timeOfDay" optional="YES" attributeType="String"/>
         <attribute name="isCompleted" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
         <attribute name="isAssigned" optional="YES" attributeType="Boolean" defaultValueString="NO"/>
         <relationship name="weeklyPlan" optional="YES" maxCount="1" deletionRule="Nullify" destinationEntity="WeeklyTrainingPlan" inverseName="detailedSessions" inverseEntity="WeeklyTrainingPlan"/>

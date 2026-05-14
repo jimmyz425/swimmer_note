@@ -206,6 +206,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.progressionRationale = session.progressionRationale
         entity.sessionNotes = session.sessionNotes
         entity.scheduledDate = session.scheduledDate
+        entity.timeOfDay = session.timeOfDay?.rawValue
         entity.isCompleted = session.isCompleted
         entity.isAssigned = session.isAssigned
         return entity
@@ -542,12 +543,21 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
                 searchDate as NSDate,
                 userId
             )
-            // Sort by time of day
-            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timeOfDay", ascending: true)]
+            // Stable secondary sort by sessionNumber; primary order applied in Swift
+            // because Core Data would sort the raw `timeOfDay` strings
+            // lexicographically ("afternoon" < "evening" < "morning"), which is
+            // not the natural morning→afternoon→evening order we want.
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "sessionNumber", ascending: true)]
 
             do {
                 let entities = try context.fetch(fetchRequest)
-                return entities.compactMap { try? $0.toDetailedSession() }
+                let sessions = entities.compactMap { try? $0.toDetailedSession() }
+                return sessions.sorted { lhs, rhs in
+                    let l = lhs.timeOfDay?.sortOrder ?? Int.max
+                    let r = rhs.timeOfDay?.sortOrder ?? Int.max
+                    if l != r { return l < r }
+                    return lhs.sessionNumber < rhs.sessionNumber
+                }
             } catch {
                 print("Error fetching sessions by date: \(error)")
                 return []
