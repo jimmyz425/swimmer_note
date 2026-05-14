@@ -165,6 +165,27 @@ struct LLMServiceTests {
         #expect(request1 != request3)
     }
 
+    // P2-2C: ensure maxTokens is wired through the value type and participates in equality.
+    @Test("LLMRequest carries optional maxTokens (P2-2C)")
+    func llmRequestMaxTokens() {
+        let defaultRequest = LLMRequest(systemRole: "Coach", prompt: "Help")
+        #expect(defaultRequest.maxTokens == nil)
+
+        let outline = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 2048)
+        let detail = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 4096)
+        let dryland = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 1536)
+
+        #expect(outline.maxTokens == 2048)
+        #expect(detail.maxTokens == 4096)
+        #expect(dryland.maxTokens == 1536)
+
+        // maxTokens differences must propagate through Equatable so callers can't accidentally
+        // share request hashes when their token caps diverge.
+        let outlineTwin = LLMRequest(systemRole: "Coach", prompt: "Help", maxTokens: 2048)
+        #expect(outline == outlineTwin)
+        #expect(outline != detail)
+    }
+
     // MARK: - LLMResponse Tests
 
     @Test("LLMResponse with content only")

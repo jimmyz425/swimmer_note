@@ -74,10 +74,13 @@ public final class ToolCallingConversation: Sendable {
         systemRole: String,
         userPrompt: String,
         tools: [Tool],
-        maxIterations: Int? = nil
+        maxIterations: Int? = nil,
+        maxTokens: Int? = nil
     ) async throws -> String {
         // P2-2B: caller can still override; otherwise defer to configuration.
         let resolvedMaxIterations = maxIterations ?? configuration.maxToolIterations
+        // P2-2C: per-call max_tokens cap; nil falls back to OpenAIClient default.
+        let resolvedMaxTokens = maxTokens
         var messages: [ConversationMessage] = [
             .system(systemRole),
             .user(userPrompt)
@@ -92,7 +95,11 @@ public final class ToolCallingConversation: Sendable {
             #endif
 
             // Build request with full conversation history for OpenAI-compatible APIs
-            let request = buildRequestWithHistory(messages: messages, tools: tools)
+            let request = buildRequestWithHistory(
+                messages: messages,
+                tools: tools,
+                maxTokens: resolvedMaxTokens
+            )
 
             do {
                 let response = try await client.completeWithTools(request, configuration: configuration, apiKey: apiKey)
@@ -186,14 +193,19 @@ public final class ToolCallingConversation: Sendable {
         throw LLMServiceError.maxIterationsReached
     }
 
-    private func buildRequestWithHistory(messages: [ConversationMessage], tools: [Tool]) -> LLMRequest {
+    private func buildRequestWithHistory(
+        messages: [ConversationMessage],
+        tools: [Tool],
+        maxTokens: Int? = nil
+    ) -> LLMRequest {
         // Build the request - pass messages directly, conversion happens in LLMClient
         return LLMRequest(
             systemRole: "",  // Empty because system is in messages
             prompt: "",      // Empty because we're using messages array
             temperature: 0.2,
             tools: tools,
-            messages: messages
+            messages: messages,
+            maxTokens: maxTokens
         )
     }
 }

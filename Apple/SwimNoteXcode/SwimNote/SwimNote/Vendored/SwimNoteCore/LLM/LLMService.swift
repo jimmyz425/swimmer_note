@@ -121,27 +121,42 @@ public nonisolated struct LLMRequest: Hashable, Sendable {
     public var tools: [Tool]?
     public var toolChoice: ToolChoice?
     public var messages: [ConversationMessage]?  // Full conversation history for tool calling
+    /// Per-request OpenAI `max_tokens` cap. When `nil`, the client falls back
+    /// to a generous default. Setting per phase (outline 2048, detail 4096,
+    /// dryland 1536) cuts cost without hurting throughput. Added in P2-2C.
+    public var maxTokens: Int?
 
-    public init(systemRole: String, prompt: String, temperature: Double = 0.2, tools: [Tool]? = nil, toolChoice: ToolChoice? = nil, messages: [ConversationMessage]? = nil) {
+    public init(
+        systemRole: String,
+        prompt: String,
+        temperature: Double = 0.2,
+        tools: [Tool]? = nil,
+        toolChoice: ToolChoice? = nil,
+        messages: [ConversationMessage]? = nil,
+        maxTokens: Int? = nil
+    ) {
         self.systemRole = systemRole
         self.prompt = prompt
         self.temperature = temperature
         self.tools = tools
         self.toolChoice = toolChoice
         self.messages = messages
+        self.maxTokens = maxTokens
     }
 
     public func hash(into hasher: inout Hasher) {
         hasher.combine(systemRole)
         hasher.combine(prompt)
         hasher.combine(temperature)
+        hasher.combine(maxTokens)
         // Skip tools, toolChoice, messages for hashing
     }
 
     public static func == (lhs: LLMRequest, rhs: LLMRequest) -> Bool {
         lhs.systemRole == rhs.systemRole &&
         lhs.prompt == rhs.prompt &&
-        lhs.temperature == rhs.temperature
+        lhs.temperature == rhs.temperature &&
+        lhs.maxTokens == rhs.maxTokens
     }
 }
 
@@ -312,11 +327,14 @@ public struct OpenAIClient: LLMClient, Sendable {
             ]
         }
 
+        // P2-2C: per-request cap if the caller supplied one (outline 2048,
+        // detail 4096, dryland 1536, etc.); fall back to the historical 8192
+        // for callers that didn't opt in yet.
         var body: [String: Any] = [
             "model": configuration.modelName,
             "messages": messagesArray,
             "temperature": request.temperature,
-            "max_tokens": 8192  // Increased for long training plan outputs
+            "max_tokens": request.maxTokens ?? 8192
         ]
 
         // Note: response_format json_object can interfere with tool calling, so we don't use it
