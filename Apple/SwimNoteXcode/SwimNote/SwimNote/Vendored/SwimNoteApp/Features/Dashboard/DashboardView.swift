@@ -2,6 +2,7 @@ import SwiftUI
 
 struct DashboardView: View {
     @Bindable var appModel: SwimNoteAppModel
+    @Environment(ContentStore.self) private var contentStore
     @State private var note: TrainingNote?
     @State private var isLoading = true
     @State private var navigationPath = NavigationPath()
@@ -118,12 +119,12 @@ struct DashboardView: View {
                 }
             }
             .navigationDestination(for: StrokeNavigationValue.self) { value in
-                if let tree = appModel.tree(for: value.strokeId) {
+                if let tree = contentStore.tree(for: value.strokeId) {
                     TechniqueTreeView(appModel: appModel, tree: tree)
                 }
             }
             .navigationDestination(for: NodeNavigationValue.self) { value in
-                if let tree = appModel.tree(for: value.strokeId),
+                if let tree = contentStore.tree(for: value.strokeId),
                    let node = tree.nodes.first(where: { $0.id == value.nodeId }) {
                     NodeDetailView(appModel: appModel, tree: tree, node: node)
                 }
@@ -938,7 +939,7 @@ private func makePreviewModelWithSession() -> SwimNoteAppModel {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
-    model.activeProfile = profile
+    model.profileStore.activeProfile = profile
     model.loadBundledContent()
 
     // Add a training session for today with action buttons visible
@@ -1036,7 +1037,7 @@ private func makeEmptyPreviewModel() -> SwimNoteAppModel {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
-    model.activeProfile = profile
+    model.profileStore.activeProfile = profile
     model.loadBundledContent()
 
     return model
@@ -1055,9 +1056,13 @@ struct ImageReference {
 }
 
 #Preview("Dashboard - With Goals and Session") {
-    DashboardView(appModel: makePreviewModelWithSession())
+    let model = makePreviewModelWithSession()
+    DashboardView(appModel: model)
+        .environment(model.contentStore)
 }
 
 #Preview("Dashboard - Empty") {
-    DashboardView(appModel: makeEmptyPreviewModel())
+    let model = makeEmptyPreviewModel()
+    DashboardView(appModel: model)
+        .environment(model.contentStore)
 }

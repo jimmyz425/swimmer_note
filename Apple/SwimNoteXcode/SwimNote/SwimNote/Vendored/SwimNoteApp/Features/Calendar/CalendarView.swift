@@ -405,7 +405,8 @@ struct CalendarView: View {
 
 // MARK: - Previews
 
-#Preview("Calendar - With Data") {
+@MainActor
+private func previewCalendarWithData() -> some View {
     let model = SwimNoteAppModel.bootstrap()
     let profile = UserProfile(
         id: "preview-user",
@@ -420,7 +421,7 @@ struct CalendarView: View {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
-    model.activeProfile = profile
+    model.profileStore.activeProfile = profile
 
     let today = SwimNoteDateFormatting.todayShort()
     model.notes = [
@@ -475,7 +476,8 @@ struct CalendarView: View {
     return CalendarView(appModel: model)
 }
 
-#Preview("Calendar - Empty") {
+@MainActor
+private func previewCalendarEmpty() -> some View {
     let model = SwimNoteAppModel.bootstrap()
     let profile = UserProfile(
         id: "preview-user",
@@ -490,10 +492,18 @@ struct CalendarView: View {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
-    model.activeProfile = profile
+    model.profileStore.activeProfile = profile
     model.notes = []
     model.weeklyPlans = []
     return CalendarView(appModel: model)
+}
+
+#Preview("Calendar - With Data") {
+    previewCalendarWithData()
+}
+
+#Preview("Calendar - Empty") {
+    previewCalendarEmpty()
 }
 
 

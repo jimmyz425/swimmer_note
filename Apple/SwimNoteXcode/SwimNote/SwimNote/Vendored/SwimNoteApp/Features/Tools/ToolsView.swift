@@ -193,23 +193,8 @@ struct ToolCard<Destination: View>: View {
 
 private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false, withMeasurements: Bool = false) -> SwimNoteAppModel {
     let model = SwimNoteAppModel.bootstrap()
-    model.activeProfile = UserProfile(
-        id: "preview-user",
-        name: "Alex",
-        birthday: "1995-06-15",
-        sex: .male,
-        skillLevel: .intermediate,
-        weeklySessionTarget: 3,
-        preferredStrokes: [.freestyle],
-        mainStroke: .freestyle,
-        distancePreference: .mid,
-        personalBests: PersonalBests(freestyle50m: 32.5),
-        trainingGoals: [],
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z"
-    )
-    if withCSS {
-        model.activeProfile?.cssHistory = CSSHistory(
+    let cssHistory: CSSHistory? = withCSS
+        ? CSSHistory(
             tests: [
                 CSSTestResult(
                     date: "2024-04-15",
@@ -222,7 +207,23 @@ private func makePreviewModel(withCSS: Bool = false, withRecords: Bool = false, 
                 )
             ]
         )
-    }
+        : nil
+    model.profileStore.activeProfile = UserProfile(
+        id: "preview-user",
+        name: "Alex",
+        birthday: "1995-06-15",
+        sex: .male,
+        skillLevel: .intermediate,
+        weeklySessionTarget: 3,
+        preferredStrokes: [.freestyle],
+        mainStroke: .freestyle,
+        distancePreference: .mid,
+        personalBests: PersonalBests(freestyle50m: 32.5),
+        cssHistory: cssHistory,
+        trainingGoals: [],
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z"
+    )
     if withRecords {
         model.videoRecords = [
             VideoAnalysisRecord(

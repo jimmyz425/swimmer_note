@@ -258,28 +258,19 @@ struct CSSToolsView: View {
     }
 }
 
-#Preview("CSS Tools - Empty") {
+// MARK: - Previews
+
+@MainActor
+private func previewCSSToolsEmpty() -> some View {
     NavigationStack {
         CSSToolsView(appModel: SwimNoteAppModel.bootstrap())
     }
 }
 
-#Preview("CSS Tools - With CSS") {
+@MainActor
+private func previewCSSToolsWithCSS() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.activeProfile = UserProfile(
-        id: "preview-user",
-        name: "Alex",
-        birthday: "1995-06-15",
-        sex: .male,
-        skillLevel: .intermediate,
-        weeklySessionTarget: 3,
-        preferredStrokes: [.freestyle],
-        personalBests: PersonalBests.empty(),
-        trainingGoals: [],
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z"
-    )
-    model.activeProfile?.cssHistory = CSSHistory(
+    let history = CSSHistory(
         tests: [
             CSSTestResult(
                 date: "2024-04-15",
@@ -307,10 +298,32 @@ struct CSSToolsView: View {
                 time400m: 305,
                 cssMetersPerSecond: 1.23,
                 cssPaceSecondsPer100m: 81.3
-            )
+            ),
         ]
+    )
+    model.profileStore.activeProfile = UserProfile(
+        id: "preview-user",
+        name: "Alex",
+        birthday: "1995-06-15",
+        sex: .male,
+        skillLevel: .intermediate,
+        weeklySessionTarget: 3,
+        preferredStrokes: [.freestyle],
+        personalBests: PersonalBests.empty(),
+        cssHistory: history,
+        trainingGoals: [],
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z"
     )
     return NavigationStack {
         CSSToolsView(appModel: model)
     }
+}
+
+#Preview("CSS Tools - Empty") {
+    previewCSSToolsEmpty()
+}
+
+#Preview("CSS Tools - With CSS") {
+    previewCSSToolsWithCSS()
 }

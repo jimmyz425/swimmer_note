@@ -122,8 +122,8 @@ public nonisolated struct LLMRequest: Hashable, Sendable {
     public var toolChoice: ToolChoice?
     public var messages: [ConversationMessage]?  // Full conversation history for tool calling
     /// Per-request OpenAI `max_tokens` cap. When `nil`, the client falls back
-    /// to a generous default. Setting per phase (outline 2048, detail 4096,
-    /// dryland 1536) cuts cost without hurting throughput. Added in P2-2C.
+    /// to a generous default. Planning uses per phase (outline 4096, detail 4096,
+    /// dryland 1536) so large outline JSON (e.g. tierGuidance + schedule) is not cut off.
     public var maxTokens: Int?
 
     public init(
@@ -357,7 +357,7 @@ public struct OpenAIClient: LLMClient, Sendable {
             ]
         }
 
-        // P2-2C: per-request cap if the caller supplied one (outline 2048,
+        // P2-2C: per-request cap if the caller supplied one (outline 4096,
         // detail 4096, dryland 1536, etc.); fall back to the historical 8192
         // for callers that didn't opt in yet.
         var body: [String: Any] = [
@@ -697,6 +697,21 @@ public enum LLMServiceError: Error, Equatable {
     case httpError(Int)
     case apiError(String)
     case maxIterationsReached
+}
+
+extension LLMServiceError: LocalizedError {
+    public var errorDescription: String? {
+        switch self {
+        case .invalidResponse:
+            return "The API returned an empty or incomplete response (could not use assistant output)."
+        case .httpError(let code):
+            return "HTTP \(code) from the language model API."
+        case .apiError(let message):
+            return message
+        case .maxIterationsReached:
+            return "The model stopped after too many tool rounds without returning final text."
+        }
+    }
 }
 
 public protocol SecureCredentialStore: Sendable {

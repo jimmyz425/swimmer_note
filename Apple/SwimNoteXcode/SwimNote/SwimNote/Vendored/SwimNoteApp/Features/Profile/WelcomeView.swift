@@ -1,7 +1,8 @@
 import SwiftUI
 
 struct WelcomeView: View {
-    @Bindable var appModel: SwimNoteAppModel
+    var appModel: SwimNoteAppModel
+    @Environment(ProfileStore.self) private var profileStore
 
     var body: some View {
         VStack(spacing: 32) {
@@ -28,7 +29,7 @@ struct WelcomeView: View {
             // Action button
             VStack(spacing: 16) {
                 Button {
-                    appModel.showingUserSetup = true
+                    profileStore.showingUserSetup = true
                 } label: {
                     Text("Get Started")
                         .font(.headline)
@@ -56,10 +57,14 @@ struct WelcomeView: View {
 // MARK: - Previews
 
 #Preview("Welcome View") {
-    WelcomeView(appModel: SwimNoteAppModel.bootstrap())
+    let model = SwimNoteAppModel.bootstrap()
+    WelcomeView(appModel: model)
+        .environment(model.profileStore)
 }
 
 #Preview("Welcome View - Dark Mode") {
-    WelcomeView(appModel: SwimNoteAppModel.bootstrap())
+    let model = SwimNoteAppModel.bootstrap()
+    WelcomeView(appModel: model)
+        .environment(model.profileStore)
         .preferredColorScheme(.dark)
 }

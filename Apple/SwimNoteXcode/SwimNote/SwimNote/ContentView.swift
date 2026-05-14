@@ -12,6 +12,8 @@ struct ContentView: View {
 
     var body: some View {
         RootView(appModel: appModel)
+            .environment(appModel.profileStore)
+            .environment(appModel.contentStore)
             .preferredColorScheme(.light)
     }
 }

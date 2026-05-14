@@ -217,13 +217,10 @@ struct PBResultRow: View {
 
 // MARK: - Previews
 
-#Preview("PB Tracker - Empty") {
-    PBTrackerView(appModel: SwimNoteAppModel.bootstrap())
-}
-
-#Preview("PB Tracker - With Results") {
+@MainActor
+private func previewPBTrackerWithResults() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.activeProfile = UserProfile(
+    model.profileStore.activeProfile = UserProfile(
         id: "preview-user",
         name: "Alex",
         birthday: "1995-06-15",
@@ -245,4 +242,12 @@ struct PBResultRow: View {
         updatedAt: "2024-01-01T00:00:00Z"
     )
     return PBTrackerView(appModel: model)
+}
+
+#Preview("PB Tracker - Empty") {
+    PBTrackerView(appModel: SwimNoteAppModel.bootstrap())
+}
+
+#Preview("PB Tracker - With Results") {
+    previewPBTrackerWithResults()
 }

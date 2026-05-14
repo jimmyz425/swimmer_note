@@ -95,6 +95,7 @@ enum TechniqueDetailTab: String, CaseIterable, Identifiable {
 
 struct NodeDetailView: View {
     @Bindable var appModel: SwimNoteAppModel
+    @Environment(ContentStore.self) private var contentStore
     let tree: TechniqueTree
     let node: TechniqueTreeNode
     @State private var parsedContent: ParsedTechniqueContent?
@@ -153,7 +154,7 @@ struct NodeDetailView: View {
         .navigationTitle(node.name)
         .task {
             if let sourceFile = node.sourceFile {
-                parsedContent = appModel.parsedTechnique(filename: sourceFile)
+                parsedContent = contentStore.parsedTechnique(filename: sourceFile)
             }
         }
         .sheet(item: $selectedTierMetric) { metric in
@@ -774,8 +775,9 @@ struct TierRow: View {
 }
 
 #Preview("Technique Detail") {
-    NodeDetailView(
-        appModel: SwimNoteAppModel.bootstrap(),
+    let model = SwimNoteAppModel.bootstrap()
+    return NodeDetailView(
+        appModel: model,
         tree: TechniqueTree(
             strokeId: .freestyle,
             name: "Freestyle",
@@ -810,6 +812,7 @@ struct TierRow: View {
             sourceFile: "freestyle-01-body-position"
         )
     )
+    .environment(model.contentStore)
 }
 
 // MARK: - Additional Previews

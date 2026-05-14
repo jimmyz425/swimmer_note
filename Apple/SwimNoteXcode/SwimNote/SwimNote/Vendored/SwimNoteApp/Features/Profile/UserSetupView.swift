@@ -2,6 +2,7 @@ import SwiftUI
 
 struct UserSetupView: View {
     @Bindable var appModel: SwimNoteAppModel
+    @Environment(ProfileStore.self) private var profileStore
     @State private var name: String = ""
     @State private var birthday: Date = Calendar.current.date(byAdding: .year, value: -25, to: Date()) ?? Date()
     @State private var sex: Sex = .male
@@ -164,10 +165,10 @@ struct UserSetupView: View {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") {
                         // If profiles exist and we're in setup mode, transition to user selection
-                        if !appModel.profiles.isEmpty && appModel.needsSetup {
-                            appModel.needsSetup = false
+                        if !profileStore.profiles.isEmpty && profileStore.needsSetup {
+                            profileStore.needsSetup = false
                         }
-                        appModel.showingUserSetup = false
+                        profileStore.showingUserSetup = false
                         dismiss()
                     }
                 }
@@ -241,7 +242,7 @@ struct UserSetupView: View {
                     profileImageData: profileImageData,
                     profileIconName: profileIconName
                 )
-                appModel.showingUserSetup = false
+                profileStore.showingUserSetup = false
                 isSaving = false
                 dismiss()
             } catch {
@@ -496,10 +497,13 @@ struct MarkdownText: View {
 // MARK: - Previews
 
 #Preview("User Setup - Empty") {
-    UserSetupView(appModel: SwimNoteAppModel.bootstrap())
+    let model = SwimNoteAppModel.bootstrap()
+    UserSetupView(appModel: model)
+        .environment(model.profileStore)
 }
 
 #Preview("User Setup - Bronze 3") {
     let model = SwimNoteAppModel.bootstrap()
     UserSetupView(appModel: model)
+        .environment(model.profileStore)
 }

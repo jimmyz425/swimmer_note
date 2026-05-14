@@ -53,9 +53,10 @@ public struct RootView: View {
 
 // MARK: - Previews
 
-#Preview("Root - With Active Profile") {
+@MainActor
+private func previewRootWithActiveProfile() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.activeProfile = UserProfile(
+    let profile = UserProfile(
         id: "preview-user",
         name: "Alex Swimmer",
         birthday: "1995-06-15",
@@ -70,22 +71,30 @@ public struct RootView: View {
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
-    model.needsSetup = false
+    model.profileStore.profiles = [profile]
+    model.profileStore.activeProfile = profile
+    model.profileStore.needsSetup = false
     model.loadBundledContent()
     return RootView(appModel: model)
+        .environment(model.profileStore)
+        .environment(model.contentStore)
 }
 
-#Preview("Root - Welcome Screen") {
+@MainActor
+private func previewRootWelcome() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.needsSetup = true
-    model.profiles = []
+    model.profileStore.needsSetup = true
+    model.profileStore.profiles = []
     return RootView(appModel: model)
+        .environment(model.profileStore)
+        .environment(model.contentStore)
 }
 
-#Preview("Root - User Selection") {
+@MainActor
+private func previewRootUserSelection() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.needsSetup = false
-    model.profiles = [
+    model.profileStore.needsSetup = false
+    model.profileStore.profiles = [
         UserProfile(
             id: "user-1",
             name: "Alex",
@@ -117,4 +126,18 @@ public struct RootView: View {
         )
     ]
     return RootView(appModel: model)
+        .environment(model.profileStore)
+        .environment(model.contentStore)
+}
+
+#Preview("Root - With Active Profile") {
+    previewRootWithActiveProfile()
+}
+
+#Preview("Root - Welcome Screen") {
+    previewRootWelcome()
+}
+
+#Preview("Root - User Selection") {
+    previewRootUserSelection()
 }

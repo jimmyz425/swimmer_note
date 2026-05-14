@@ -128,9 +128,10 @@ struct UserSelectionView: View {
 
 // MARK: - Previews
 
-#Preview("User Selection - Multiple Profiles") {
+@MainActor
+private func previewUserSelectionMultiple() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.profiles = [
+    model.profileStore.profiles = [
         UserProfile(
             id: "user-1",
             name: "Alex",
@@ -171,13 +172,15 @@ struct UserSelectionView: View {
             updatedAt: "2024-03-01T00:00:00Z"
         )
     ]
-    model.activeProfile = model.profiles.first
+    model.profileStore.activeProfile = model.profileStore.profiles.first
     return UserSelectionView(appModel: model)
+        .environment(model.profileStore)
 }
 
-#Preview("User Selection - Single Profile") {
+@MainActor
+private func previewUserSelectionSingle() -> some View {
     let model = SwimNoteAppModel.bootstrap()
-    model.profiles = [
+    model.profileStore.profiles = [
         UserProfile(
             id: "user-1",
             name: "Solo Swimmer",
@@ -192,6 +195,15 @@ struct UserSelectionView: View {
             updatedAt: "2024-01-01T00:00:00Z"
         )
     ]
-    model.activeProfile = model.profiles.first
+    model.profileStore.activeProfile = model.profileStore.profiles.first
     return UserSelectionView(appModel: model)
+        .environment(model.profileStore)
+}
+
+#Preview("User Selection - Multiple Profiles") {
+    previewUserSelectionMultiple()
+}
+
+#Preview("User Selection - Single Profile") {
+    previewUserSelectionSingle()
 }

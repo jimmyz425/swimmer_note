@@ -2,6 +2,7 @@ import SwiftUI
 
 struct PersonalBestsEditor: View {
     @Bindable var appModel: SwimNoteAppModel
+    @Environment(ProfileStore.self) private var profileStore
     @State var profile: UserProfile
     @State private var name: String
     @State private var mainStroke: StrokeID?
@@ -244,7 +245,7 @@ struct PersonalBestsEditor: View {
         updated.profileIconName = profileIconName
 
         Task { @MainActor in
-            try? await appModel.updateProfile(updated)
+            try? await profileStore.updateProfile(updated)
             isSaving = false
             dismiss()
         }
@@ -254,8 +255,9 @@ struct PersonalBestsEditor: View {
 // MARK: - Previews
 
 #Preview("Personal Bests Editor - Silver 2") {
+    let model = SwimNoteAppModel.bootstrap()
     PersonalBestsEditor(
-        appModel: SwimNoteAppModel.bootstrap(),
+        appModel: model,
         profile: UserProfile(
             id: "preview-user",
             name: "Alex",
@@ -274,11 +276,13 @@ struct PersonalBestsEditor: View {
             updatedAt: "2024-01-01T00:00:00Z"
         )
     )
+    .environment(model.profileStore)
 }
 
 #Preview("Personal Bests Editor - Bronze 1") {
+    let model = SwimNoteAppModel.bootstrap()
     PersonalBestsEditor(
-        appModel: SwimNoteAppModel.bootstrap(),
+        appModel: model,
         profile: UserProfile(
             id: "preview-user",
             name: "Maya",
@@ -297,11 +301,13 @@ struct PersonalBestsEditor: View {
             updatedAt: "2024-01-01T00:00:00Z"
         )
     )
+    .environment(model.profileStore)
 }
 
 #Preview("Personal Bests Editor - Senior") {
+    let model = SwimNoteAppModel.bootstrap()
     PersonalBestsEditor(
-        appModel: SwimNoteAppModel.bootstrap(),
+        appModel: model,
         profile: UserProfile(
             id: "preview-user",
             name: "Jordan",
@@ -320,4 +326,5 @@ struct PersonalBestsEditor: View {
             updatedAt: "2024-01-01T00:00:00Z"
         )
     )
+    .environment(model.profileStore)
 }

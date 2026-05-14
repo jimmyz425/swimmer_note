@@ -274,6 +274,29 @@ struct PBResultInputView: View {
 
 // MARK: - Previews
 
+@MainActor
+private func previewPBResultInputWithPreviousBest() -> some View {
+    let model = SwimNoteAppModel.bootstrap()
+    let profile = UserProfile(
+        id: "preview-user",
+        name: "Alex",
+        birthday: "1995-06-15",
+        sex: .male,
+        skillLevel: .intermediate,
+        weeklySessionTarget: 3,
+        preferredStrokes: [.freestyle],
+        personalBests: PersonalBests(freestyle50m: 34.2),
+        pbHistory: PBHistory(results: [
+            PBResult(date: "2024-03-01", strokeId: .freestyle, distance: 50, time: 34.2, meetName: "Sectional Meet", courseType: .shortCourse)
+        ]),
+        trainingGoals: [],
+        createdAt: "2024-01-01T00:00:00Z",
+        updatedAt: "2024-01-01T00:00:00Z"
+    )
+    model.profileStore.activeProfile = profile
+    return PBResultInputView(appModel: model, profile: profile)
+}
+
 #Preview("PB Result Input - Empty") {
     PBResultInputView(
         appModel: SwimNoteAppModel.bootstrap(),
@@ -294,22 +317,5 @@ struct PBResultInputView: View {
 }
 
 #Preview("PB Result Input - With Previous Best") {
-    let model = SwimNoteAppModel.bootstrap()
-    model.activeProfile = UserProfile(
-        id: "preview-user",
-        name: "Alex",
-        birthday: "1995-06-15",
-        sex: .male,
-        skillLevel: .intermediate,
-        weeklySessionTarget: 3,
-        preferredStrokes: [.freestyle],
-        personalBests: PersonalBests(freestyle50m: 34.2),
-        pbHistory: PBHistory(results: [
-            PBResult(date: "2024-03-01", strokeId: .freestyle, distance: 50, time: 34.2, meetName: "Sectional Meet", courseType: .shortCourse)
-        ]),
-        trainingGoals: [],
-        createdAt: "2024-01-01T00:00:00Z",
-        updatedAt: "2024-01-01T00:00:00Z"
-    )
-    return PBResultInputView(appModel: model, profile: model.activeProfile!)
+    previewPBResultInputWithPreviousBest()
 }
