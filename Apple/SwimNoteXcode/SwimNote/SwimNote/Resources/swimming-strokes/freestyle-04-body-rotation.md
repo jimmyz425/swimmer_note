@@ -34,7 +34,7 @@ Body rotation is a fundamental freestyle technique where the body rotates around
 | **Rotation Pause Drill** | Swim normal, pause at 45-degree rotation, feel the position, continue. |
 | **Catch-Up with Rotation** | Catch-up drill emphasizing full rotation before each stroke. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: 6-1-6 Drill (4x25m set)
 **Self-Check:** Stroke count per 25m during the 3-stroke phase of 6-1-6
 

@@ -32,7 +32,7 @@ Maintaining a flat, horizontal body position on the water surface is the foundat
 | **Body Dolphin (Arms at Sides)** | Keep arms at sides, perform undulating body motion with no arm movement. |
 | **Streamline Kicking** | Hold streamline position (arms extended overhead), practice body undulation without arm movement. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Butterfly Streamline Glide (15m push-off)
 **Self-Check:** Glide distance from push-off before needing to initiate first dolphin kick
 

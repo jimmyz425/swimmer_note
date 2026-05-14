@@ -38,7 +38,7 @@ Proper body position is the foundation of breaststroke technique. The goal is to
 | **Chest Press Drill** | During glide, actively press chest down to raise hips. |
 | **Float & Balance** | Practice horizontal floating with face in water, focus on relaxed, balanced position. |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Breaststroke Streamline Glide (15m push-off)
 

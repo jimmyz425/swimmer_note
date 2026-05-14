@@ -276,11 +276,11 @@ extension GoalEntity {
             metrics = nil
         }
 
-        let competitiveDrillSnapshot: CompetitiveDrillSnapshot?
+        let competitiveMetricSnapshot: CompetitiveMetricSnapshot?
         if let json = competitiveDrillSnapshotJSON, let data = json.data(using: .utf8) {
-            competitiveDrillSnapshot = try decoder.decode(CompetitiveDrillSnapshot.self, from: data)
+            competitiveMetricSnapshot = try decoder.decode(CompetitiveMetricSnapshot.self, from: data)
         } else {
-            competitiveDrillSnapshot = nil
+            competitiveMetricSnapshot = nil
         }
 
         return Goal(
@@ -296,7 +296,7 @@ extension GoalEntity {
             coachingTips: coachingTips,
             notes: goalNotes,
             goalKind: goalKindRaw != nil ? GoalKind(rawValue: goalKindRaw!) : nil,
-            competitiveDrillSnapshot: competitiveDrillSnapshot,
+            competitiveMetricSnapshot: competitiveMetricSnapshot,
             createdAt: createdAt,
             updatedAt: updatedAt
         )

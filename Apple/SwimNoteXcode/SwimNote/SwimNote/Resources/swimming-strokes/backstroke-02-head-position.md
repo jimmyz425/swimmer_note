@@ -36,7 +36,7 @@ Head position in backstroke is critical because it directly controls body and hi
 | **Mirror Drill** | Visualize ceiling as mirror, maintain eye contact |
 | **Still Head Focus** | 25m sets focusing purely on head stability |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Cup Balance Drill (200m continuous swim)
 **Self-Check:** Count percentage of laps completed without spilling water from a plastic cup balanced on your forehead

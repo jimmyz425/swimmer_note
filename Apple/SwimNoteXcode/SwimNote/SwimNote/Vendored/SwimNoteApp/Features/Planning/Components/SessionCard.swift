@@ -311,57 +311,64 @@ private struct SessionSummaryBar: View {
     let onDateChange: ((Date) -> Void)?
 
     var body: some View {
-        HStack(spacing: Spacing.large) {
-            // Duration metric (placeholder - could be calculated)
-            SummaryMetric(
-                icon: "clock",
-                value: "~60min",
-                label: "Duration",
-                color: PoolTheme.smoke
-            )
-
-            if let sessionType = sessionType {
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            // Row 1: Duration and Type
+            HStack(spacing: Spacing.large) {
                 SummaryMetric(
-                    icon: "figure.pool.swim",
-                    value: sessionType,
-                    label: "Type",
-                    color: PoolTheme.deep
+                    icon: "clock",
+                    value: "~60min",
+                    label: "Duration",
+                    color: PoolTheme.smoke
                 )
+
+                if let sessionType = sessionType {
+                    SummaryMetric(
+                        icon: "figure.pool.swim",
+                        value: sessionType,
+                        label: "Type",
+                        color: PoolTheme.deep
+                    )
+                }
+
+                Spacer()
             }
 
-            // Time of day indicator (for double sessions)
-            if let timeOfDay = timeOfDay {
-                SummaryMetric(
-                    icon: timeOfDayIcon(timeOfDay),
-                    value: timeOfDay.displayName,
-                    label: "Time",
-                    color: timeOfDayColor(timeOfDay)
-                )
-            }
+            // Row 2: Time of day and Date
+            HStack(spacing: Spacing.large) {
+                // Time of day indicator (for double sessions)
+                if let timeOfDay = timeOfDay {
+                    SummaryMetric(
+                        icon: timeOfDayIcon(timeOfDay),
+                        value: timeOfDay.displayName,
+                        label: "Time",
+                        color: timeOfDayColor(timeOfDay)
+                    )
+                }
 
-            // Date
-            if showDatePicker && onDateChange != nil {
-                DatePicker(
-                    "",
-                    selection: Binding(
-                        get: { scheduledDate ?? Date() },
-                        set: { onDateChange?($0) }
-                    ),
-                    displayedComponents: .date
-                )
-                .labelsHidden()
-                .scaleEffect(0.85)
-                .tint(PoolTheme.mid)
-            } else if let scheduledDate = scheduledDate {
-                SummaryMetric(
-                    icon: "calendar",
-                    value: DateFormatter.weekdayDate.string(from: scheduledDate),
-                    label: "Date",
-                    color: PoolTheme.mid
-                )
-            }
+                // Date
+                if showDatePicker && onDateChange != nil {
+                    DatePicker(
+                        "",
+                        selection: Binding(
+                            get: { scheduledDate ?? Date() },
+                            set: { onDateChange?($0) }
+                        ),
+                        displayedComponents: .date
+                    )
+                    .labelsHidden()
+                    .scaleEffect(0.85)
+                    .tint(PoolTheme.mid)
+                } else if let scheduledDate = scheduledDate {
+                    SummaryMetric(
+                        icon: "calendar",
+                        value: DateFormatter.weekdayDate.string(from: scheduledDate),
+                        label: "Date",
+                        color: PoolTheme.mid
+                    )
+                }
 
-            Spacer()
+                Spacer()
+            }
         }
         .padding(.horizontal, Spacing.large)
         .padding(.vertical, Spacing.small + Spacing.tight)
@@ -400,12 +407,15 @@ private struct SummaryMetric: View {
                     .font(.system(size: 11, weight: .medium))
                 Text(value)
                     .font(.system(size: 12, weight: .semibold, design: .rounded))
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
             .foregroundStyle(color)
 
             Text(label)
                 .font(.system(size: 10, weight: .medium, design: .rounded))
                 .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+                .lineLimit(1)
         }
     }
 }

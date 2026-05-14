@@ -35,7 +35,7 @@ Stroke timing and coordination is the master skill that brings all individual te
 | **6-Beat Kick Timing** | Practice six kicks per stroke cycle (classic rhythm). |
 | **Rhythm Swimming** | Swim with metronome or music to develop consistent tempo. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Metronome Swimming (4x200m set, use waterproof metronome or audible pool-side metronome)
 **Self-Check:** Perceived tempo consistency and stroke count stability
 

@@ -34,7 +34,7 @@ The arm entry and catch phase sets up the entire underwater pull. Hands enter sh
 | **Sculling Drill** | Arms extended forward, practice small sculling motions to feel water pressure on hands. |
 | **Fist Swimming** | Swim with closed fists to emphasize forearm catch and feel for water. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Catch Only Drill (4x50m, dolphin kick only, focus on catch phase, no full pull)
 **Self-Check:** Distance per stroke (stroke length) during catch drills
 

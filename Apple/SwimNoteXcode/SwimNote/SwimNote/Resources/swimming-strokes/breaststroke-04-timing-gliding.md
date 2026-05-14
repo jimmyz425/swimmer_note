@@ -41,7 +41,7 @@ Timing is the heart of breaststroke coordination. The essential sequence — PUL
 | **3-3-3 Drill** | 3 strokes breaststroke, 3 strokes freestyle, 3 strokes breaststroke. Repeat. |
 | **Timing With Verbal Cues** | Say aloud: "Pull... Breathe... Kick... Glide". Synchronize stroke with words. |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Glide Hold Drill (4x25m, hold glide for 2 full seconds after each stroke)
 

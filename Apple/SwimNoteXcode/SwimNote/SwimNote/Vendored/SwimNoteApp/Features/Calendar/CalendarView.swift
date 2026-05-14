@@ -41,20 +41,10 @@ struct CalendarView: View {
         return appModel.notes.first { $0.date == dateString }
     }
 
-    private func sessionForDate(_ date: Date) -> DetailedSession? {
+    private func sessionsForDate(_ date: Date) -> [DetailedSession] {
         let dateString = dateString(from: date)
-        // Search through all weekly plans for a session on this date
-        for plan in appModel.weeklyPlans {
-            for session in plan.detailedSessions {
-                if let scheduledDate = session.scheduledDate {
-                    let sessionDateStr = DateFormatter.yyyyMMdd.string(from: scheduledDate)
-                    if sessionDateStr == dateString {
-                        return session
-                    }
-                }
-            }
-        }
-        return nil
+        // Use cached lookup from appModel
+        return appModel.sessionsForDate(dateString)
     }
 
     private func dryLandForDate(_ date: Date) -> [DryLandExercisePlan] {
@@ -87,13 +77,13 @@ struct CalendarView: View {
 
     private func hasContentForDate(_ date: Date) -> Bool {
         let note = noteForDate(date)
-        let session = sessionForDate(date)
+        let sessions = sessionsForDate(date)
         let dryLand = dryLandForDate(date)
-        return (note != nil && (!note!.goals.isEmpty || !note!.notes.isEmpty)) || session != nil || !dryLand.isEmpty
+        return (note != nil && (!note!.goals.isEmpty || !note!.notes.isEmpty)) || !sessions.isEmpty || !dryLand.isEmpty
     }
 
     private func hasSessionForDate(_ date: Date) -> Bool {
-        return sessionForDate(date) != nil
+        return !sessionsForDate(date).isEmpty
     }
 
     private func hasDryLandForDate(_ date: Date) -> Bool {
@@ -268,9 +258,12 @@ struct CalendarView: View {
                 .font(.title3.bold())
                 .foregroundStyle(PoolTheme.deep)
 
-            // Training Session Section
-            if let session = sessionForDate(selectedDate) {
-                sessionCard(session)
+            // Training Sessions Section (supports multiple sessions per day)
+            let sessions = sessionsForDate(selectedDate)
+            if !sessions.isEmpty {
+                ForEach(sessions) { session in
+                    sessionCard(session)
+                }
             } else {
                 noPlanSection
             }

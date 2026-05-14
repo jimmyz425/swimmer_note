@@ -26,7 +26,11 @@ struct TechniqueTreeView: View {
             LazyVStack(alignment: .leading, spacing: 16) {
                 ForEach(sortedNodes) { node in
                     NavigationLink(value: NodeNavigationValue(strokeId: tree.strokeId, nodeId: node.id)) {
-                        TechniqueNodeRow(node: node)
+                        TechniqueNodeRow(
+                            node: node,
+                            strokeId: tree.strokeId,
+                            userRevisit: appModel.activeProfile?.isRevisitNode(strokeId: tree.strokeId, nodeId: node.id) ?? false
+                        )
                     }
                     .buttonStyle(.plain)
                 }
@@ -46,6 +50,8 @@ struct TechniqueTreeView: View {
 
 struct TechniqueNodeRow: View {
     let node: TechniqueTreeNode
+    let strokeId: StrokeID
+    let userRevisit: Bool
 
     var body: some View {
         HStack(spacing: 12) {
@@ -58,10 +64,10 @@ struct TechniqueNodeRow: View {
                     .foregroundStyle(PoolTheme.smoke)
             }
             Spacer()
-            if node.revisit {
-                Image(systemName: "repeat")
-                    .foregroundStyle(PoolTheme.gold)
-            }
+            // Revisit indicator — larger and more visible
+            Image(systemName: "repeat")
+                .font(.system(size: 16))
+                .foregroundStyle(userRevisit ? PoolTheme.gold : PoolTheme.smoke.opacity(0.4))
         }
         .poolCard()
     }
@@ -94,35 +100,24 @@ struct NodeDetailView: View {
     @State private var parsedContent: ParsedTechniqueContent?
     @State private var message: String?
     @State private var messageDismissTask: Task<Void, Never>?
-    @State private var selectedTierDrill: CompetitiveDrill?
+    @State private var selectedTierMetric: CompetitiveMetric?
     @State private var selectedTab: TechniqueDetailTab = .overview
-    
+
     var body: some View {
         ScrollView {
             VStack(spacing: 0) {
-                if node.revisit {
-                    HStack {
-                        Label("Practice regularly", systemImage: "repeat")
-                            .font(.caption)
-                            .foregroundStyle(PoolTheme.deep)
-                        Spacer()
-                        Image(systemName: "repeat")
-                            .foregroundStyle(PoolTheme.gold)
-                    }
-                    .padding(.horizontal)
-                    .padding(.vertical, 8)
-                    .background(PoolTheme.surface)
-                }
-                
+                // Revisit banner - always visible, prominent card-style treatment
+                RevisitBanner(node: node, strokeId: tree.strokeId, appModel: appModel)
+
                 TechniqueTabPicker(selectedTab: $selectedTab)
-                
+
                 if let content = parsedContent {
                     TechniqueTabContent(
                         content: content,
                         selectedTab: selectedTab,
                         tree: tree,
-                        onSelectTierDrill: { drill in
-                            selectedTierDrill = drill
+                        onSelectTierMetric: { metric in
+                            selectedTierMetric = metric
                         },
                         onAddKeyPoint: { point in
                             Task { await addKeyPointGoal(point) }
@@ -161,19 +156,19 @@ struct NodeDetailView: View {
                 parsedContent = appModel.parsedTechnique(filename: sourceFile)
             }
         }
-        .sheet(item: $selectedTierDrill) { drill in
+        .sheet(item: $selectedTierMetric) { metric in
             TierSelectionSheet(
-                drill: drill,
+                metric: metric,
                 strokeId: tree.strokeId,
                 techniqueNodeId: node.id,
                 onAdd: { tier in
-                    await addCompetitiveDrillGoal(drill, tier: tier)
-                    selectedTierDrill = nil
+                    await addCompetitiveMetricGoal(metric, tier: tier)
+                    selectedTierMetric = nil
                 }
             )
         }
     }
-    
+
     @MainActor
     private func showMessage(_ text: String) {
         messageDismissTask?.cancel()
@@ -226,24 +221,24 @@ struct NodeDetailView: View {
     }
 
     @MainActor
-    private func addCompetitiveDrillGoal(_ drill: CompetitiveDrill, tier: String) async {
+    private func addCompetitiveMetricGoal(_ metric: CompetitiveMetric, tier: String) async {
         guard var note = await appModel.noteForToday() else {
             showMessage("No active profile")
             return
         }
-        // Check if this drill was already added
-        if note.goals.contains(where: { $0.description.hasPrefix(drill.name) && $0.techniqueNodeId == node.id }) {
-            showMessage("Already added this drill")
+        // Check if this metric was already added
+        if note.goals.contains(where: { $0.description.hasPrefix(metric.name) && $0.techniqueNodeId == node.id }) {
+            showMessage("Already added this metric")
             return
         }
-        note.goals.append(Goal.fromCompetitiveDrill(
-            drill: drill,
+        note.goals.append(Goal.fromCompetitiveMetric(
+            metric: metric,
             selectedTier: tier,
             techniqueNodeId: node.id,
             strokeId: tree.strokeId
         ))
         await appModel.saveNote(note)
-        showMessage("Added \(tree.name) - \(node.name) drill")
+        showMessage("Added \(tree.name) - \(node.name) competitive metric")
     }
 }
 
@@ -297,11 +292,95 @@ struct TabButton: View {
     }
 }
 
+struct RevisitBanner: View {
+    let node: TechniqueTreeNode
+    let strokeId: StrokeID
+    @Bindable var appModel: SwimNoteAppModel
+    @State private var message: String?
+
+    private var userRevisit: Bool {
+        appModel.activeProfile?.isRevisitNode(strokeId: strokeId, nodeId: node.id) ?? false
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 10) {
+                Image(systemName: "arrow.uturn.backward.circle.fill")
+                    .font(.system(size: 22))
+                    .foregroundStyle(userRevisit ? PoolTheme.gold : PoolTheme.mid)
+
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(userRevisit ? "Revisit Focus" : "Mark for Revisit")
+                        .font(.subheadline.bold())
+                        .foregroundStyle(userRevisit ? PoolTheme.gold : PoolTheme.deep)
+
+                    Text(userRevisit
+                         ? "You'll see this technique in your fundamentals review sessions."
+                         : "Tag this technique to practice regularly as a fundamental.")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.smoke)
+                        .lineLimit(2)
+                }
+
+                Spacer()
+
+                Button {
+                    toggleRevisit()
+                } label: {
+                    Image(systemName: userRevisit ? "checkmark.circle.fill" : "plus.circle.fill")
+                        .font(.system(size: 26))
+                        .foregroundStyle(userRevisit ? PoolTheme.gold : PoolTheme.mid)
+                }
+                .buttonStyle(.plain)
+            }
+
+            if let message {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(PoolTheme.mid)
+                    .transition(.opacity)
+            }
+        }
+        .padding()
+        .background(
+            RoundedRectangle(cornerRadius: 14, style: .continuous)
+                .fill(userRevisit ? PoolTheme.gold.opacity(0.1) : PoolTheme.mid.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .stroke(userRevisit ? PoolTheme.gold.opacity(0.3) : PoolTheme.mid.opacity(0.2), lineWidth: 1)
+                )
+        )
+        .padding(.horizontal)
+        .padding(.top, 8)
+    }
+
+    @MainActor
+    private func toggleRevisit() {
+        guard let profile = appModel.activeProfile else {
+            showMessage("No active profile")
+            return
+        }
+        let updated = profile.togglingRevisit(strokeId: strokeId, nodeId: node.id)
+        Task {
+            try? await appModel.updateProfile(updated)
+            showMessage(userRevisit ? "Removed from revisit" : "Marked for revisit")
+            try? await Task.sleep(for: .seconds(2))
+            guard !Task.isCancelled else { return }
+            withAnimation { message = nil }
+        }
+    }
+
+    @MainActor
+    private func showMessage(_ text: String) {
+        withAnimation { message = text }
+    }
+}
+
 struct TechniqueTabContent: View {
     let content: ParsedTechniqueContent
     let selectedTab: TechniqueDetailTab
     let tree: TechniqueTree
-    let onSelectTierDrill: (CompetitiveDrill) -> Void
+    let onSelectTierMetric: (CompetitiveMetric) -> Void
     let onAddKeyPoint: (String) -> Void
     let onAddMistake: (String) -> Void
 
@@ -316,7 +395,7 @@ struct TechniqueTabContent: View {
         case .drills:
             DrillsContent(content: content)
         case .competitive:
-            CompetitiveContent(content: content, onSelectDrill: onSelectTierDrill)
+            CompetitiveContent(content: content, onSelectMetric: onSelectTierMetric)
         }
     }
 }
@@ -523,16 +602,16 @@ struct DrillRow: View {
 
 struct CompetitiveContent: View {
     let content: ParsedTechniqueContent
-    let onSelectDrill: (CompetitiveDrill) -> Void
+    let onSelectMetric: (CompetitiveMetric) -> Void
 
     var body: some View {
         LazyVStack(alignment: .leading, spacing: 16) {
-            if content.competitiveDrills.isEmpty {
-                Text("No competitive drills available")
+            if content.competitiveMetrics.isEmpty {
+                Text("No competitive metrics available")
                     .foregroundStyle(PoolTheme.smoke)
             } else {
-                ForEach(content.competitiveDrills, id: \.id) { drill in
-                    CompetitiveDrillRow(drill: drill, onSelect: { onSelectDrill(drill) })
+                ForEach(content.competitiveMetrics, id: \.id) { metric in
+                    CompetitiveMetricRow(metric: metric, onSelect: { onSelectMetric(metric) })
                 }
             }
         }
@@ -540,28 +619,28 @@ struct CompetitiveContent: View {
     }
 }
 
-struct CompetitiveDrillRow: View {
-    let drill: CompetitiveDrill
+struct CompetitiveMetricRow: View {
+    let metric: CompetitiveMetric
     let onSelect: () -> Void
 
     private var sortedTiers: [(String, String)] {
-        sortTierNames(drill.tieredTargets.keys).compactMap { tier in
-            drill.tieredTargets[tier].map { (tier, $0) }
+        sortTierNames(metric.tieredTargets.keys).compactMap { tier in
+            metric.tieredTargets[tier].map { (tier, $0) }
         }
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Text(drill.name)
+            Text(metric.name)
                 .font(.headline)
                 .foregroundStyle(PoolTheme.deep)
 
-            Text("Self-Check: \(drill.selfCheck)")
+            Text("Self-Check: \(metric.selfCheck)")
                 .font(.subheadline)
                 .foregroundStyle(PoolTheme.smoke)
 
-            if !drill.tieredTargetsTitle.isEmpty {
-                Text(drill.tieredTargetsTitle)
+            if !metric.tieredTargetsTitle.isEmpty {
+                Text(metric.tieredTargetsTitle)
                     .font(.subheadline.bold())
                     .foregroundStyle(PoolTheme.mid)
             }
@@ -581,13 +660,13 @@ struct CompetitiveDrillRow: View {
                 }
             }
 
-            if !drill.competitiveImpact.isEmpty {
-                Text("Impact: \(drill.competitiveImpact)")
+            if !metric.competitiveImpact.isEmpty {
+                Text("Impact: \(metric.competitiveImpact)")
                     .font(.caption)
                     .foregroundStyle(PoolTheme.smoke)
             }
 
-            Button("Add as Goal", action: onSelect)
+            Button("Add Competitive Metric", action: onSelect)
                 .buttonStyle(.borderedProminent)
                 .frame(maxWidth: .infinity)
         }
@@ -597,7 +676,7 @@ struct CompetitiveDrillRow: View {
 }
 
 struct TierSelectionSheet: View {
-    let drill: CompetitiveDrill
+    let metric: CompetitiveMetric
     let strokeId: StrokeID
     let techniqueNodeId: String
     let onAdd: (String) async -> Void
@@ -607,12 +686,12 @@ struct TierSelectionSheet: View {
 
     private let availableTiers: [String]
 
-    init(drill: CompetitiveDrill, strokeId: StrokeID, techniqueNodeId: String, onAdd: @escaping (String) async -> Void) {
-        self.drill = drill
+    init(metric: CompetitiveMetric, strokeId: StrokeID, techniqueNodeId: String, onAdd: @escaping (String) async -> Void) {
+        self.metric = metric
         self.strokeId = strokeId
         self.techniqueNodeId = techniqueNodeId
         self.onAdd = onAdd
-        let tiers = sortTierNames(drill.tieredTargets.keys)
+        let tiers = sortTierNames(metric.tieredTargets.keys)
         self.availableTiers = tiers
         _selectedTier = State(initialValue: tiers.first ?? "Beginner")
     }
@@ -620,9 +699,9 @@ struct TierSelectionSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                if !drill.tieredTargetsTitle.isEmpty {
+                if !metric.tieredTargetsTitle.isEmpty {
                     Section {
-                        Text(drill.tieredTargetsTitle)
+                        Text(metric.tieredTargetsTitle)
                             .font(.headline)
                             .foregroundStyle(PoolTheme.mid)
                     }
@@ -632,7 +711,7 @@ struct TierSelectionSheet: View {
                     ForEach(availableTiers, id: \.self) { tier in
                         TierRow(
                             tier: tier,
-                            target: drill.tieredTargets[tier] ?? "",
+                            target: metric.tieredTargets[tier] ?? "",
                             isSelected: selectedTier == tier,
                             onSelect: { selectedTier = tier }
                         )
@@ -640,24 +719,24 @@ struct TierSelectionSheet: View {
                 }
 
                 Section("Selected Target") {
-                    Text(drill.tieredTargets[selectedTier] ?? "")
+                    Text(metric.tieredTargets[selectedTier] ?? "")
                         .font(.body.bold())
                 }
 
-                Section("Drill Info") {
-                    Text(drill.selfCheck)
+                Section("Metric Info") {
+                    Text(metric.selfCheck)
                         .foregroundStyle(PoolTheme.deep)
-                    Text(drill.competitiveImpact)
+                    Text(metric.competitiveImpact)
                         .foregroundStyle(PoolTheme.smoke)
                 }
             }
-            .navigationTitle(drill.name)
+            .navigationTitle(metric.name)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Add Goal") {
+                    Button("Add Metric") {
                         Task {
                             await onAdd(selectedTier)
                             dismiss()
@@ -755,8 +834,16 @@ struct TierRow: View {
 
 #Preview("Technique Node Row") {
     VStack(spacing: 12) {
-        TechniqueNodeRow(node: TechniqueTreeNode(id: "n1", techniqueId: "body_position", level: 1, name: "Body Position", description: "Foundation", revisit: true, metrics: nil, prerequisites: [], children: [], sourceFile: nil))
-        TechniqueNodeRow(node: TechniqueTreeNode(id: "n2", techniqueId: "catch", level: 2, name: "High Elbow Catch", description: "Propulsion", revisit: false, metrics: nil, prerequisites: [], children: [], sourceFile: nil))
+        TechniqueNodeRow(
+            node: TechniqueTreeNode(id: "n1", techniqueId: "body_position", level: 1, name: "Body Position", description: "Foundation", revisit: true, metrics: nil, prerequisites: [], children: [], sourceFile: nil),
+            strokeId: .freestyle,
+            userRevisit: false
+        )
+        TechniqueNodeRow(
+            node: TechniqueTreeNode(id: "n2", techniqueId: "catch", level: 2, name: "High Elbow Catch", description: "Propulsion", revisit: false, metrics: nil, prerequisites: [], children: [], sourceFile: nil),
+            strokeId: .freestyle,
+            userRevisit: true
+        )
     }
     .padding()
     .background(PoolTheme.surface)
@@ -778,7 +865,7 @@ struct TierRow: View {
             keyPoints: ["Keep head neutral", "Core engaged", "Straight spine alignment"],
             commonMistakes: [],
             specificDrills: [],
-            competitiveDrills: [],
+            competitiveMetrics: [],
             relatedTechniques: [],
             techniqueTable: [],
             rawContent: ""
@@ -797,7 +884,7 @@ struct TierRow: View {
             keyPoints: [],
             commonMistakes: ["Head too high", "Sinking hips", "Over-rotation"],
             specificDrills: [],
-            competitiveDrills: [],
+            competitiveMetrics: [],
             relatedTechniques: [],
             techniqueTable: [],
             rawContent: ""
@@ -806,9 +893,9 @@ struct TierRow: View {
     )
 }
 
-#Preview("Competitive Drill Row") {
-    CompetitiveDrillRow(
-        drill: CompetitiveDrill(
+#Preview("Competitive Metric Row") {
+    CompetitiveMetricRow(
+        metric: CompetitiveMetric(
             name: "Distance Per Stroke",
             selfCheck: "Count strokes per lap",
             tieredTargetsTitle: "Stroke Count Efficiency",

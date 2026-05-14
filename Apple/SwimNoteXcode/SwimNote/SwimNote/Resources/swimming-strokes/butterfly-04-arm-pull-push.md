@@ -35,7 +35,7 @@ The pull and push phase generates 70-80% of butterfly propulsion. Hands follow a
 | **Paddle Swimming** | Use hand paddles to feel proper water catch and pull mechanics. Start small. |
 | **Resistance Swimming** | Use resistance cord or parachute to build pull strength and emphasize acceleration. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Pull Only Drill (4x50m, pull buoy only, no kick)
 **Self-Check:** Time per 50m pull, stroke count per lap
 

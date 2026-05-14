@@ -38,7 +38,7 @@ Breathing in breaststroke must be tightly coordinated with the arm pull and kick
 | **Breathe-Count Drill** | Swim counting strokes per breath. Progress to every-other-stroke. |
 | **Quick Breath Drill** | Focus on minimizing time face is out of water. 4x25m. |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Rhythm Breathing Drill (4x100m, breathe every stroke)
 

@@ -6,7 +6,7 @@ public nonisolated enum ConversationMessage: Sendable, Equatable {
     case system(String)
     case user(String)
     case assistant(String)
-    case assistantToolCall(ToolCall)
+    case assistantToolCalls([ToolCall], reasoningContent: String?)  // All tool calls in one message, with reasoning_content for DeepSeek V4
     case toolResult(String, String)  // (toolCallId, result)
 
     public nonisolated func toOpenAIMessage() -> [String: Any] {
@@ -17,11 +17,11 @@ public nonisolated enum ConversationMessage: Sendable, Equatable {
             return ["role": "user", "content": content]
         case .assistant(let content):
             return ["role": "assistant", "content": content]
-        case .assistantToolCall(let toolCall):
-            return [
+        case .assistantToolCalls(let toolCalls, let reasoningContent):
+            var message: [String: Any] = [
                 "role": "assistant",
                 "content": NSNull(),
-                "tool_calls": [
+                "tool_calls": toolCalls.map { toolCall in
                     [
                         "id": toolCall.id,
                         "type": toolCall.type,
@@ -30,8 +30,13 @@ public nonisolated enum ConversationMessage: Sendable, Equatable {
                             "arguments": toolCall.function.arguments
                         ]
                     ]
-                ]
+                }
             ]
+            // DeepSeek V4 requires reasoning_content round-trip in thinking mode
+            if let reasoning = reasoningContent {
+                message["reasoning_content"] = reasoning
+            }
+            return message
         case .toolResult(let toolCallId, let result):
             return [
                 "role": "tool",
@@ -106,14 +111,24 @@ public final class ToolCallingConversation: Sendable {
                     return content
                 }
 
+                // DeepSeek V4 thinking mode: If content is empty but reasoning_content has JSON-like content, use it
+                if let reasoning = response.reasoningContent, !response.hasToolCalls {
+                    // Check if reasoning looks like JSON output (starts with { or [)
+                    let trimmed = reasoning.trimmingCharacters(in: .whitespacesAndNewlines)
+                    if trimmed.hasPrefix("{") || trimmed.hasPrefix("[") || trimmed.hasPrefix("```") {
+                        #if DEBUG
+                        print("🔧 Using reasoning_content as output (DeepSeek thinking mode)")
+                        #endif
+                        return reasoning
+                    }
+                }
+
                 // If we have tool calls, execute them
                 if let toolCalls = response.toolCalls, !toolCalls.isEmpty {
                     consecutiveEmptyResponses = 0 // Reset counter
 
-                    // Add assistant message with tool calls
-                    for toolCall in toolCalls {
-                        messages.append(.assistantToolCall(toolCall))
-                    }
+                    // Add ONE assistant message with ALL tool calls (DeepSeek V4 requires this format)
+                    messages.append(.assistantToolCalls(toolCalls, reasoningContent: response.reasoningContent))
 
                     // Execute each tool call and add results
                     for toolCall in toolCalls {

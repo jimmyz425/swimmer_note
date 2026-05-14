@@ -9,17 +9,19 @@ struct CollapsibleGoalRow: View, Equatable {
     let onUpdateStatus: (GoalStatus) -> Void
     let onDelete: () -> Void
     let onEditNotes: () -> Void
+    let onGenerateCues: () -> Void
 
     // Equatable: compare goal visual state only
     static func == (lhs: CollapsibleGoalRow, rhs: CollapsibleGoalRow) -> Bool {
         lhs.goal.id == rhs.goal.id &&
         lhs.goal.status == rhs.goal.status &&
         lhs.goal.notes == rhs.goal.notes &&
+        lhs.goal.suggestedCues == rhs.goal.suggestedCues &&
         lhs.isExpanded == rhs.isExpanded
     }
 
     var body: some View {
-        if let snapshot = goal.competitiveDrillSnapshot {
+        if let snapshot = goal.competitiveMetricSnapshot {
             CompetitiveGoalRow(
                 goal: goal,
                 snapshot: snapshot,
@@ -27,14 +29,16 @@ struct CollapsibleGoalRow: View, Equatable {
                 onToggleExpand: onToggleExpand,
                 onUpdateStatus: onUpdateStatus,
                 onDelete: onDelete,
-                onEditNotes: onEditNotes
+                onEditNotes: onEditNotes,
+                onGenerateCues: onGenerateCues
             )
         } else {
             SimpleGoalRow(
                 goal: goal,
                 onUpdateStatus: onUpdateStatus,
                 onDelete: onDelete,
-                onEditNotes: onEditNotes
+                onEditNotes: onEditNotes,
+                onGenerateCues: onGenerateCues
             )
         }
     }
@@ -47,36 +51,52 @@ struct SimpleGoalRow: View, Equatable {
     let onUpdateStatus: (GoalStatus) -> Void
     let onDelete: () -> Void
     let onEditNotes: () -> Void
+    let onGenerateCues: () -> Void
 
     static func == (lhs: SimpleGoalRow, rhs: SimpleGoalRow) -> Bool {
         lhs.goal.id == rhs.goal.id &&
         lhs.goal.status == rhs.goal.status &&
-        lhs.goal.notes == rhs.goal.notes
+        lhs.goal.notes == rhs.goal.notes &&
+        lhs.goal.suggestedCues == rhs.goal.suggestedCues
     }
 
     var body: some View {
-        HStack(alignment: .center, spacing: 12) {
-            // Status menu
-            statusMenu
+        VStack(alignment: .leading, spacing: 8) {
+            // Main row
+            HStack(alignment: .center, spacing: 12) {
+                // Status menu
+                statusMenu
 
-            // Goal description
-            VStack(alignment: .leading, spacing: 2) {
-                Text(goal.description)
-                    .font(.subheadline.bold())
-                    .foregroundStyle(PoolTheme.deep)
+                // Goal description
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(goal.description)
+                        .font(.subheadline.bold())
+                        .foregroundStyle(PoolTheme.deep)
 
-                if let notes = goal.notes, !notes.isEmpty {
-                    Text(notes)
-                        .font(.caption)
-                        .foregroundStyle(PoolTheme.smoke)
-                        .lineLimit(1)
+                    if let notes = goal.notes, !notes.isEmpty {
+                        Text(notes)
+                            .font(.caption)
+                            .foregroundStyle(PoolTheme.smoke)
+                            .lineLimit(1)
+                    }
+                }
+
+                Spacer()
+
+                // Action buttons
+                HStack(spacing: 4) {
+                    // Generate cues button
+                    cuesButton
+
+                    // Notes button
+                    notesButton
                 }
             }
 
-            Spacer()
-
-            // Notes button
-            notesButton
+            // Suggested cues (if available)
+            if let cues = goal.suggestedCues, !cues.isEmpty {
+                cuesList(cues)
+            }
         }
         .padding(.vertical, 12)
         .padding(.horizontal, 12)
@@ -108,6 +128,17 @@ struct SimpleGoalRow: View, Equatable {
         .buttonStyle(.plain)
     }
 
+    private var cuesButton: some View {
+        Button {
+            onGenerateCues()
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.title3)
+                .foregroundStyle(goal.suggestedCues?.isEmpty == false ? PoolTheme.gold : PoolTheme.smoke)
+        }
+        .buttonStyle(.plain)
+    }
+
     private var notesButton: some View {
         Button {
             onEditNotes()
@@ -117,6 +148,28 @@ struct SimpleGoalRow: View, Equatable {
                 .foregroundStyle(goal.notes?.isEmpty == false ? PoolTheme.mid : PoolTheme.smoke)
         }
         .buttonStyle(.plain)
+    }
+
+    private func cuesList(_ cues: [String]) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            Text("External Focus Cues")
+                .font(.caption2.bold())
+                .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+
+            ForEach(Array(cues.enumerated()), id: \.offset) { _, cue in
+                HStack(spacing: 6) {
+                    Image(systemName: "circle.fill")
+                        .font(.system(size: 4))
+                        .foregroundStyle(PoolTheme.gold)
+                    Text(cue)
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.deep)
+                        .italic()
+                }
+            }
+        }
+        .padding(.leading, 8)
+        .padding(.top, 4)
     }
 
     private func statusIcon(_ status: GoalStatus) -> String {
@@ -138,16 +191,17 @@ struct SimpleGoalRow: View, Equatable {
     }
 }
 
-/// Expandable goal row for competitive drill goals with tier targets
+/// Expandable goal row for competitive metric goals with tier targets
 /// Equatable: skips re-renders when goal and snapshot state unchanged
 struct CompetitiveGoalRow: View, Equatable {
     let goal: Goal
-    let snapshot: CompetitiveDrillSnapshot
+    let snapshot: CompetitiveMetricSnapshot
     let isExpanded: Bool
     let onToggleExpand: () -> Void
     let onUpdateStatus: (GoalStatus) -> Void
     let onDelete: () -> Void
     let onEditNotes: () -> Void
+    let onGenerateCues: () -> Void
 
     private let tierOrder: [String] = ["Beginner", "Intermediate", "Advanced", "Elite"]
 
@@ -156,6 +210,7 @@ struct CompetitiveGoalRow: View, Equatable {
         lhs.goal.id == rhs.goal.id &&
         lhs.goal.status == rhs.goal.status &&
         lhs.goal.notes == rhs.goal.notes &&
+        lhs.goal.suggestedCues == rhs.goal.suggestedCues &&
         lhs.snapshot.selectedTier == rhs.snapshot.selectedTier &&
         lhs.isExpanded == rhs.isExpanded
     }
@@ -213,6 +268,9 @@ struct CompetitiveGoalRow: View, Equatable {
 
             Spacer()
 
+            // Cues button
+            cuesButton
+
             // Expand indicator
             Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
                 .font(.caption.bold())
@@ -225,6 +283,17 @@ struct CompetitiveGoalRow: View, Equatable {
         .onTapGesture {
             onToggleExpand()
         }
+    }
+
+    private var cuesButton: some View {
+        Button {
+            onGenerateCues()
+        } label: {
+            Image(systemName: "sparkles")
+                .font(.title3)
+                .foregroundStyle(goal.suggestedCues?.isEmpty == false ? PoolTheme.gold : PoolTheme.smoke)
+        }
+        .buttonStyle(.plain)
     }
 
     private var expandedContent: some View {
@@ -337,7 +406,30 @@ struct CompetitiveGoalRow: View, Equatable {
                 }
             }
             .padding(.horizontal, 12)
-            .padding(.bottom, 8)
+
+            // Suggested cues
+            if let cues = goal.suggestedCues, !cues.isEmpty {
+                Divider()
+                VStack(alignment: .leading, spacing: 6) {
+                    Text("External Focus Cues")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    ForEach(Array(cues.enumerated()), id: \.offset) { _, cue in
+                        HStack(spacing: 6) {
+                            Image(systemName: "circle.fill")
+                                .font(.system(size: 4))
+                                .foregroundStyle(PoolTheme.gold)
+                            Text(cue)
+                                .font(.caption)
+                                .foregroundStyle(PoolTheme.deep)
+                                .italic()
+                        }
+                    }
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 8)
+            }
         }
     }
 
@@ -403,15 +495,16 @@ struct CompetitiveGoalRow: View, Equatable {
         goal: goal,
         onUpdateStatus: { _ in },
         onDelete: {},
-        onEditNotes: {}
+        onEditNotes: {},
+        onGenerateCues: {}
     )
     .padding()
     .background(PoolTheme.surface)
 }
 
 #Preview("Competitive Goal - Collapsed") {
-    let snapshot = CompetitiveDrillSnapshot(
-        drillId: "drill-1",
+    let snapshot = CompetitiveMetricSnapshot(
+        metricId: "metric-1",
         name: "Distance Per Stroke",
         selfCheck: "Count strokes per lap",
         tieredTargetsTitle: "Stroke Count Efficiency",
@@ -430,7 +523,7 @@ struct CompetitiveGoalRow: View, Equatable {
         status: .planned,
         notes: nil,
         goalKind: .competitiveMetric,
-        competitiveDrillSnapshot: snapshot,
+        competitiveMetricSnapshot: snapshot,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
@@ -442,15 +535,16 @@ struct CompetitiveGoalRow: View, Equatable {
         onToggleExpand: {},
         onUpdateStatus: { _ in },
         onDelete: {},
-        onEditNotes: {}
+        onEditNotes: {},
+        onGenerateCues: {}
     )
     .padding()
     .background(PoolTheme.surface)
 }
 
 #Preview("Competitive Goal - Expanded") {
-    let snapshot = CompetitiveDrillSnapshot(
-        drillId: "drill-1",
+    let snapshot = CompetitiveMetricSnapshot(
+        metricId: "metric-1",
         name: "Distance Per Stroke",
         selfCheck: "Count strokes per lap - aim for consistent count",
         tieredTargetsTitle: "Stroke Count Efficiency (25m pool)",
@@ -469,7 +563,7 @@ struct CompetitiveGoalRow: View, Equatable {
         status: .inProgress,
         notes: "Focusing on longer glide phase",
         goalKind: .competitiveMetric,
-        competitiveDrillSnapshot: snapshot,
+        competitiveMetricSnapshot: snapshot,
         createdAt: "2024-01-01T00:00:00Z",
         updatedAt: "2024-01-01T00:00:00Z"
     )
@@ -481,7 +575,8 @@ struct CompetitiveGoalRow: View, Equatable {
         onToggleExpand: {},
         onUpdateStatus: { _ in },
         onDelete: {},
-        onEditNotes: {}
+        onEditNotes: {},
+        onGenerateCues: {}
     )
     .padding()
     .background(PoolTheme.surface)

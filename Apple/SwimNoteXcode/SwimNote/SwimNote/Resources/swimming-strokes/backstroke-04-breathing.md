@@ -36,7 +36,7 @@ Breathing in backstroke is fundamentally different from other strokes because th
 | **Relaxed Breathing** | Swim focusing on easy, natural breathing |
 | **Rhythm Breathing** | Match breathing to arm stroke tempo |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Rhythmic Breathing Set (4x200m, breathe on every 2nd stroke)
 **Self-Check:** Time difference between breathing every 2nd vs every 4th stroke

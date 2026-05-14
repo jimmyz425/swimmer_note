@@ -40,7 +40,7 @@ The whip kick is widely considered the most challenging component of breaststrok
 | **Single-Leg Kick** | Hold wall, practice kick with one leg. 10 kicks per leg. Identifies asymmetries. |
 | **Ankle Flexibility Exercises** | Daily ankle mobility work. Sit on heels with feet turned outward. |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Kick Only Drill (4x50m, kick board, no pull)
 

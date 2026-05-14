@@ -35,7 +35,7 @@ Two kicks per complete arm cycle form the core rhythm of butterfly: a smaller fi
 | **Slow-Motion Butterfly** | Swim at half speed, exaggerating each phase and kick timing. |
 | **Timing Drill with Verbal Cues** | Partner calls out "Enter-Kick, Pull-Kick" while you swim. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Kick Count Drill (4x100m, count kicks per stroke cycle)
 **Self-Check:** Percentage of stroke cycles with exactly 2 kicks (one on entry, one on push)
 

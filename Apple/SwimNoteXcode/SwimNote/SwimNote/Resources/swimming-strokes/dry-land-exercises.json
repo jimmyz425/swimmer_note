@@ -1,0 +1,850 @@
+{
+  "version": "2.0",
+  "exercises": [
+    {
+      "id": "plank-hold",
+      "name": "Plank Hold",
+      "aliases": [
+        "Plank",
+        "Front Plank",
+        "Standard Plank"
+      ],
+      "description": "Hold plank position on forearms, maintain straight body line. 3 sets of 30-60 seconds.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x30-60s",
+      "strokeFocusPoints": {
+        "freestyle": "Keep body completely flat - mimics streamlined position. Engage core to prevent hips dropping. Head neutral, looking down.",
+        "backstroke": "Exact position for backstroke - body flat, hips high. Keep head neutral (mimics head position in water). Core engaged to prevent hips sagging.",
+        "breaststroke": "Core engaged for glide phase. Flat body position during stroke. Prevents hips from dropping during pull-kick sequence.",
+        "butterfly": "THE essential butterfly drill. Mimics the whole-body undulation. Chest press initiates motion (same as in water). Feel the wave travel through body. Hips rise when chest drops."
+      }
+    },
+    {
+      "name": "Side Plank",
+      "aliases": [
+        "Side Bridge"
+      ],
+      "description": "Lie on side, prop up on forearm, hold position. 30 seconds each side.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "1x30s each side",
+      "strokeFocusPoints": {
+        "freestyle": "Develops core stability for rotation. Feel the side-body engagement that powers rotation. Keep hips high - don't let them sag.",
+        "backstroke": "Core stability for rotation. Side-body engagement for 30-45 degree body roll. Keep hips aligned.",
+        "breaststroke": "Core stability for stroke rhythm. Side engagement supports pull-kick timing.",
+        "butterfly": "Side core engagement for undulation stability."
+      },
+      "id": "side-plank"
+    },
+    {
+      "name": "Dead Bug",
+      "aliases": [
+        "Supine Opposite Arm Leg",
+        "Back Core Drill"
+      ],
+      "description": "Lie on back, arms up, legs up at 90 degrees. Lower opposite arm/leg alternately.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x10",
+      "strokeFocusPoints": {
+        "freestyle": "Core control for stable body position. Keep lower back pressed to floor - mimics keeping hips high in water. Controlled movement.",
+        "backstroke": "Core control on back - same position as backstroke. Back pressed to floor mimics flat body position.",
+        "breaststroke": "Simulates the pull-kick coordination. Arms pull down (pull phase), legs extend and snap (kick phase). Feel the timing.",
+        "butterfly": "Core undulation from different angle. Feel the hip movement that powers dolphin kick. Core controls the wave motion."
+      },
+      "id": "dead-bug"
+    },
+    {
+      "name": "Bird Dog",
+      "aliases": [
+        "Quadruped Opposite Arm Leg",
+        "Opposite Arm Leg Raise"
+      ],
+      "description": "On hands and knees, extend opposite arm forward and opposite leg back. Hold 5 seconds each side.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x10 each side",
+      "strokeFocusPoints": {
+        "freestyle": "Core stability with rotation. Opposite arm/leg mimics the diagonal connection in freestyle - arm reach opposite to kick. Keep core engaged, no rotation.",
+        "backstroke": "Core stability and balance. Opposite arm/leg coordination mimics backstroke rhythm. Keep back flat.",
+        "breaststroke": "Core control for pull-kick timing. Opposite arm/leg develops the coordination needed for breaststroke rhythm.",
+        "butterfly": "Core stability for undulation base. Hands/knees position mimics the stable core needed during butterfly. Keep back flat."
+      },
+      "id": "bird-dog"
+    },
+    {
+      "name": "Reverse Plank",
+      "aliases": [
+        "Back Plank",
+        "Supine Plank"
+      ],
+      "description": "Lie on back, prop up on hands and heels, body straight. Hold 30-45 seconds.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x30-45s",
+      "strokeFocusPoints": {
+        "freestyle": "Back and core strength for body position. Opposite of regular plank - develops posterior chain. Keep body flat, hips high.",
+        "backstroke": "Primary core drill for backstroke. Body flat on back surface, hips elevated. Exact backstroke body position. Hold with core, not just arms.",
+        "breaststroke": "Back strength for glide phase. Posterior chain development.",
+        "butterfly": "Back and core for undulation. Posterior chain supports wave motion."
+      },
+      "id": "reverse-plank"
+    },
+    {
+      "name": "Superman Hold",
+      "aliases": [
+        "Superman",
+        "Prone Extension",
+        "Back Extension Hold"
+      ],
+      "description": "Lie face-down, arms extended forward, lift arms and legs. Hold 15-30 seconds. 3 sets.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x15-30s",
+      "strokeFocusPoints": {
+        "freestyle": "Back strength for body position. Keep body long and engaged. Mimics the extended position during stroke.",
+        "backstroke": "Back strength for body position on back. Keep body long and engaged. Mimics the extended position during stroke.",
+        "breaststroke": "Streamline position strength. Long body position during glide. Core engaged to maintain alignment.",
+        "butterfly": "Combines extension with undulation. Feel the transition from extended position to wave motion. Core connects upper and lower body."
+      },
+      "id": "superman-hold"
+    },
+    {
+      "name": "Medicine Ball Rotational Throws",
+      "aliases": [
+        "Rotational Throws",
+        "Med Ball Throws",
+        "Medicine Ball Throws"
+      ],
+      "description": "Stand with feet planted, rotate torso to throw med ball against wall or to partner.",
+      "category": "Rotation",
+      "defaultSetsReps": "3x10",
+      "strokeFocusPoints": {
+        "freestyle": "Rotate from HIPS and CORE, not just shoulders. Feel the power transfer from hips through torso to arms - same as freestyle rotation power.",
+        "backstroke": "Rotation power for backstroke. Rotate from hips/core, not just arms. Feel the hip-led rotation power.",
+        "breaststroke": "Core rotation power. Hip-led movement for pull phase.",
+        "butterfly": "Full body power transfer. Core connects arm pull to dolphin kick."
+      },
+      "id": "medicine-ball-rotational-throws"
+    },
+    {
+      "name": "Russian Twist",
+      "aliases": [
+        "Seated Rotation",
+        "Trunk Rotation"
+      ],
+      "description": "Sit on floor, lean back slightly, rotate torso touching floor on each side with hands or med ball.",
+      "category": "Rotation",
+      "defaultSetsReps": "3x20",
+      "strokeFocusPoints": {
+        "freestyle": "Core rotation strength. Keep hips stable while rotating above - same as keeping legs steady while body rotates. Continuous motion.",
+        "backstroke": "Core rotation for body roll. Keep hips stable while rotating torso. Same as keeping legs steady while body rolls.",
+        "breaststroke": "Core rotation for pull phase power.",
+        "butterfly": "Core undulation control."
+      },
+      "id": "russian-twist"
+    },
+    {
+      "name": "Standing Rotation Drill",
+      "aliases": [
+        "Standing Rotation",
+        "Hip Rotation Drill"
+      ],
+      "description": "Stand tall, rotate shoulders and hips together 35-50 degrees each side, no arm swing. 20 reps.",
+      "category": "Rotation",
+      "defaultSetsReps": "1x20",
+      "strokeFocusPoints": {
+        "freestyle": "Feel the hip-led rotation. Shoulders and hips move as a unit - exactly what you need in freestyle. Practice within your natural rotation range.",
+        "backstroke": "Practice the rotation angle (30-45 degrees). Feel the unit rotation - shoulders and hips together.",
+        "breaststroke": "Unit rotation for pull phase.",
+        "butterfly": "Full body coordination."
+      },
+      "id": "standing-rotation-drill"
+    },
+    {
+      "name": "High Elbow Catch Drill",
+      "aliases": [
+        "High Elbow Catch",
+        "EVF Drill",
+        "Early Vertical Forearm"
+      ],
+      "description": "Stand at wall, simulate catch motion: arm forward, drop fingertips, lift elbow. 20 reps each arm.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "2x20 each arm",
+      "strokeFocusPoints": {
+        "freestyle": "Practice the high elbow position muscle memory. Feel the fingertips dropping while elbow stays high - this is EVF. Do it slowly to feel the position.",
+        "backstroke": "Pinky-first entry position. High elbow during catch phase.",
+        "breaststroke": "High elbow during outsweep. Elbows stay above hands.",
+        "butterfly": "High elbow catch for keyhole pull pattern."
+      },
+      "id": "high-elbow-catch-drill"
+    },
+    {
+      "name": "Resistance Band Pull",
+      "aliases": [
+        "Band Pull",
+        "Lat Pull"
+      ],
+      "description": "Attach band to fixed point, stand facing it. Pull band back with high elbow, accelerate through. 3 sets of 15.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "freestyle": "Simulates pull phase mechanics. High elbow throughout, accelerate at end. Feel the back muscles (lats) doing the work, not just arms.",
+        "backstroke": "Backstroke pull mechanics. Feel a relatively straight pull path (not exaggerated S-curve). Accelerate through the motion. Finish at hip.",
+        "breaststroke": "Build pull strength through the pattern. Feel the acceleration during insweep. Keep elbows above hands. Quick recovery forward.",
+        "butterfly": "Build pull strength. Feel the acceleration through pull. High elbows throughout. Power from back muscles (lats), not just arms."
+      },
+      "id": "resistance-band-pull"
+    },
+    {
+      "name": "Shoulder Blade Squeeze",
+      "aliases": [
+        "Scapular Squeeze",
+        "Scapula Squeeze"
+      ],
+      "description": "Stand with arms at sides, squeeze shoulder blades together, hold 5 seconds. 3 sets of 10.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "3x10 (hold 5s)",
+      "strokeFocusPoints": {
+        "freestyle": "Develops scapular stability for proper arm mechanics. Keeps shoulders stable during stroke. Prevents rounded shoulders.",
+        "backstroke": "Shoulder health for backstroke. Scapular stability prevents impingement.",
+        "breaststroke": "Stable shoulders during pull and recovery.",
+        "butterfly": "Scapular stability for arm mechanics. Stable shoulders during pull and recovery. Prevents shoulder injury from butterfly stress."
+      },
+      "id": "shoulder-blade-squeeze"
+    },
+    {
+      "name": "Arm Circle Stretch",
+      "aliases": [
+        "Arm Circles"
+      ],
+      "description": "Large arm circles forward and backward, controlled. 10 each direction.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "1x10 each direction",
+      "strokeFocusPoints": {
+        "freestyle": "Shoulder mobility for recovery and entry. Keep motion smooth and controlled. Prevents impingement, develops range of motion.",
+        "backstroke": "Shoulder mobility for recovery. Prevents impingement.",
+        "breaststroke": "Shoulder mobility for arm recovery forward.",
+        "butterfly": "Shoulder mobility for recovery. Relaxed arms during recovery. Prevents tension that causes fatigue."
+      },
+      "id": "arm-circle-stretch"
+    },
+    {
+      "name": "Arm Pull Simulation",
+      "aliases": [
+        "Arm Stroke Simulation",
+        "Stroke Simulation"
+      ],
+      "description": "Stand, simulate stroke-specific arm motion. 20 reps.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "2x20",
+      "strokeFocusPoints": {
+        "freestyle": "Practice catch and pull muscle memory. High elbow throughout, accelerate through.",
+        "backstroke": "Practice full arm cycle muscle memory. Feel: pinky enters first, relatively straight pull path, thumb leads recovery.",
+        "breaststroke": "Practice the pull motion muscle memory. Feel: hands turn out, narrow outsweep, elbows high during insweep, quick shoot forward. Do slowly to feel each phase.",
+        "butterfly": "Practice full arm cycle muscle memory. Feel: fingertips enter, high elbow catch, keyhole pull pattern, low relaxed recovery. Do slowly to feel each phase."
+      },
+      "id": "arm-pull-simulation"
+    },
+    {
+      "name": "Pinky Entry Drill",
+      "aliases": [
+        "Backstroke Entry Drill"
+      ],
+      "description": "Stand, simulate backstroke arm recovery: thumb leads up, rotate to pinky-down for entry. 20 reps each arm.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "2x20 each arm",
+      "strokeFocusPoints": {
+        "backstroke": "Practice the thumb-to-pinky rotation muscle memory. Pinky enters first every time - this is critical for backstroke. Feel the hand rotation."
+      },
+      "id": "pinky-entry-drill"
+    },
+    {
+      "name": "Bent-Arm Recovery Drill",
+      "aliases": [
+        "Bent Arm Recovery"
+      ],
+      "description": "Stand, simulate backstroke arm recovery with bent elbow leading, hand trailing below. Keep arm close to body. 20 reps each arm.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "2x20 each arm",
+      "strokeFocusPoints": {
+        "backstroke": "Bent-arm recovery during recovery - elbow leads, hand trails below. Arm close to body line - not wide. Feel the relaxed, efficient motion."
+      },
+      "id": "bent-arm-recovery-drill"
+    },
+    {
+      "name": "Shoulder External Rotation",
+      "aliases": [
+        "External Rotation",
+        "Rotator cuff Exercise"
+      ],
+      "description": "Hold resistance band, elbows at sides bent 90 degrees, rotate hands outward. 3 sets of 15.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "backstroke": "Shoulder health for backstroke. External rotation strength protects shoulders during pinky-first entry. Prevents impingement."
+      },
+      "id": "shoulder-external-rotation"
+    },
+    {
+      "name": "Low Recovery Drill",
+      "aliases": [
+        "Butterfly Recovery Drill"
+      ],
+      "description": "Stand, simulate butterfly recovery with arms low and relaxed, slightly bent. 20 reps.",
+      "category": "Recovery",
+      "defaultSetsReps": "1x20",
+      "strokeFocusPoints": {
+        "butterfly": "Practice low recovery muscle memory. Arms stay LOW over water level (imaginary). Relaxed, not rigid. Bent slightly, not straight. Feel the efficiency."
+      },
+      "id": "low-recovery-drill"
+    },
+    {
+      "name": "Lat Stretch",
+      "aliases": [
+        "Wall Lat Stretch"
+      ],
+      "description": "Arm up against wall, lean away. Hold 30 seconds each side.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s each side",
+      "strokeFocusPoints": {
+        "freestyle": "Lat flexibility for arm reach and pull. Lats are primary pulling muscles. Flexible lats allow full arm extension.",
+        "backstroke": "Lat flexibility for reach and pull.",
+        "breaststroke": "Lat flexibility for arm extension.",
+        "butterfly": "Lat flexibility for full arm range. Lats are primary butterfly muscles. Flexible lats allow full reach and powerful pull."
+      },
+      "id": "lat-stretch"
+    },
+    {
+      "name": "Ankle Flexibility Stretch",
+      "aliases": [
+        "Ankle Stretch",
+        "Point Flex Stretch"
+      ],
+      "description": "Sit on floor, legs extended. Point toes hard, then flex feet back. Hold each 10 seconds. 3 sets.",
+      "category": "Ankle & Kick",
+      "defaultSetsReps": "3x20",
+      "strokeFocusPoints": {
+        "freestyle": "Develops flexible ankles for propulsion. Pointing = plantar flexion (foot pointed during kick). Flexing = dorsiflexion (builds range).",
+        "backstroke": "Ankle flexibility for kick propulsion. Pointed toes during kick = propulsion. Flexible ankles = efficient kick.",
+        "breaststroke": "Ankle range for bringing heels to buttocks. Flexible ankles allow proper kick recovery. Tight ankles limit knee bend.",
+        "butterfly": "Ankle speed for dolphin kick propulsion. Quick ankle motion essential. Dolphin kick needs fast, flexible ankles."
+      },
+      "id": "ankle-flexibility-stretch"
+    },
+    {
+      "name": "Calf Raises",
+      "aliases": [
+        "Calf Raises"
+      ],
+      "description": "Stand on edge of step, rise up on toes, lower below step level. 3 sets of 15.",
+      "category": "Ankle & Kick",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "freestyle": "Ankle strength and flexibility. Strong calves power the kick. Range of motion develops ankle flexibility.",
+        "backstroke": "Calf and ankle strength for kick. Strong calves power flutter kick. Builds ankle stability.",
+        "breaststroke": "Ankle strength for whip kick power.",
+        "butterfly": "Ankle strength for dolphin kick."
+      },
+      "id": "calf-raises"
+    },
+    {
+      "name": "Ankle Circles",
+      "description": "Sit or lie down, rotate ankles in circles. 20 circles each direction each foot.",
+      "category": "Ankle & Kick",
+      "defaultSetsReps": "1x20 each direction",
+      "strokeFocusPoints": {
+        "freestyle": "Ankle mobility for efficient kick. Loose, flexible ankles create propulsion. Tight ankles create drag.",
+        "backstroke": "Ankle mobility and flexibility. Loose ankles are essential. Each letter = full range of motion.",
+        "breaststroke": "General ankle mobility. Whip kick requires complex ankle motion. Full range of motion essential.",
+        "butterfly": "Ankle mobility for efficient kick."
+      },
+      "id": "ankle-circles"
+    },
+    {
+      "name": "Ankle Point/Flex Rapid",
+      "aliases": [
+        "Ankle Snap Drill",
+        "Rapid Point Flex"
+      ],
+      "description": "Sit, point toes hard, then flex back rapidly. 3 sets of 30 rapid switches.",
+      "category": "Ankle & Kick",
+      "defaultSetsReps": "3x30",
+      "strokeFocusPoints": {
+        "butterfly": "Ankle speed for dolphin kick propulsion. Quick ankle motion essential. Dolphin kick needs fast, flexible ankles."
+      },
+      "id": "ankle-pointflex-rapid"
+    },
+    {
+      "name": "Ankle Alphabet",
+      "description": "Sit, trace alphabet with toes. Full range of motion.",
+      "category": "Ankle & Kick",
+      "defaultSetsReps": "1x full alphabet each foot",
+      "strokeFocusPoints": {
+        "backstroke": "Ankle mobility and flexibility. Loose ankles are essential. Each letter = full range of motion."
+      },
+      "id": "ankle-alphabet"
+    },
+    {
+      "name": "Ankle Eversion Stretch",
+      "aliases": [
+        "Ankle Outward Turn",
+        "Whip Kick Ankle Drill"
+      ],
+      "description": "Sit on floor, legs extended. Turn feet outward forcefully. Hold 10 seconds. 5 sets.",
+      "category": "Ankle & Whip Kick",
+      "defaultSetsReps": "5x10s",
+      "strokeFocusPoints": {
+        "breaststroke": "THE most critical drill for breaststroke. Feet MUST turn outward during kick. Develops the motion that makes legal whip kick. Feel the outside edge of foot engaging."
+      },
+      "id": "ankle-eversion-stretch"
+    },
+    {
+      "name": "Sit on Heels Outward",
+      "aliases": [
+        "Kneeling Ankle Stretch"
+      ],
+      "description": "Kneel, sit back on heels with feet turned outward. Hold 20-30 seconds. 3 sets.",
+      "category": "Ankle & Whip Kick",
+      "defaultSetsReps": "3x20-30s",
+      "strokeFocusPoints": {
+        "breaststroke": "Ankle flexibility in everted position. This is exactly the position feet need during whip kick propulsive phase. Builds flexibility over time."
+      },
+      "id": "sit-on-heels-outward"
+    },
+    {
+      "name": "Ankle Dorsiflexion Stretch",
+      "aliases": [
+        "Ankle Flex Stretch"
+      ],
+      "description": "Stand facing wall, foot back, press heel down while flexing ankle. Hold 30 seconds each foot.",
+      "category": "Ankle & Whip Kick",
+      "defaultSetsReps": "1x30s each foot",
+      "strokeFocusPoints": {
+        "breaststroke": "Ankle range for bringing heels to buttocks. Flexible ankles allow proper kick recovery. Tight ankles limit knee bend."
+      },
+      "id": "ankle-dorsiflexion-stretch"
+    },
+    {
+      "name": "Whip Kick Simulation",
+      "aliases": [
+        "Breaststroke Kick Simulation",
+        "Whip Kick Drill"
+      ],
+      "description": "Stand on one leg, simulate whip kick motion with other leg: heel to bum, foot out, snap together. 10 reps each leg.",
+      "category": "Ankle & Whip Kick",
+      "defaultSetsReps": "1x10 each leg",
+      "strokeFocusPoints": {
+        "breaststroke": "Practice the kick motion muscle memory. Feel: heels to bum (not knees), narrow knees, feet outward, snap together. Slow motion to feel each phase."
+      },
+      "id": "whip-kick-simulation"
+    },
+    {
+      "name": "Dolphin Plank",
+      "aliases": [
+        "Butterfly Plank",
+        "Undulation Plank"
+      ],
+      "description": "Start in plank, press chest down toward floor, hips rise up, return. Continuous rhythm. 3 sets of 15.",
+      "category": "Core & Undulation",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "butterfly": "THE essential butterfly drill. Mimics the whole-body undulation. Chest press initiates motion (same as in water). Feel the wave travel through body. Hips rise when chest drops."
+      },
+      "id": "dolphin-plank"
+    },
+    {
+      "name": "Cat-Cow",
+      "aliases": [
+        "Cat Cow Stretch",
+        "Spine Wave"
+      ],
+      "description": "On hands and knees, alternate between arching back up (cat) and dipping down (cow). 3 sets of 15.",
+      "category": "Core & Undulation",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "butterfly": "Spine flexibility for undulation. Develops the wave motion through spine. Feel the chest press and hip lift sequence."
+      },
+      "id": "cat-cow"
+    },
+    {
+      "name": "Standing Dolphin Kick",
+      "aliases": [
+        "Dolphin Kick Simulation",
+        "Butterfly Kick Drill"
+      ],
+      "description": "Stand tall, simulate dolphin kick motion from hips. Small amplitude, hip-driven. 20 reps.",
+      "category": "Dolphin Kick",
+      "defaultSetsReps": "1x20",
+      "strokeFocusPoints": {
+        "butterfly": "Practice hip-driven kick motion. NOT from knees - feel the hips initiating. Keep knees relatively straight. Power from glutes and core."
+      },
+      "id": "standing-dolphin-kick"
+    },
+    {
+      "name": "Glute Bridge Pulse",
+      "aliases": [
+        "Hip Bridge Pulse",
+        "Bridge Pulse"
+      ],
+      "description": "Lie on back, knees bent. Bridge up, then pulse hips up and down rapidly. 3 sets of 20 pulses.",
+      "category": "Dolphin Kick",
+      "defaultSetsReps": "3x20 pulses",
+      "strokeFocusPoints": {
+        "butterfly": "Hip drive strength for dolphin kick. Glutes power the kick. Feel the rapid hip motion. Builds endurance for continuous kicks."
+      },
+      "id": "glute-bridge-pulse"
+    },
+    {
+      "name": "Glute Bridge",
+      "aliases": [
+        "Hip Bridge",
+        "Bridge Hold"
+      ],
+      "description": "Lie on back, knees bent, feet flat. Lift hips by squeezing glutes. Hold 3 seconds. 3 sets of 15.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "3x15 (hold 3s)",
+      "strokeFocusPoints": {
+        "backstroke": "Hip lift strength - keeps hips high in backstroke. Strong glutes prevent sitting position in water. Feel the hip elevation."
+      },
+      "id": "glute-bridge"
+    },
+    {
+      "name": "Glute Bridge with Adduction",
+      "aliases": [
+        "Bridge with Knee Squeeze"
+      ],
+      "description": "Lie on back, knees bent. Bridge up, squeeze knees together at top. 3 sets of 15.",
+      "category": "Hip & Adductor",
+      "defaultSetsReps": "3x15",
+      "strokeFocusPoints": {
+        "breaststroke": "Combines hip extension with knee squeeze. Mimics the snap phase of whip kick. Feel the final squeeze power."
+      },
+      "id": "glute-bridge-with-adduction"
+    },
+    {
+      "name": "Adductor Stretch",
+      "aliases": [
+        "Butterfly Stretch",
+        "Inner Thigh Stretch"
+      ],
+      "description": "Sit, feet together, knees out. Lean forward gently. Hold 30 seconds.",
+      "category": "Hip & Adductor",
+      "defaultSetsReps": "1x30s",
+      "strokeFocusPoints": {
+        "breaststroke": "Hip flexibility for narrow knees during kick. Flexible adductors allow knees to stay close together. Tight adductors force knees wide = drag."
+      },
+      "id": "adductor-stretch"
+    },
+    {
+      "name": "Hip Internal Rotation",
+      "aliases": [
+        "Hip Rotation Stretch"
+      ],
+      "description": "Sit with knees bent at 90 degrees, feet wider than knees. Let knees fall inward. Hold 30 seconds.",
+      "category": "Hip & Adductor",
+      "defaultSetsReps": "1x30s",
+      "strokeFocusPoints": {
+        "breaststroke": "Hip mobility for whip kick mechanics. Internal rotation needed for bringing heels to buttocks. Develops range of motion."
+      },
+      "id": "hip-internal-rotation"
+    },
+    {
+      "name": "Hip Flexor Stretch",
+      "aliases": [
+        "Hip Stretch",
+        "Kneeling Hip Stretch"
+      ],
+      "description": "Kneeling lunge position, push hips forward. Hold 30 seconds each side.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s each side",
+      "strokeFocusPoints": {
+        "freestyle": "Hip flexibility for proper rotation range. Tight hip flexors limit rotation. Freestyle needs approximately 35-50 degrees of rotation each side.",
+        "backstroke": "Hip flexibility for rotation. Backstroke needs approximately 30-45 degree rotation each side. Flexible hips allow proper rotation.",
+        "breaststroke": "Hip flexibility for bringing heels to buttocks. Flexible hips allow proper knee bend. Tight hips force knees wide.",
+        "butterfly": "Hip flexibility for dolphin kick range. Dolphin motion needs flexible hips. Tight hips limit undulation."
+      },
+      "id": "hip-flexor-stretch"
+    },
+    {
+      "name": "Hip Flexor Deep Stretch",
+      "aliases": [
+        "Deep Hip Stretch"
+      ],
+      "description": "Deep kneeling lunge, push hips forward. Hold 30 seconds each side.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s each side",
+      "strokeFocusPoints": {
+        "butterfly": "Hip flexibility for dolphin kick range. Dolphin motion needs flexible hips. Tight hips limit undulation."
+      },
+      "id": "hip-flexor-deep-stretch"
+    },
+    {
+      "name": "Ankle Mobility All Directions",
+      "aliases": [
+        "Full Ankle Mobility"
+      ],
+      "description": "Sit, move ankles through all ranges: point, flex, turn in, turn out, circles. 2 minutes each foot.",
+      "category": "Flexibility",
+      "defaultSetsReps": "2 min each foot",
+      "strokeFocusPoints": {
+        "butterfly": "Comprehensive ankle mobility. Dolphin kick needs ankles that move freely in all directions. Build complete flexibility."
+      },
+      "id": "ankle-mobility-all-directions"
+    },
+    {
+      "name": "Knee-to-Chest Stretch",
+      "aliases": [
+        "Hip Flexion Stretch"
+      ],
+      "description": "Stand, pull knee to chest. Hold 30 seconds each leg.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s each leg",
+      "strokeFocusPoints": {
+        "breaststroke": "Hip flexibility for bringing heels to buttocks. Flexible hips allow proper knee bend. Tight hips force knees wide."
+      },
+      "id": "knee-to-chest-stretch"
+    },
+    {
+      "name": "Lower Back Stretch",
+      "aliases": [
+        "Back Stretch",
+        "Lumbar Stretch"
+      ],
+      "description": "Lie on back, knees to chest, rock gently. 30 seconds.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s",
+      "strokeFocusPoints": {
+        "breaststroke": "Back flexibility for wave-style motion. Flexible spine allows undulation. Prevents back strain during breaststroke."
+      },
+      "id": "lower-back-stretch"
+    },
+    {
+      "name": "Chest Stretch",
+      "aliases": [
+        "Doorway Stretch",
+        "Pectoral Stretch"
+      ],
+      "description": "Stand in doorway, arms on door frame, lean forward. Hold 30 seconds.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s",
+      "strokeFocusPoints": {
+        "backstroke": "Chest flexibility for arm reach. Open chest allows full arm extension. Tight chest limits entry position."
+      },
+      "id": "chest-stretch"
+    },
+    {
+      "name": "Shoulder Stretch",
+      "aliases": [
+        "Cross Body Stretch",
+        "Posterior Shoulder Stretch"
+      ],
+      "description": "Pull arm across chest with other hand. Hold 30 seconds each arm.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x30s each arm",
+      "strokeFocusPoints": {
+        "backstroke": "Shoulder flexibility for recovery. Open shoulders allow proper arm position. Prevents shoulder strain."
+      },
+      "id": "shoulder-stretch"
+    },
+    {
+      "name": "Plank to Dolphin",
+      "aliases": [
+        "Plank Dolphin Transition"
+      ],
+      "description": "Start in plank, press chest toward floor, hips rise, return. 10 reps.",
+      "category": "Core & Body Position",
+      "defaultSetsReps": "1x10",
+      "strokeFocusPoints": {
+        "breaststroke": "Mimics wave-style breaststroke body motion. Chest press down = hips rise. Feel the undulating motion used by elite swimmers."
+      },
+      "id": "plank-to-dolphin"
+    },
+    {
+      "name": "Streamline Stretch",
+      "aliases": [
+        "Streamline Position Hold"
+      ],
+      "description": "Stand tall, arms extended overhead together. Hold 20-30 seconds.",
+      "category": "Flexibility",
+      "defaultSetsReps": "1x20-30s",
+      "strokeFocusPoints": {
+        "freestyle": "Practice streamline position muscle memory. Arms tight together, body tall. Feel the position you'll use off every wall.",
+        "breaststroke": "Streamline position for glide phase. Arms tight together, body tall. Feel the glide position.",
+        "butterfly": "Streamline position for entry and glide. Arms tight, body tall. The position for every entry."
+      },
+      "id": "streamline-stretch"
+    },
+    {
+      "name": "Wall Head Position Drill",
+      "aliases": [
+        "Head Position Drill"
+      ],
+      "description": "Lie on floor, head on small cushion. Look straight up at ceiling. Hold 1 minute.",
+      "category": "Head Position",
+      "defaultSetsReps": "1x60s",
+      "strokeFocusPoints": {
+        "backstroke": "Practice neutral head position. Head resting naturally - not forced up or down. This is the position for backstroke."
+      },
+      "id": "wall-head-position-drill"
+    },
+    {
+      "name": "Chin Tuck Drill",
+      "aliases": [
+        "Neck Position Drill"
+      ],
+      "description": "Stand or sit, gently tuck chin slightly. Hold 5 seconds, release. 10 reps.",
+      "category": "Head Position",
+      "defaultSetsReps": "1x10",
+      "strokeFocusPoints": {
+        "backstroke": "Neutral neck position. Chin slightly tucked, not forced. Prevents looking forward during backstroke."
+      },
+      "id": "chin-tuck-drill"
+    },
+    {
+      "name": "Breaststroke Sequence Drill",
+      "aliases": [
+        "Pull Breathe Kick Glide Drill"
+      ],
+      "description": "Stand, practice: Pull (arms) \u2192 Breathe (lift chin) \u2192 Kick (simulate) \u2192 Glide (pause). 20 reps.",
+      "category": "Timing & Coordination",
+      "defaultSetsReps": "1x20",
+      "strokeFocusPoints": {
+        "breaststroke": "Practice the timing sequence muscle memory. Say it aloud: 'Pull, Breathe, Kick, Glide.' Feel the pause during glide. No rushing."
+      },
+      "id": "breaststroke-sequence-drill"
+    },
+    {
+      "name": "Jump Squat with Sequence",
+      "aliases": [
+        "Squat Sequence Drill"
+      ],
+      "description": "Squat position. Jump up: Pull arms down, breathe, land: kick motion, hold: glide. 10 reps.",
+      "category": "Timing & Coordination",
+      "defaultSetsReps": "1x10",
+      "strokeFocusPoints": {
+        "breaststroke": "Full body coordination. Combines all breaststroke elements. Feel the rhythm: pull-breathe-kick-glide."
+      },
+      "id": "jump-squat-with-sequence"
+    },
+    {
+      "name": "Two-Kick Sequence Drill",
+      "aliases": [
+        "Two Kick Timing Drill"
+      ],
+      "description": "Stand, simulate: First kick (small) with arm entry, Second kick (large) with arm push. Say 'Enter-kick, Push-kick.' 20 reps.",
+      "category": "Timing & Rhythm",
+      "defaultSetsReps": "1x20",
+      "strokeFocusPoints": {
+        "butterfly": "Practice two-kick timing muscle memory. Feel the smaller first kick, larger second kick. NEVER single kick. The rhythm becomes automatic."
+      },
+      "id": "two-kick-sequence-drill"
+    },
+    {
+      "name": "Full Stroke Simulation",
+      "aliases": [
+        "Butterfly Stroke Simulation"
+      ],
+      "description": "Stand bent forward. Complete butterfly sequence: Enter-kick, Pull-kick-push, Recover. Continuous motion. 10 reps continuous.",
+      "category": "Timing & Rhythm",
+      "defaultSetsReps": "1x10 continuous",
+      "strokeFocusPoints": {
+        "butterfly": "Whole stroke timing. No pauses between phases. Feel the continuous rhythm. Arms and body connected as one unit."
+      },
+      "id": "full-stroke-simulation"
+    },
+    {
+      "name": "Metronome Drill",
+      "aliases": [
+        "Rhythm Drill",
+        "Timing Drill"
+      ],
+      "description": "Stand, perform arm stroke simulation to metronome beat (60-80 BPM). Match motion to rhythm.",
+      "category": "Timing & Rhythm",
+      "defaultSetsReps": "practice at 60-80 BPM",
+      "strokeFocusPoints": {
+        "butterfly": "Rhythm development. Consistent tempo. Continuous motion matching the beat. Develops the timing sense for butterfly."
+      },
+      "id": "metronome-drill"
+    },
+    {
+      "name": "Medicine Ball Slam",
+      "aliases": [
+        "Ball Slam",
+        "Power Slam"
+      ],
+      "description": "Stand, lift med ball overhead, slam down forcefully. 3 sets of 10.",
+      "category": "Shoulder & Arm",
+      "defaultSetsReps": "3x10",
+      "strokeFocusPoints": {
+        "butterfly": "Power for pull phase. Accelerate through motion (same as butterfly pull). Full body engagement. Feel the power transfer from core to arms."
+      },
+      "id": "medicine-ball-slam"
+    },
+    {
+      "name": "Push-ups",
+      "aliases": [
+        "Pushups",
+        "Standard Push-up"
+      ],
+      "description": "Standard push-ups. 3 sets of 10-15.",
+      "category": "Strength & Endurance",
+      "defaultSetsReps": "3x10-15",
+      "strokeFocusPoints": {
+        "freestyle": "General upper body strength for pulling.",
+        "breaststroke": "Develops insweep power. Narrow hand position mimics breaststroke pull. Elbows stay high during push-down.",
+        "butterfly": "General upper body strength. Butterfly is strength-dependent. Strong chest and arms power the pull."
+      },
+      "id": "push-ups"
+    },
+    {
+      "name": "Push-ups Narrow",
+      "aliases": [
+        "Narrow Pushups",
+        "Diamond Pushups"
+      ],
+      "description": "Standard push-ups with hands close together under shoulders. 3 sets of 10.",
+      "category": "Arm Pull",
+      "defaultSetsReps": "3x10",
+      "strokeFocusPoints": {
+        "breaststroke": "Develops insweep power. Narrow hand position mimics breaststroke pull. Elbows stay high during push-down."
+      },
+      "id": "push-ups-narrow"
+    },
+    {
+      "name": "Pull-ups",
+      "aliases": [
+        "Pullups",
+        "Chin-ups"
+      ],
+      "description": "Standard pull-ups or assisted. 3 sets of 5-10.",
+      "category": "Strength & Endurance",
+      "defaultSetsReps": "3x5-10",
+      "strokeFocusPoints": {
+        "butterfly": "Back strength for pull phase. Lats are primary butterfly muscles. Strong back = powerful pull."
+      },
+      "id": "pull-ups"
+    },
+    {
+      "name": "Burpees",
+      "aliases": [
+        "Burpee"
+      ],
+      "description": "Full burpee with jump. 3 sets of 10.",
+      "category": "Strength & Endurance",
+      "defaultSetsReps": "3x10",
+      "strokeFocusPoints": {
+        "butterfly": "Full body power and endurance. Butterfly requires sustained power. Builds the conditioning for continuous effort."
+      },
+      "id": "burpees"
+    },
+    {
+      "name": "Mountain Climbers",
+      "aliases": [
+        "Mountain Climber"
+      ],
+      "description": "Plank position, drive knees forward rapidly. 3 sets of 30 seconds.",
+      "category": "Strength & Endurance",
+      "defaultSetsReps": "3x30s",
+      "strokeFocusPoints": {
+        "butterfly": "Core endurance for dolphin motion. Rapid hip motion similar to dolphin kick. Core stability throughout."
+      },
+      "id": "mountain-climbers"
+    }
+  ]
+}

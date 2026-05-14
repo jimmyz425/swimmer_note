@@ -98,9 +98,9 @@ struct ToolDefinitionsTests {
 
     // MARK: - UserDataTools Tests
 
-    @Test("UserDataTools has 4 tools")
+    @Test("UserDataTools has 9 tools")
     func userDataToolsCount() {
-        #expect(UserDataTools.all.count == 4)
+        #expect(UserDataTools.all.count == 9)
     }
 
     @Test("get_user_profile has no parameters")
@@ -122,6 +122,7 @@ struct ToolDefinitionsTests {
     func getActiveGoalsParameters() {
         let tool = UserDataTools.getActiveGoals
         #expect(tool.function.parameters.properties.isEmpty)
+        #expect(tool.function.parameters.required == nil)
     }
 
     @Test("get_training_calendar has optional weeks parameter")
@@ -135,7 +136,7 @@ struct ToolDefinitionsTests {
 
     @Test("AllTools combines both tool sets")
     func allToolsCount() {
-        #expect(AllTools.all.count == 8)
+        #expect(AllTools.all.count == 13)  // 4 ResourcesNavigationTools + 9 UserDataTools
     }
 
     @Test("AllTools contains expected tool names")
@@ -149,6 +150,11 @@ struct ToolDefinitionsTests {
         #expect(names.contains("get_training_history"))
         #expect(names.contains("get_active_goals"))
         #expect(names.contains("get_training_calendar"))
+        #expect(names.contains("get_css_info"))
+        #expect(names.contains("read_interval_research"))
+        #expect(names.contains("get_tier_guidance"))
+        #expect(names.contains("read_usa_swimming_structure"))
+        #expect(names.contains("get_dry_land_exercises"))
     }
 
     // MARK: - ToolChoice Tests

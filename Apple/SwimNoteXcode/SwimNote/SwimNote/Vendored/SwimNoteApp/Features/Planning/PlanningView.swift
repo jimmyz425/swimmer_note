@@ -143,6 +143,11 @@ struct PlanningView: View {
 
     /// Load saved outline for resumption if generation was interrupted
     private func loadSavedOutline() async {
+        // Ensure latest data is loaded (notes + weekly plans) so buildPlanContext has current data
+        if let userId = appModel.activeProfile?.id {
+            await appModel.reloadNotes(userId: userId)
+        }
+
         // Only load if there's no current outline and no generated plan
         if planOutline == nil && parsedPlan == nil && generatedPlan == nil {
             if let savedOutline = await appModel.loadOutline() {
@@ -409,8 +414,88 @@ struct PlanningView: View {
                 }
             }
 
-            // Past training summary
-            if let pastSummary = outline.pastTrainingSummary, !pastSummary.isEmpty {
+            // Past 2-week training summary
+            if let summary = outline.twoWeekSummary {
+                VStack(alignment: .leading, spacing: 8) {
+                    Label("Past 2 Weeks Training", systemImage: "calendar.badge.clock")
+                        .font(.caption.bold())
+                        .foregroundStyle(PoolTheme.smoke)
+
+                    // Session count and stroke chips
+                    HStack(spacing: 12) {
+                        Text("\(summary.totalSessions) sessions")
+                            .font(.subheadline.bold())
+                            .foregroundStyle(PoolTheme.mid)
+
+                        Spacer()
+
+                        if summary.totalSessions > 0 {
+                            let dist = summary.strokeDistribution
+                            ForEach([
+                                ("Free", dist.freestyle),
+                                ("Back", dist.backstroke),
+                                ("Breast", dist.breaststroke),
+                                ("Fly", dist.butterfly)
+                            ], id: \.0) { label, count in
+                                Text("\(label) \(count)")
+                                    .font(.caption)
+                                    .foregroundStyle(count > 0 ? PoolTheme.deep : PoolTheme.smoke)
+                                    .padding(4)
+                                    .background(count > 0 ? PoolTheme.light.opacity(0.2) : PoolTheme.smoke.opacity(0.1))
+                                    .cornerRadius(4)
+                            }
+                        }
+                    }
+
+                    if !summary.neglectedStrokes.isEmpty {
+                        Text("Neglected: \(summary.neglectedStrokes.joined(separator: ", "))")
+                            .font(.caption)
+                            .foregroundStyle(PoolTheme.smoke)
+                            .italic()
+                    }
+
+                    if !summary.goalProgress.isEmpty {
+                        Text(summary.goalProgress)
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.deep)
+                    }
+
+                    if !summary.keyTrends.isEmpty {
+                        Text(summary.keyTrends)
+                            .font(.subheadline)
+                            .foregroundStyle(PoolTheme.deep)
+                    }
+
+                    if !summary.techniqueProgression.isEmpty {
+                        Divider()
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Technique Progression", systemImage: "arrow.up.right")
+                                .font(.caption.bold())
+                                .foregroundStyle(PoolTheme.smoke)
+
+                            Text(summary.techniqueProgression)
+                                .font(.subheadline)
+                                .foregroundStyle(PoolTheme.deep)
+                        }
+                    }
+
+                    if !summary.coveredTechniques.isEmpty {
+                        Divider()
+                        VStack(alignment: .leading, spacing: 4) {
+                            Label("Techniques Previously Covered", systemImage: "checkmark.circle")
+                                .font(.caption.bold())
+                                .foregroundStyle(PoolTheme.smoke)
+
+                            Text(summary.coveredTechniques)
+                                .font(.subheadline)
+                                .foregroundStyle(PoolTheme.deep)
+                        }
+                    }
+                }
+                .padding(10)
+                .background(PoolTheme.light.opacity(0.08))
+                .cornerRadius(8)
+            } else if let pastSummary = outline.pastTrainingSummary, !pastSummary.isEmpty {
                 VStack(alignment: .leading, spacing: 4) {
                     Label("Recent Training", systemImage: "calendar.badge.clock")
                         .font(.caption.bold())
@@ -539,7 +624,7 @@ struct PlanningView: View {
         let strategy = PlanStrategyFactory.strategy(for: planType)
 
         // Build plan context from swimmer data
-        let planContext = buildPlanContext()
+        let planContext = buildPlanContext(targetWeek: weekStartingDate)
 
         // Use simpler configuration for outline (no tool calls needed)
         let outlineConfig: LLMConfiguration
@@ -603,6 +688,7 @@ struct PlanningView: View {
     /// Generate a single session (pure function - returns result without modifying state)
     private func generateSingleSessionResult(
         sessionOutline: SessionOutline,
+        weeklyOutline: WeeklyPlanOutline,
         config: LLMConfiguration,
         apiKey: String,
         strategy: any PlanGenerationStrategy,
@@ -612,16 +698,16 @@ struct PlanningView: View {
         let conversation = ToolCallingConversation(
             configuration: config,
             apiKey: apiKey,
-            executor: appModel.createToolExecutor()
+            executor: appModel.createToolExecutor(referenceDate: weekStartingDate)
         )
 
-        // Tools for Phase 2: technique file reading + evidence-based drills (user data already in prompt)
+        // Tools for Phase 2: technique file reading + evidence-based drills
         let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
 
         do {
             let rawOutput = try await conversation.run(
                 systemRole: strategy.buildSystemRole(),
-                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, weeklyOutline: weeklyOutline, context: planContext),
                 tools: phase2Tools,
                 maxIterations: 10
             )
@@ -666,7 +752,7 @@ struct PlanningView: View {
         }
 
         let strategy = PlanStrategyFactory.strategy(for: planType)
-        let planContext = buildPlanContext()
+        let planContext = buildPlanContext(targetWeek: weekStartingDate)
 
         // Get sessions that need generation
         let sessionsToGenerate = outline.schedule.filter { !$0.isDetailsGenerated }
@@ -699,6 +785,7 @@ struct PlanningView: View {
                     group.addTask {
                         await generateSingleSessionResult(
                             sessionOutline: session,
+                            weeklyOutline: outline,
                             config: config,
                             apiKey: apiKey,
                             strategy: strategy,
@@ -802,22 +889,22 @@ struct PlanningView: View {
         }
 
         let strategy = PlanStrategyFactory.strategy(for: planType)
-        let planContext = buildPlanContext()
+        let planContext = buildPlanContext(targetWeek: weekStartingDate)
 
         // Use tool calling for Phase 2 (read technique files for drills)
         let conversation = ToolCallingConversation(
             configuration: config,
             apiKey: apiKey,
-            executor: appModel.createToolExecutor()
+            executor: appModel.createToolExecutor(referenceDate: weekStartingDate)
         )
 
-        // Tools for Phase 2: technique file reading + evidence-based drills (user data already in prompt)
+        // Tools for Phase 2: technique file reading + evidence-based drills
         let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
 
         do {
             let rawOutput = try await conversation.run(
                 systemRole: strategy.buildSystemRole(),
-                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, context: planContext),
+                userPrompt: strategy.buildDetailPrompt(sessionOutline: sessionOutline, weeklyOutline: currentOutline, context: planContext),
                 tools: phase2Tools,
                 maxIterations: 10  // Allow technique file reads
             )
@@ -890,7 +977,7 @@ struct PlanningView: View {
         }
 
         let strategy = PlanStrategyFactory.strategy(for: planType)
-        let planContext = buildPlanContext()
+        let planContext = buildPlanContext(targetWeek: weekStartingDate)
 
         // Use simple completion (no tools) for dryland generation
         let request = LLMRequest(
@@ -1770,7 +1857,7 @@ struct PlanningView: View {
         let strategy = PlanStrategyFactory.strategy(for: planType)
 
         // Build plan context from swimmer data
-        let planContext = buildPlanContext()
+        let planContext = buildPlanContext(targetWeek: weekStartingDate)
 
         // Increase timeout for plan generation (long prompt + multiple tool calls)
         let planConfig: LLMConfiguration
@@ -1791,7 +1878,7 @@ struct PlanningView: View {
         let conversation = ToolCallingConversation(
             configuration: planConfig,
             apiKey: apiKey,
-            executor: appModel.createToolExecutor()
+            executor: appModel.createToolExecutor(referenceDate: weekStartingDate)
         )
 
         do {
@@ -1816,7 +1903,7 @@ struct PlanningView: View {
         isGenerating = false
     }
 
-    private func buildPlanContext() -> PlanContext {
+    private func buildPlanContext(targetWeek: Date) -> PlanContext {
         // Analyze stroke balance from recent notes
         let recentNotes = Array(appModel.notes.sorted { $0.date > $1.date }.prefix(14))
         let strokeBalance = analyzeStrokeBalance(recentNotes)
@@ -1824,22 +1911,95 @@ struct PlanningView: View {
         // Analyze goal progress
         let goalProgress = analyzeGoalProgressInfo(appModel.notes)
 
-        // Debug: Log context data to verify no leakage
+        // Extract individual sessions from past plans within the 2-week window before target week
+        let twoWeekCutoff = Calendar.current.date(byAdding: .weekOfYear, value: -2, to: targetWeek) ?? targetWeek
+        var pastSessions: [String] = []
+        var uniqueTechRefs: Set<String> = []
+        let allPlans = appModel.weeklyPlans.sorted { $0.weekStartingDate ?? Date.distantPast > $1.weekStartingDate ?? Date.distantPast }
+        for plan in allPlans {
+            guard let weekStart = plan.weekStartingDate else { continue }
+            guard weekStart < targetWeek else { continue }
+            let sessionCount = plan.schedule.count
+            let dayOffsets = computeDayOffsets(count: sessionCount)
+            for (idx, daySchedule) in plan.schedule.enumerated() {
+                var date = weekStart
+                if idx < dayOffsets.count {
+                    let offset = dayOffsets[idx].dayOffset
+                    date = Calendar.current.date(byAdding: .day, value: offset, to: weekStart) ?? weekStart
+                }
+                guard date >= twoWeekCutoff && date < targetWeek else { continue }
+                let dateLabel = SwimNoteDateFormatting.shortDateString(from: date)
+                var line = "\(dateLabel) Session \(daySchedule.sessionNumber): \(daySchedule.poolSession) — \(daySchedule.focus)"
+                if let dur = daySchedule.duration { line += " (\(dur))" }
+                if let type = daySchedule.sessionType { line += " [\(type)]" }
+                pastSessions.append(line)
+            }
+            // Collect technique file references from detailed sessions
+            for session in plan.detailedSessions {
+                if let techRef = session.techniqueFileRef {
+                    uniqueTechRefs.insert(techRef)
+                }
+            }
+        }
+
+        // Load technique content (key focus + common mistakes) for unique references
+        var pastTechniqueSections: [String] = []
+        let parser = TechniqueMarkdownParser()
+        for techRef in uniqueTechRefs.sorted() {
+            let md = appModel.markdown(filename: techRef)
+            let parsed = parser.parse(filename: techRef, rawContent: md)
+            var content = ""
+            if !parsed.keyPoints.isEmpty {
+                content += parsed.keyPoints.joined(separator: "\n")
+            }
+            if !parsed.commonMistakes.isEmpty {
+                if !content.isEmpty { content += "\n" }
+                content += parsed.commonMistakes.joined(separator: "\n")
+            }
+            if !content.isEmpty {
+                pastTechniqueSections.append("--- \(techRef) ---\n\(content)")
+            }
+        }
+
+        // Debug: Log context data
         #if DEBUG
         print("[PlanContext] Profile: \(appModel.activeProfile?.id ?? "none")")
-        print("[PlanContext] Notes count: \(recentNotes.count)")
-        let userIds = Set(recentNotes.map { $0.userId })
-        print("[PlanContext] Notes userIds: \(userIds)")
+        print("[PlanContext] Target week: \(SwimNoteDateFormatting.shortDateString(from: targetWeek))")
+        print("[PlanContext] Two-week cutoff: \(SwimNoteDateFormatting.shortDateString(from: twoWeekCutoff))")
+        print("[PlanContext] Past plans count: \(allPlans.count)")
+        for plan in allPlans {
+            let weekDate = plan.weekStartingDate.map { SwimNoteDateFormatting.shortDateString(from: $0) } ?? "nil"
+            print("[PlanContext] Plan week=\(weekDate) focus=\(plan.overview.weekFocus) sessions=\(plan.schedule.count)")
+        }
+        print("[PlanContext] Filtered past sessions: \(pastSessions.count)")
+        print("[PlanContext] Unique technique files: \(uniqueTechRefs.count)")
         #endif
 
-        // sessionsPerWeek = 0 (not determined) - LLM will decide based on tier guidance from USA Swimming structure
         return PlanContext(
             profile: appModel.activeProfile,
             notes: recentNotes,
+            pastSessions: pastSessions,
+            pastTechniqueSections: pastTechniqueSections,
+            targetWeek: targetWeek,
             poolType: poolType,
             strokeBalance: strokeBalance,
             goalProgress: goalProgress
         )
+    }
+
+    /// Reuse the same day offset logic as session scheduling
+    private func computeDayOffsets(count: Int) -> [(dayOffset: Int, timeOfDay: SessionTimeOfDay)] {
+        switch count {
+        case 1: return [(0, .morning)]
+        case 2: return [(0, .morning), (2, .morning)]
+        case 3: return [(0, .morning), (2, .morning), (4, .morning)]
+        case 4: return [(0, .morning), (1, .morning), (3, .morning), (4, .morning)]
+        case 5: return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning)]
+        case 6: return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning), (5, .morning)]
+        case 7: return [(0, .morning), (1, .morning), (2, .morning), (3, .morning), (4, .morning), (5, .morning), (6, .morning)]
+        case 8: return [(0, .morning), (1, .morning), (2, .morning), (2, .afternoon), (3, .morning), (4, .morning), (5, .morning), (6, .morning)]
+        default: return (0..<count).map { ($0, SessionTimeOfDay.morning) }
+        }
     }
 
     private func analyzeStrokeBalance(_ notes: [TrainingNote]) -> [StrokeBalanceInfo] {

@@ -30,7 +30,7 @@ Body position and streamline form the foundation for all other freestyle techniq
 | **Streamline Push-offs** | Practice tight streamline off every wall push-off. Arms pressed together, head between biceps. |
 | **Balance Drill** | Float face-down, arms at sides. Press chest down gently to raise hips. Feel the "T" position balance. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Streamline Push-offs (measure distance, not time)
 **Self-Check:** Push off in tight streamline and glide (no kicking). Mark where your speed drops so low you must initiate a stroke or kick. Measure this distance from the wall.
 

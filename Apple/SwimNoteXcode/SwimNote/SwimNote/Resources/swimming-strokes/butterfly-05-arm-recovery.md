@@ -33,7 +33,7 @@ The arm recovery sweeps arms low over the water surface with relaxed, slightly b
 | **Dive Entry Drill** | Practice entering hands first in a diving motion, then sweeping forward underwater. |
 | **Relaxed Recovery Swim** | Swim butterfly focusing entirely on arm relaxation during recovery. Let momentum carry arms. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Thumb Drag Drill (4x50m set, drag thumbs along water surface during recovery)
 **Self-Check:** Count percentage of strokes where your thumbs drag along water surface during recovery
 

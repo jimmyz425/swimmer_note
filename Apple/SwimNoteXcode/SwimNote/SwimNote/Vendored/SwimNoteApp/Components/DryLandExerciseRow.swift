@@ -8,12 +8,13 @@ struct DryLandExerciseRow: View {
     var referenceDate: Date? = nil
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(alignment: .top, spacing: 12) {
-                // Completion badge or sets/reps
+        VStack(alignment: .leading, spacing: 6) {
+            // Row 1: setsReps (left) | exercise name (right)
+            HStack {
+                // Completion badge or sets/reps (left justified)
                 if exercise.isCompleted {
                     Image(systemName: "checkmark.circle.fill")
-                        .font(.system(size: 18, weight: .bold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundStyle(.green)
                 } else {
                     Text(exercise.setsReps)
@@ -25,25 +26,12 @@ struct DryLandExerciseRow: View {
                         .cornerRadius(6)
                 }
 
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(exercise.exercise)
-                        .font(.subheadline.bold())
-                        .foregroundStyle(exercise.isCompleted ? PoolTheme.smoke : PoolTheme.deep)
-
-                    if let focus = exercise.focus, !focus.isEmpty {
-                        Text(focus)
-                            .font(.caption)
-                            .foregroundStyle(PoolTheme.smoke)
-                    }
-
-                    if let support = exercise.techniqueSupport {
-                        Text("→ \(support)")
-                            .font(.caption2)
-                            .foregroundStyle(PoolTheme.mid)
-                    }
-                }
-
                 Spacer()
+
+                // Exercise name (right justified)
+                Text(exercise.exercise)
+                    .font(.subheadline.bold())
+                    .foregroundStyle(exercise.isCompleted ? PoolTheme.smoke : PoolTheme.deep)
 
                 if exercise.isCompleted {
                     Text("Done")
@@ -56,7 +44,21 @@ struct DryLandExerciseRow: View {
                 }
             }
 
-            // Date picker at the bottom (if editing enabled)
+            // Row 2: Category (if available)
+            if let focus = exercise.focus, !focus.isEmpty {
+                Text(focus)
+                    .font(.caption)
+                    .foregroundStyle(PoolTheme.mid)
+            }
+
+            // Row 3: Stroke focus points (if available)
+            if let support = exercise.techniqueSupport {
+                Text(support)
+                    .font(.caption2)
+                    .foregroundStyle(PoolTheme.smoke)
+            }
+
+            // Date picker (if editing enabled)
             if let onDateChange, let referenceDate {
                 HStack {
                     Image(systemName: "calendar")

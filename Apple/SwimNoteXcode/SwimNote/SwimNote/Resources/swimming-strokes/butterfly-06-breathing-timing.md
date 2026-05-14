@@ -34,7 +34,7 @@ Breathing in butterfly occurs during the push phase of the arm stroke, lifting t
 | **Chin on Surface** | Practice breathing while keeping chin just touching water surface. |
 | **Single-Arm Breathing Drill** | Swim single-arm butterfly, practice breathing on the stroking side. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Rhythm Breathing Drill (4x200m, breathe every 2nd stroke)
 **Self-Check:** Time difference between breathing every 1st vs every 2nd stroke
 

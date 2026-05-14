@@ -761,6 +761,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
     public var cssHistory: CSSHistory?
     public var trainingGoals: [String]
     public var limitations: [String]?
+    public var revisitNodes: [String: Set<String>]  // strokeId -> set of nodeIds user wants to revisit
     public var createdAt: String
     public var updatedAt: String
 
@@ -812,7 +813,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         case preferredStrokes, mainStroke, distancePreference, preferredDistanceUnit
         case profileIconType, profileImageData, profileIconName
         case personalBests, pbHistory, cssHistory, trainingGoals, limitations
-        case createdAt, updatedAt
+        case revisitNodes, createdAt, updatedAt
     }
 
     public init(from decoder: Decoder) throws {
@@ -851,6 +852,12 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         cssHistory = try container.decodeIfPresent(CSSHistory.self, forKey: .cssHistory)
         trainingGoals = try container.decode([String].self, forKey: .trainingGoals)
         limitations = try container.decodeIfPresent([String].self, forKey: .limitations)
+        // Decode revisitNodes with backward compatibility - stored as [String: [String]] in JSON
+        if let revisitDict = try container.decodeIfPresent([String: [String]].self, forKey: .revisitNodes) {
+            revisitNodes = revisitDict.mapValues { Set($0) }
+        } else {
+            revisitNodes = [:]
+        }
         createdAt = try container.decode(String.self, forKey: .createdAt)
         updatedAt = try container.decode(String.self, forKey: .updatedAt)
     }
@@ -877,6 +884,9 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         try container.encodeIfPresent(cssHistory, forKey: .cssHistory)
         try container.encode(trainingGoals, forKey: .trainingGoals)
         try container.encodeIfPresent(limitations, forKey: .limitations)
+        // Encode revisitNodes as [String: [String]] for JSON compatibility
+        let revisitDict = revisitNodes.mapValues { Array($0).sorted() }
+        try container.encode(revisitDict, forKey: .revisitNodes)
         try container.encode(createdAt, forKey: .createdAt)
         try container.encode(updatedAt, forKey: .updatedAt)
     }
@@ -902,6 +912,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         cssHistory: CSSHistory? = nil,
         trainingGoals: [String],
         limitations: [String]? = nil,
+        revisitNodes: [String: Set<String>] = [:],
         createdAt: String,
         updatedAt: String
     ) {
@@ -926,6 +937,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         self.cssHistory = cssHistory
         self.trainingGoals = trainingGoals
         self.limitations = limitations
+        self.revisitNodes = revisitNodes
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -953,6 +965,25 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         }
     }
 
+    /// Check if a node is marked for revisit by this user
+    public func isRevisitNode(strokeId: StrokeID, nodeId: String) -> Bool {
+        revisitNodes[strokeId.rawValue]?.contains(nodeId) ?? false
+    }
+
+    /// Toggle revisit status for a node and return updated profile
+    public func togglingRevisit(strokeId: StrokeID, nodeId: String) -> UserProfile {
+        var updated = self
+        var nodesForStroke = updated.revisitNodes[strokeId.rawValue] ?? []
+        if nodesForStroke.contains(nodeId) {
+            nodesForStroke.remove(nodeId)
+        } else {
+            nodesForStroke.insert(nodeId)
+        }
+        updated.revisitNodes[strokeId.rawValue] = nodesForStroke
+        updated.updatedAt = SwimNoteDateFormatting.string(from: Date())
+        return updated
+    }
+
     /// Legacy init for backward compatibility
     public init(
         id: String,
@@ -973,6 +1004,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         cssHistory: CSSHistory? = nil,
         trainingGoals: [String],
         limitations: [String]? = nil,
+        revisitNodes: [String: Set<String>] = [:],
         createdAt: String,
         updatedAt: String
     ) {
@@ -996,6 +1028,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         self.cssHistory = cssHistory
         self.trainingGoals = trainingGoals
         self.limitations = limitations
+        self.revisitNodes = revisitNodes
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -1067,8 +1100,9 @@ public struct Goal: Codable, Hashable, Identifiable, Sendable {
     public var techniqueNodeId: String?
     public var coachingTips: String?
     public var notes: String?
+    public var suggestedCues: [String]?
     public var goalKind: GoalKind?
-    public var competitiveDrillSnapshot: CompetitiveDrillSnapshot?
+    public var competitiveMetricSnapshot: CompetitiveMetricSnapshot?
     public var createdAt: String
     public var updatedAt: String
 
@@ -1088,8 +1122,9 @@ public struct Goal: Codable, Hashable, Identifiable, Sendable {
         techniqueNodeId: String? = nil,
         coachingTips: String? = nil,
         notes: String? = nil,
+        suggestedCues: [String]? = nil,
         goalKind: GoalKind? = nil,
-        competitiveDrillSnapshot: CompetitiveDrillSnapshot? = nil,
+        competitiveMetricSnapshot: CompetitiveMetricSnapshot? = nil,
         createdAt: String,
         updatedAt: String
     ) {
@@ -1104,8 +1139,9 @@ public struct Goal: Codable, Hashable, Identifiable, Sendable {
         self.techniqueNodeId = techniqueNodeId
         self.coachingTips = coachingTips
         self.notes = notes
+        self.suggestedCues = suggestedCues
         self.goalKind = goalKind
-        self.competitiveDrillSnapshot = competitiveDrillSnapshot
+        self.competitiveMetricSnapshot = competitiveMetricSnapshot
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }
@@ -1172,24 +1208,24 @@ public struct Goal: Codable, Hashable, Identifiable, Sendable {
         )
     }
 
-    public static func fromCompetitiveDrill(
-        drill: CompetitiveDrill,
+    public static func fromCompetitiveMetric(
+        metric: CompetitiveMetric,
         selectedTier: String,
         techniqueNodeId: String,
         strokeId: StrokeID,
         date: Date = Date()
     ) -> Goal {
         let timestamp = SwimNoteDateFormatting.string(from: date)
-        let snapshot = CompetitiveDrillSnapshot.from(drill: drill, selectedTier: selectedTier)
+        let snapshot = CompetitiveMetricSnapshot.from(metric: metric, selectedTier: selectedTier)
         return Goal(
             id: Self.generateID(from: date),
             type: .technique,
             strokeId: strokeId,
-            description: drill.name,
+            description: metric.name,
             status: .planned,
             techniqueNodeId: techniqueNodeId,
             goalKind: .competitiveMetric,
-            competitiveDrillSnapshot: snapshot,
+            competitiveMetricSnapshot: snapshot,
             createdAt: timestamp,
             updatedAt: timestamp
         )
@@ -1313,7 +1349,7 @@ public struct StrokeNavigationValue: Hashable, Sendable {
     }
 }
 
-public struct CompetitiveDrill: Codable, Hashable, Identifiable, Sendable {
+public struct CompetitiveMetric: Codable, Hashable, Identifiable, Sendable {
     public var id: String
     public var name: String
     public var selfCheck: String
@@ -1333,9 +1369,9 @@ public struct CompetitiveDrill: Codable, Hashable, Identifiable, Sendable {
     }
 }
 
-/// Snapshot of a competitive drill stored in a Goal for collapsible display
-public struct CompetitiveDrillSnapshot: Codable, Hashable, Sendable {
-    public var drillId: String
+/// Snapshot of a competitive metric stored in a Goal for collapsible display
+public struct CompetitiveMetricSnapshot: Codable, Hashable, Sendable {
+    public var metricId: String
     public var name: String
     public var selfCheck: String
     public var tieredTargetsTitle: String
@@ -1346,7 +1382,7 @@ public struct CompetitiveDrillSnapshot: Codable, Hashable, Sendable {
     public var selectedTarget: String
 
     public init(
-        drillId: String,
+        metricId: String,
         name: String,
         selfCheck: String,
         tieredTargetsTitle: String,
@@ -1356,7 +1392,7 @@ public struct CompetitiveDrillSnapshot: Codable, Hashable, Sendable {
         selectedTier: String,
         selectedTarget: String
     ) {
-        self.drillId = drillId
+        self.metricId = metricId
         self.name = name
         self.selfCheck = selfCheck
         self.tieredTargetsTitle = tieredTargetsTitle
@@ -1367,17 +1403,17 @@ public struct CompetitiveDrillSnapshot: Codable, Hashable, Sendable {
         self.selectedTarget = selectedTarget
     }
 
-    /// Create snapshot from a CompetitiveDrill
-    public static func from(drill: CompetitiveDrill, selectedTier: String) -> CompetitiveDrillSnapshot {
-        let targetValue = drill.tieredTargets[selectedTier] ?? ""
-        return CompetitiveDrillSnapshot(
-            drillId: drill.id,
-            name: drill.name,
-            selfCheck: drill.selfCheck,
-            tieredTargetsTitle: drill.tieredTargetsTitle,
-            tieredTargets: drill.tieredTargets,
-            videoChecks: drill.videoChecks,
-            competitiveImpact: drill.competitiveImpact,
+    /// Create snapshot from a CompetitiveMetric
+    public static func from(metric: CompetitiveMetric, selectedTier: String) -> CompetitiveMetricSnapshot {
+        let targetValue = metric.tieredTargets[selectedTier] ?? ""
+        return CompetitiveMetricSnapshot(
+            metricId: metric.id,
+            name: metric.name,
+            selfCheck: metric.selfCheck,
+            tieredTargetsTitle: metric.tieredTargetsTitle,
+            tieredTargets: metric.tieredTargets,
+            videoChecks: metric.videoChecks,
+            competitiveImpact: metric.competitiveImpact,
             selectedTier: selectedTier,
             selectedTarget: targetValue
         )
@@ -1397,7 +1433,7 @@ public struct ParsedTechniqueContent: Codable, Hashable, Sendable {
     public var keyPoints: [String]
     public var commonMistakes: [String]
     public var specificDrills: [SpecificDrill]
-    public var competitiveDrills: [CompetitiveDrill]
+    public var competitiveMetrics: [CompetitiveMetric]
     public var relatedTechniques: [String]
     public var techniqueTable: [TechniqueTableEntry]  // From main stroke files: difficulty-ranked techniques
     public var prevFile: String?
@@ -1844,6 +1880,10 @@ public nonisolated enum SwimNoteDateFormatting {
 
     public static func shortDateString(from date: Date) -> String {
         shortDateFormatter.string(from: date)
+    }
+
+    public static func date(from string: String) -> Date? {
+        shortDateFormatter.date(from: string)
     }
 
     public static func todayShort() -> String {

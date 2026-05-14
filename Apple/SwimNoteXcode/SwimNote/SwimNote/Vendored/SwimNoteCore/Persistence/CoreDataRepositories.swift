@@ -150,7 +150,7 @@ public final class CoreDataPersistenceController: Sendable {
         entity.coachingTips = goal.coachingTips
         entity.goalNotes = goal.notes
         entity.goalKindRaw = goal.goalKind?.rawValue
-        entity.competitiveDrillSnapshotJSON = goal.competitiveDrillSnapshot != nil ? try? encoder.encode(goal.competitiveDrillSnapshot!).utf8String : nil
+        entity.competitiveDrillSnapshotJSON = goal.competitiveMetricSnapshot != nil ? try? encoder.encode(goal.competitiveMetricSnapshot!).utf8String : nil
         entity.createdAt = goal.createdAt
         entity.updatedAt = goal.updatedAt
         return entity
@@ -527,13 +527,13 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
         }
     }
 
-    public func sessionForDate(for userId: String, date: String) async -> DetailedSession? {
+    public func sessionsForDate(for userId: String, date: String) async -> [DetailedSession] {
         await MainActor.run {
             let context = controller.viewContext
             let formatter = DateFormatter()
             formatter.dateFormat = "yyyy-MM-dd"
 
-            guard let searchDate = formatter.date(from: date) else { return nil }
+            guard let searchDate = formatter.date(from: date) else { return [] }
 
             // Use indexed fetch for scheduledDate
             let fetchRequest = NSFetchRequest<DetailedSessionEntity>(entityName: "DetailedSession")
@@ -542,14 +542,15 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
                 searchDate as NSDate,
                 userId
             )
-            fetchRequest.fetchLimit = 1
+            // Sort by time of day
+            fetchRequest.sortDescriptors = [NSSortDescriptor(key: "timeOfDay", ascending: true)]
 
             do {
                 let entities = try context.fetch(fetchRequest)
-                return entities.first.flatMap { try? $0.toDetailedSession() }
+                return entities.compactMap { try? $0.toDetailedSession() }
             } catch {
-                print("Error fetching session by date: \(error)")
-                return nil
+                print("Error fetching sessions by date: \(error)")
+                return []
             }
         }
     }
@@ -883,7 +884,7 @@ public actor CoreDataWeeklyPlanRepository: WeeklyPlanRepository {
     public init(controller: CoreDataPersistenceController) {}
     public func listPlans(for userId: String) async -> [WeeklyTrainingPlan] { [] }
     public func plan(for userId: String, weekStarting: String) async -> WeeklyTrainingPlan? { nil }
-    public func sessionForDate(for userId: String, date: String) async -> DetailedSession? { nil }
+    public func sessionsForDate(for userId: String, date: String) async -> [DetailedSession] { [] }
     public func save(_ plan: WeeklyTrainingPlan, for userId: String) async throws {
         throw SwimNotePersistenceError.cloudKitStoreUnavailable
     }

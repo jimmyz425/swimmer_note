@@ -126,7 +126,7 @@ flowchart TB
         KeyPointsTab -->|Add +| AddKeyPointGoal[Add Key Point Goal]
         MistakesTab -->|Add +| AddMistakeGoal[Add Mistake Goal]
         CompetitiveTab -->|Add as Goal| TierSelection[Tier Selection Sheet]
-        TierSelection --> AddCompetitiveGoal[Add Competitive Drill Goal]
+        TierSelection --> AddCompetitiveGoal[Add Competitive Metric Goal]
         
         AddKeyPointGoal --> SaveToToday[Save to Today's Note]
         AddMistakeGoal --> SaveToToday

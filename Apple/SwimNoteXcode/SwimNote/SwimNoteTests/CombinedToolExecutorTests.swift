@@ -284,9 +284,15 @@ struct CombinedToolExecutorTests {
 
     @Test("get_training_calendar returns calendar data")
     func getTrainingCalendar() async throws {
+        // Use dates relative to today
+        let today = Date()
+        let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+
         let notes = [
-            createTestNote(date: "2026-04-28", strokes: [.freestyle], notes: ""),
-            createTestNote(date: "2026-04-26", strokes: [.backstroke], notes: "")
+            createTestNote(date: SwimNoteDateFormatting.shortDateString(from: yesterday), strokes: [.freestyle], notes: ""),
+            createTestNote(date: SwimNoteDateFormatting.shortDateString(from: twoDaysAgo), strokes: [.backstroke], notes: "")
         ]
         let executor = await CombinedToolExecutor(
             contentLoader: BundleContentLoader(bundle: Bundle.main),
@@ -304,22 +310,29 @@ struct CombinedToolExecutorTests {
         let json = try JSONSerialization.jsonObject(with: data) as? [String: Any]
 
         #expect(json?["weeks_shown"] as? Int == 1)
-        let calendar = json?["calendar"] as? [[String: Any]]
-        #expect(calendar != nil)
-        #expect(calendar?.isEmpty == false)
+        let calendarData = json?["calendar"] as? [[String: Any]]
+        #expect(calendarData != nil)
+        #expect(calendarData?.isEmpty == false)
 
         // Check that sessions are marked correctly
-        let sessionDays = calendar?.filter { ($0["had_session"] as? Bool) == true }
+        let sessionDays = calendarData?.filter { ($0["had_session"] as? Bool) == true }
         #expect(sessionDays?.count == 2)
     }
 
     @Test("get_training_calendar includes statistics")
     func getTrainingCalendarStatistics() async throws {
+        // Use dates relative to today
+        let today = Date()
+        let calendar = Calendar.current
+        let yesterday = calendar.date(byAdding: .day, value: -1, to: today)!
+        let twoDaysAgo = calendar.date(byAdding: .day, value: -2, to: today)!
+        let threeDaysAgo = calendar.date(byAdding: .day, value: -3, to: today)!
+
         let profile = createTestProfile()
         let notes = [
-            createTestNote(date: "2026-04-28", strokes: [.freestyle], notes: ""),
-            createTestNote(date: "2026-04-27", strokes: [.freestyle], notes: ""),
-            createTestNote(date: "2026-04-26", strokes: [.freestyle], notes: "")
+            createTestNote(date: SwimNoteDateFormatting.shortDateString(from: yesterday), strokes: [.freestyle], notes: ""),
+            createTestNote(date: SwimNoteDateFormatting.shortDateString(from: twoDaysAgo), strokes: [.freestyle], notes: ""),
+            createTestNote(date: SwimNoteDateFormatting.shortDateString(from: threeDaysAgo), strokes: [.freestyle], notes: "")
         ]
         let executor = await CombinedToolExecutor(
             contentLoader: BundleContentLoader(bundle: Bundle.main),

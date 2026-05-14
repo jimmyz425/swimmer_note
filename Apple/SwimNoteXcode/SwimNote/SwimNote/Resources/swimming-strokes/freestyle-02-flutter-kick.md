@@ -33,7 +33,7 @@ The flutter kick provides propulsion and helps maintain body position. It origin
 | **Fin Training** | Use swim fins to develop ankle flexibility and feel proper kick amplitude. |
 | **Streamline Kick** | Kick in streamline position (no board) to develop whole-body coordination. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Vertical Kicking (deep water, no board)
 **Self-Check:** Hold vertical position with arms crossed at chest, chin above water
 

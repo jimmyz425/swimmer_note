@@ -10,7 +10,7 @@
       "level": 1,
       "name": "Streamline Foundation",
       "description": "Core skill: tight streamline position for all strokes",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "hold_time", "name": "Hold Time", "unit": "seconds", "description": "Streamline hold duration"}],
       "prerequisites": [],
       "children": []
@@ -21,7 +21,7 @@
       "level": 1,
       "name": "Flutter Kick Foundation",
       "description": "Core skill for freestyle and backstroke",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "kick_rate", "name": "Kick Rate", "unit": "kicks/sec", "description": "Kicks per second"}],
       "prerequisites": [],
       "children": []
@@ -32,7 +32,7 @@
       "level": 2,
       "name": "Dolphin Kick Foundation",
       "description": "Core skill for butterfly and underwater",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "kick_count", "name": "Kick Count", "unit": "kicks", "description": "Sustainable kick count"}],
       "prerequisites": [],
       "children": []
@@ -43,7 +43,7 @@
       "level": 2,
       "name": "Breaststroke Kick Foundation",
       "description": "Core skill for breaststroke",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "kick_efficiency", "name": "Kick Efficiency", "unit": "rating", "description": "Kick efficiency 1-5"}],
       "prerequisites": [],
       "children": []
@@ -54,7 +54,7 @@
       "level": 3,
       "name": "Catch Mechanics",
       "description": "Fundamental catch technique across strokes",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "catch_depth", "name": "Catch Depth", "unit": "cm", "description": "Depth at catch"}],
       "prerequisites": [],
       "children": []
@@ -65,7 +65,7 @@
       "level": 3,
       "name": "Breathing Fundamentals",
       "description": "Breath timing and rhythm basics",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "breath_timing", "name": "Timing", "unit": "rating", "description": "Breath timing 1-5"}],
       "prerequisites": [],
       "children": []
@@ -76,7 +76,7 @@
       "level": 4,
       "name": "Flip Turn",
       "description": "Flip turn for freestyle and backstroke",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Turn duration"}],
       "prerequisites": [],
       "children": []
@@ -87,7 +87,7 @@
       "level": 4,
       "name": "Open Turn",
       "description": "Open turn for breaststroke and butterfly",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "turn_time", "name": "Turn Time", "unit": "seconds", "description": "Turn duration"}],
       "prerequisites": [],
       "children": []
@@ -98,7 +98,7 @@
       "level": 5,
       "name": "Dive Start",
       "description": "Racing start entry technique",
-      "revisit": true,
+      "revisit": false,
       "metrics": [{"id": "entry_depth", "name": "Entry Depth", "unit": "meters", "description": "Depth of dive entry"}],
       "prerequisites": [],
       "children": []

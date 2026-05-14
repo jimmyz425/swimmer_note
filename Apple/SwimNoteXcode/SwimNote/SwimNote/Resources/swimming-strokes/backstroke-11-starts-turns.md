@@ -38,7 +38,7 @@ Starts and turns are the most technically complex elements of backstroke. They i
 | **Turn Timing** | Practice rotation timing at wall |
 | **Start Practice** | Launch and entry mechanics |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Underwater Dolphin Kick Set (10x25m, off walls, no surface stroke)
 **Self-Check:** Distance traveled off each wall with dolphin kicks before breaking surface

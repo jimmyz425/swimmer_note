@@ -195,9 +195,9 @@ public struct PDFGenerator: Sendable {
             y -= 15
 
         case .competitive:
-            y = drawSectionHeader("Competitive Drills", yPosition: y, margins: margins)
+            y = drawSectionHeader("Competitive Metrics", yPosition: y, margins: margins)
             y -= 5
-            y = drawCompetitiveDrills(section.content, yPosition: y, pageRect: pageRect, margins: margins)
+            y = drawCompetitiveMetrics(section.content, yPosition: y, pageRect: pageRect, margins: margins)
             y -= 15
 
         case .related:
@@ -407,8 +407,8 @@ public struct PDFGenerator: Sendable {
         return y
     }
 
-    /// Draw competitive drills with tiered targets
-    private func drawCompetitiveDrills(_ content: String, yPosition: CGFloat, pageRect: CGRect, margins: UIEdgeInsets) -> CGFloat {
+    /// Draw competitive metrics with tiered targets
+    private func drawCompetitiveMetrics(_ content: String, yPosition: CGFloat, pageRect: CGRect, margins: UIEdgeInsets) -> CGFloat {
         var y = yPosition
 
         // Split by drill headers (#### Drill)
@@ -508,7 +508,7 @@ enum MarkdownSectionType {
         if lowercased.contains("key points") { return .keyPoints }
         if lowercased.contains("mistakes") { return .mistakes }
         if lowercased.contains("specific drills") { return .drills }
-        if lowercased.contains("competitive drills") { return .competitive }
+        if lowercased.contains("competitive metrics") { return .competitive }
         if lowercased.contains("related") { return .related }
         return .other
     }

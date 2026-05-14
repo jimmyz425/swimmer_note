@@ -36,7 +36,7 @@ The arm recovery in backstroke uses a bent-arm motion where the elbow leads and 
 | **Relaxed Recovery** | Focus on loose, easy arm motion |
 | **Single-Arm Recovery** | Isolate recovery mechanics |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Thumb Drag Drill / High Elbow Recovery (4x50m set, drag thumb along water surface during recovery)
 **Self-Check:** Count percentage of strokes where your thumb drags along water surface during recovery

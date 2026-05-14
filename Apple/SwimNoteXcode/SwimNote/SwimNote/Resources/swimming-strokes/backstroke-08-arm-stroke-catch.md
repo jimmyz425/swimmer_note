@@ -36,7 +36,7 @@ The catch is the initial phase where the hand anchors on the water immediately a
 | **Single-Arm Catch** | Focus on catch mechanics alone |
 | **Paddle Swimming** | Use paddles to feel catch pressure |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Fist Backstroke Drill (4x100m set, swim with closed fists)
 **Self-Check:** Time difference between fist swimming vs normal swimming

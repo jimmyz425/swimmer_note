@@ -35,7 +35,7 @@ The pull/push phase is where most propulsion is generated in backstroke. A relat
 | **Paddle Pull** | Use paddles to feel pull mechanics |
 | **Acceleration Drill** | Focus on increasing hand speed through the pull |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Single-Arm Pull (4x50m per arm, pull buoy only, no kick)
 **Self-Check:** Time per 50m single-arm swimming

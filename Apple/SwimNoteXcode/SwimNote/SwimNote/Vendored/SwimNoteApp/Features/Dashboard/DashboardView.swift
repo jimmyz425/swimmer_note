@@ -18,24 +18,18 @@ struct DashboardView: View {
     @State private var newGeneralGoalText = ""
     @State private var showingSessionNotes = false
     @State private var sessionNotesText = ""
+    @State private var isStrokeTechniqueExpanded = false
+    @State private var strokeTechniqueContent: StrokeQuickReferenceContent?
+    @State private var generatingCuesGoalId: String?
 
     private var todayPlan: TrainingPlan? {
         appModel.planForDate(SwimNoteDateFormatting.todayShort())
     }
 
-    private var todaySession: DetailedSession? {
+    private var todaySessions: [DetailedSession] {
         let todayStr = SwimNoteDateFormatting.todayShort()
-        for plan in appModel.weeklyPlans {
-            for session in plan.detailedSessions {
-                if let date = session.scheduledDate {
-                    let sessionDateStr = SwimNoteDateFormatting.shortDateString(from: date)
-                    if sessionDateStr == todayStr {
-                        return session
-                    }
-                }
-            }
-        }
-        return nil
+        // Use cached lookup from appModel
+        return appModel.sessionsForDate(todayStr)
     }
 
     private var todayDryLandExercises: [DryLandExercisePlan] {
@@ -61,7 +55,7 @@ struct DashboardView: View {
         var total = 0
         var completed = 0
 
-        if let session = todaySession {
+        for session in todaySessions {
             total += 1
             if session.isCompleted { completed += 1 }
         }
@@ -238,6 +232,9 @@ struct DashboardView: View {
             // 4 Stroke Tabs
             strokeTabs
 
+            // Collapsible stroke technique quick reference
+            strokeTechniqueQuickRef
+
             // Focus Areas for selected stroke
             focusAreasContent
 
@@ -322,6 +319,136 @@ struct DashboardView: View {
         }
     }
 
+    // MARK: - Stroke Technique Quick Reference
+
+    private var strokeTechniqueQuickRef: some View {
+        Group {
+            if selectedStrokeTab != nil {
+                VStack(alignment: .leading, spacing: 8) {
+                    // Collapsible header - always visible when stroke selected
+                    Button {
+                        withAnimation(.easeInOut(duration: 0.25)) {
+                            isStrokeTechniqueExpanded.toggle()
+                        }
+                    } label: {
+                        HStack {
+                            Image(systemName: "lightbulb")
+                                .font(.caption)
+                                .foregroundStyle(PoolTheme.mid)
+
+                            Text("Technique Quick Reference")
+                                .font(.caption.bold())
+                                .foregroundStyle(PoolTheme.smoke)
+
+                            Spacer()
+
+                            Image(systemName: isStrokeTechniqueExpanded ? "chevron.down" : "chevron.right")
+                                .font(.caption)
+                                .foregroundStyle(PoolTheme.mid)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+
+                    // Expandable content - only when expanded AND content loaded
+                    if isStrokeTechniqueExpanded, let content = strokeTechniqueContent {
+                        VStack(alignment: .leading, spacing: 12) {
+                            // Mental cues (if available)
+                            if !content.mentalCues.isEmpty {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text("Mental Cues")
+                                        .font(.caption2.bold())
+                                        .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+
+                                    ForEach(content.mentalCues, id: \.self) { cue in
+                                        Text(cue)
+                                            .font(.caption2)
+                                            .foregroundStyle(PoolTheme.deep)
+                                    }
+                                }
+                            }
+
+                            // Image references
+                            if !content.imageReferences.isEmpty {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text("Key Positions")
+                                        .font(.caption2.bold())
+                                        .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+
+                                    ForEach(content.imageReferences, id: \.title) { ref in
+                                        VStack(alignment: .leading, spacing: 2) {
+                                            Text(ref.title)
+                                                .font(.caption2.bold())
+                                                .foregroundStyle(PoolTheme.mid)
+
+                                            ForEach(ref.cues, id: \.self) { cue in
+                                                Text(cue)
+                                                    .font(.caption2)
+                                                    .foregroundStyle(PoolTheme.deep.opacity(0.8))
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        .padding(.top, 4)
+                        .transition(.opacity.combined(with: .move(edge: .top)))
+                    }
+                }
+                .padding(.vertical, 8)
+                .background(PoolTheme.light.opacity(0.2))
+                .clipShape(RoundedRectangle(cornerRadius: 8))
+            }
+        }
+        .task(id: selectedStrokeTab) {
+            // Load content whenever stroke tab changes - task is on Group, not inside conditional
+            loadStrokeTechniqueContent()
+        }
+    }
+
+    private func loadStrokeTechniqueContent() {
+        guard let stroke = selectedStrokeTab else {
+            strokeTechniqueContent = nil
+            return
+        }
+
+        // Load preprocessed JSON file
+        guard let url = Bundle.main.url(forResource: "stroke-quick-reference", withExtension: "json", subdirectory: "swimming-strokes") ??
+                      Bundle.main.url(forResource: "stroke-quick-reference", withExtension: "json", subdirectory: "Resources/swimming-strokes") ??
+                      Bundle.main.url(forResource: "stroke-quick-reference", withExtension: "json") else {
+            #if DEBUG
+            print("🔧 stroke-quick-reference.json not found in bundle")
+            #endif
+            strokeTechniqueContent = nil
+            return
+        }
+
+        guard let data = try? Data(contentsOf: url),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let strokes = json["strokes"] as? [String: Any],
+              let strokeData = strokes[stroke.rawValue.lowercased()] as? [String: Any] else {
+            #if DEBUG
+            print("🔧 Failed to parse stroke-quick-reference.json for \(stroke.rawValue)")
+            #endif
+            strokeTechniqueContent = nil
+            return
+        }
+
+        let mentalCues = (strokeData["mentalCues"] as? [String] ?? [])
+        let imageRefs = (strokeData["imageReferences"] as? [[String: Any]] ?? []).map { refDict in
+            ImageReference(
+                title: refDict["title"] as? String ?? "",
+                cues: refDict["cues"] as? [String] ?? []
+            )
+        }
+
+        #if DEBUG
+        print("🔧 Loaded stroke quick reference for \(stroke.rawValue): \(mentalCues.count) cues, \(imageRefs.count) refs")
+        #endif
+
+        strokeTechniqueContent = StrokeQuickReferenceContent(mentalCues: mentalCues, imageReferences: imageRefs)
+    }
+
     // MARK: - Focus Areas Content
 
     private var focusAreasContent: some View {
@@ -363,7 +490,8 @@ struct DashboardView: View {
                                 onToggleExpand: { toggleGoalExpand(goal.id) },
                                 onUpdateStatus: { updateGoalStatus(goal, newStatus: $0) },
                                 onDelete: { deleteGoal(goal) },
-                                onEditNotes: { showGoalNotes(goal) }
+                                onEditNotes: { showGoalNotes(goal) },
+                                onGenerateCues: { Task { await generateFocusCues(for: goal) } }
                             )
                         }
                     }
@@ -426,18 +554,37 @@ struct DashboardView: View {
         Task { await appModel.saveNote(updatedNote) }
     }
 
+    private func generateFocusCues(for goal: Goal) async {
+        guard generatingCuesGoalId == nil else { return }
+        generatingCuesGoalId = goal.id
+
+        let cues = await appModel.generateFocusCues(for: goal, stroke: selectedStrokeTab)
+
+        guard var updatedNote = note,
+              let index = updatedNote.goals.firstIndex(where: { $0.id == goal.id }),
+              let cues = cues, !cues.isEmpty else {
+            generatingCuesGoalId = nil
+            return
+        }
+
+        updatedNote.goals[index].suggestedCues = cues
+        updatedNote.goals[index].updatedAt = SwimNoteDateFormatting.string(from: Date())
+        note = updatedNote
+        generatingCuesGoalId = nil
+
+        Task { await appModel.saveNote(updatedNote) }
+    }
+
     // MARK: - Session Actions
 
-    private func toggleTodaySessionCompletion() {
-        guard let session = todaySession else { return }
-
+    private func toggleSessionCompletion(sessionId: String) {
         // Update ALL copies of this session across ALL plans
         var updatedPlans = appModel.weeklyPlans
 
         for planIndex in updatedPlans.indices {
             var updatedSessions = updatedPlans[planIndex].detailedSessions
             for sessionIndex in updatedSessions.indices {
-                if updatedSessions[sessionIndex].id == session.id {
+                if updatedSessions[sessionIndex].id == sessionId {
                     updatedSessions[sessionIndex].isCompleted.toggle()
                 }
             }
@@ -692,23 +839,25 @@ struct DashboardView: View {
                 }
             }
 
-            // Priority: show today's session from weekly plan
-            if let session = todaySession {
-                SwipeToToggleCompleteRow(
-                    isAssigned: session.isAssigned,
-                    isCompleted: session.isCompleted,
-                    onToggle: { toggleTodaySessionCompletion() }
-                ) {
-                    SessionCard(
-                        session: session,
-                        isExpanded: false,
-                        onToggleExpand: { selectedSession = session },
-                        onDateChange: nil,
-                        showDatePicker: false,
-                        poolType: nil,
-                        onDelete: nil,
-                        onComplete: nil
-                    )
+            // Priority: show today's sessions from weekly plan (supports multiple sessions per day)
+            if !todaySessions.isEmpty {
+                ForEach(todaySessions) { session in
+                    SwipeToToggleCompleteRow(
+                        isAssigned: session.isAssigned,
+                        isCompleted: session.isCompleted,
+                        onToggle: { toggleSessionCompletion(sessionId: session.id) }
+                    ) {
+                        SessionCard(
+                            session: session,
+                            isExpanded: false,
+                            onToggleExpand: { selectedSession = session },
+                            onDateChange: nil,
+                            showDatePicker: false,
+                            poolType: nil,
+                            onDelete: nil,
+                            onComplete: nil
+                        )
+                    }
                 }
             } else if let plan = todayPlan {
                 // Legacy: show old TrainingPlan format
@@ -891,6 +1040,18 @@ private func makeEmptyPreviewModel() -> SwimNoteAppModel {
     model.loadBundledContent()
 
     return model
+}
+
+// MARK: - Stroke Quick Reference Content
+
+struct StrokeQuickReferenceContent {
+    let mentalCues: [String]
+    let imageReferences: [ImageReference]
+}
+
+struct ImageReference {
+    let title: String
+    let cues: [String]
 }
 
 #Preview("Dashboard - With Goals and Session") {

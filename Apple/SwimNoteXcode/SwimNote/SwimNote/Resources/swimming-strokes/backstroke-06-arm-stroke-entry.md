@@ -35,7 +35,7 @@ Arm stroke entry in backstroke sets up the entire pull phase. The pinky finger e
 | **Clean Entry Drill** | Minimize splash on entry |
 | **Single-Arm Entry** | One arm only, perfect entry position |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Marker Entry Drill (pool markers taped on deck at shoulder width)
 **Self-Check:** Count percentage of entries that land approximately at your shoulder marker, little finger first

@@ -35,7 +35,7 @@ Proper breathing technique is essential for maintaining body position and rhythm
 | **One Goggle Drill** | Focus on keeping exactly one goggle in water when breathing. |
 | **Bilateral Pattern Drill** | Swim breathing every 3 strokes (left-right-left) consistently. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: One Goggle Drill (200m continuous)
 **Self-Check:** Count percentage of breaths where you feel one goggle still submerged
 

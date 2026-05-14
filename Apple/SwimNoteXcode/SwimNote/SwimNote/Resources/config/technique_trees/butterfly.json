@@ -10,7 +10,7 @@
       "level": 1,
       "name": "Body Position & Horizontal Alignment",
       "description": "Maintaining a flat, horizontal body position on the water surface is the foundation of efficient butterfly swimming. The chest press initiates the undulation motion, and proper head position keeps the hips high. This is the easiest technique to learn but critical for all subsequent skills.",
-      "revisit": true,
+      "revisit": false,
       "prerequisites": [],
       "children": [
         "fly_dolphin_kick_mechanics"

@@ -10,7 +10,7 @@
       "level": 1,
       "name": "Body Position & Streamline",
       "description": "Body position and streamline form the foundation for all other freestyle techniques. A proper body position minimizes drag and allows all subsequent techniques to work efficiently. This is considered the easiest technique to learn but is critical to master first.",
-      "revisit": true,
+      "revisit": false,
       "prerequisites": [],
       "children": [
         "free_flutter_kick"

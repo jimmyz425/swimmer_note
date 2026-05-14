@@ -2,14 +2,14 @@ import Foundation
 
 public struct TechniqueMarkdownParser: Sendable {
     public init() {}
-    
+
     public func parse(filename: String, rawContent: String) -> ParsedTechniqueContent {
         let title = extractTitle(from: rawContent)
         let (overview, difficulty) = extractOverview(from: rawContent)
         let keyPoints = extractKeyPoints(from: rawContent)
         let commonMistakes = extractCommonMistakes(from: rawContent)
         let specificDrills = extractSpecificDrills(from: rawContent)
-        let competitiveDrills = extractCompetitiveDrills(from: rawContent)
+        let competitiveMetrics = extractCompetitiveMetrics(from: rawContent)
         let relatedTechniques = extractRelatedTechniques(from: rawContent)
         let techniqueTable = extractTechniqueTable(from: rawContent)
         let (prevFile, nextFile) = extractNavigationLinks(from: rawContent)
@@ -22,7 +22,7 @@ public struct TechniqueMarkdownParser: Sendable {
             keyPoints: keyPoints,
             commonMistakes: commonMistakes,
             specificDrills: specificDrills,
-            competitiveDrills: competitiveDrills,
+            competitiveMetrics: competitiveMetrics,
             relatedTechniques: relatedTechniques,
             techniqueTable: techniqueTable,
             prevFile: prevFile,
@@ -162,25 +162,25 @@ public struct TechniqueMarkdownParser: Sendable {
                 continue
             }
 
-            // Handle dry-land training files: sections ending with "Drills"
-            if trimmed.hasPrefix("## ") && trimmed.hasSuffix("Drills") && !trimmed.hasSuffix("Competitive Drills") {
+            // Handle dry-land training files: sections containing "Drills" (not just ending with)
+            // These have multiple sections like "## Core & Body Position Drills", "## Rotation Drills", etc.
+            // Also handle sections with parenthetical suffixes like "## Core & Undulation Drills (Foundation)"
+            if trimmed.hasPrefix("## ") && trimmed.contains("Drills") && !trimmed.contains("Competitive Metrics") {
                 inSection = true
                 skipHeaderRow = true
                 continue
             }
 
             if inSection {
-                // Stop at next section
-                if trimmed.hasPrefix("## ") && !trimmed.hasSuffix("Drills") {
+                // Stop at next section that is NOT a drill section
+                if trimmed.hasPrefix("## ") && !trimmed.contains("Drills") {
                     inSection = false
                     continue
                 }
 
-                // Stop at "---" divider between drill sections
-                if trimmed == "---" {
-                    inSection = false
-                    continue
-                }
+                // For dry-land files: DON'T stop at "---" divider between drill sections
+                // The "---" just separates drill categories, not ends the parsing
+                // Only stop at non-drill sections (handled above)
 
                 if trimmed.hasPrefix("|") && trimmed.hasSuffix("|") {
                     if skipHeaderRow {
@@ -218,38 +218,38 @@ public struct TechniqueMarkdownParser: Sendable {
         return drills
     }
     
-    private func extractCompetitiveDrills(from content: String) -> [CompetitiveDrill] {
+    private func extractCompetitiveMetrics(from content: String) -> [CompetitiveMetric] {
         let lines = content.split(separator: "\n", omittingEmptySubsequences: false)
-        var drills: [CompetitiveDrill] = []
-        var currentDrill: CompetitiveDrillData?
+        var metrics: [CompetitiveMetric] = []
+        var currentMetric: CompetitiveMetricData?
         var tieredTargets: [String: String] = [:]
         var videoChecks: [String] = []
         var inTieredBlock = false
-        
+
         for line in lines {
             let trimmed = line.trimmingCharacters(in: .whitespaces)
-            
-            // Start new drill: #### Drill N: Name
+
+            // Start new metric: #### Drill N: Name (note: markdown still uses "Drill" header)
             if trimmed.hasPrefix("#### Drill ") {
-                // Save previous drill
-                if let drillData = currentDrill {
-                    drills.append(CompetitiveDrill(
-                        name: drillData.name,
-                        selfCheck: drillData.selfCheck,
-                        tieredTargetsTitle: drillData.tieredTargetsTitle,
-                        tieredTargets: drillData.tieredTargets,
-                        videoChecks: drillData.videoChecks,
-                        competitiveImpact: drillData.competitiveImpact
+                // Save previous metric
+                if let metricData = currentMetric {
+                    metrics.append(CompetitiveMetric(
+                        name: metricData.name,
+                        selfCheck: metricData.selfCheck,
+                        tieredTargetsTitle: metricData.tieredTargetsTitle,
+                        tieredTargets: metricData.tieredTargets,
+                        videoChecks: metricData.videoChecks,
+                        competitiveImpact: metricData.competitiveImpact
                     ))
                 }
-                
-                // Parse drill name: "#### Drill 1: Streamline Push-offs (measure distance, not time)"
-                let drillLine = trimmed.dropFirst("#### Drill ".count)
-                if let colonIndex = drillLine.firstIndex(of: ":") {
-                    let name = String(drillLine[drillLine.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
-                    currentDrill = CompetitiveDrillData(name: stripMarkdown(name))
+
+                // Parse metric name: "#### Drill 1: Streamline Push-offs (measure distance, not time)"
+                let metricLine = trimmed.dropFirst("#### Drill ".count)
+                if let colonIndex = metricLine.firstIndex(of: ":") {
+                    let name = String(metricLine[metricLine.index(after: colonIndex)...]).trimmingCharacters(in: .whitespaces)
+                    currentMetric = CompetitiveMetricData(name: stripMarkdown(name))
                 } else {
-                    currentDrill = CompetitiveDrillData(name: stripMarkdown(String(drillLine)))
+                    currentMetric = CompetitiveMetricData(name: stripMarkdown(String(metricLine)))
                 }
                 tieredTargets = [:]
                 videoChecks = []
@@ -257,28 +257,28 @@ public struct TechniqueMarkdownParser: Sendable {
                 continue
             }
 
-            if currentDrill != nil {
+            if currentMetric != nil {
                 // Self-Check
                 if trimmed.hasPrefix("**Self-Check:**") || trimmed.hasPrefix("**Self Check:**") {
                     let check = trimmed.replacingOccurrences(of: "**Self-Check:**", with: "")
                         .replacingOccurrences(of: "**Self Check:**", with: "")
                         .trimmingCharacters(in: .whitespaces)
-                    currentDrill?.selfCheck = stripMarkdown(check)
+                    currentMetric?.selfCheck = stripMarkdown(check)
                     continue
                 }
-                
+
                 // Tiered targets callout block
                 if trimmed.hasPrefix("> [!note] Tiered Targets") || trimmed.hasPrefix("> [!tip] Tiered") {
                     // Extract title from parentheses: "Tiered Targets (Title here)"
                     if let parenStart = trimmed.range(of: "("),
                        let parenEnd = trimmed.range(of: ")", range: parenStart.upperBound..<trimmed.endIndex) {
                         let title = String(trimmed[parenStart.upperBound..<parenEnd.lowerBound])
-                        currentDrill?.tieredTargetsTitle = stripMarkdown(title)
+                        currentMetric?.tieredTargetsTitle = stripMarkdown(title)
                     }
                     inTieredBlock = true
                     continue
                 }
-                
+
                 if inTieredBlock {
                     if trimmed.hasPrefix(">") {
                         let content = String(trimmed.dropFirst(1)).trimmingCharacters(in: .whitespaces)
@@ -306,48 +306,48 @@ public struct TechniqueMarkdownParser: Sendable {
                                 let target = stripMarkdown(targetPart)
 
                                 tieredTargets[tierName] = target
-                                currentDrill?.tieredTargets[tierName] = target
+                                currentMetric?.tieredTargets[tierName] = target
                             }
                         }
                     } else if !trimmed.isEmpty && !trimmed.hasPrefix(">") {
                         inTieredBlock = false
                     }
                 }
-                
+
                 // Video Check
                 if trimmed.hasPrefix("**Video Check") {
                     continue // Skip header
                 }
-                if trimmed.hasPrefix("- ") && currentDrill?.competitiveImpact.isEmpty == true && !inTieredBlock {
+                if trimmed.hasPrefix("- ") && currentMetric?.competitiveImpact.isEmpty == true && !inTieredBlock {
                     // Could be video check or competitive impact content
                     let content = stripMarkdown(String(trimmed.dropFirst(2)))
                     videoChecks.append(content)
                 }
-                
+
                 // Competitive Impact
                 if trimmed.hasPrefix("**Competitive Impact:**") || trimmed.hasPrefix("**Competitive Impact:**") {
                     let impact = trimmed.replacingOccurrences(of: "**Competitive Impact:**", with: "")
                         .replacingOccurrences(of: "**Competitive impact:**", with: "")
                         .trimmingCharacters(in: .whitespaces)
-                    currentDrill?.competitiveImpact = stripMarkdown(impact)
+                    currentMetric?.competitiveImpact = stripMarkdown(impact)
                     continue
                 }
             }
         }
-        
-        // Save last drill
-        if let drillData = currentDrill {
-            drills.append(CompetitiveDrill(
-                name: drillData.name,
-                selfCheck: drillData.selfCheck,
-                tieredTargetsTitle: drillData.tieredTargetsTitle,
-                tieredTargets: drillData.tieredTargets,
-                videoChecks: drillData.videoChecks,
-                competitiveImpact: drillData.competitiveImpact
+
+        // Save last metric
+        if let metricData = currentMetric {
+            metrics.append(CompetitiveMetric(
+                name: metricData.name,
+                selfCheck: metricData.selfCheck,
+                tieredTargetsTitle: metricData.tieredTargetsTitle,
+                tieredTargets: metricData.tieredTargets,
+                videoChecks: metricData.videoChecks,
+                competitiveImpact: metricData.competitiveImpact
             ))
         }
-        
-        return drills
+
+        return metrics
     }
     
     private func extractRelatedTechniques(from content: String) -> [String] {
@@ -587,7 +587,7 @@ public struct TechniqueMarkdownParser: Sendable {
     }
 }
 
-private struct CompetitiveDrillData {
+private struct CompetitiveMetricData {
     var name: String
     var selfCheck: String = ""
     var tieredTargetsTitle: String = ""

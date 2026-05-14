@@ -35,7 +35,7 @@ Whole-body coordination unites all butterfly techniques into a single, continuou
 | **Contrast Drill** | Swim 25m intentionally wrong, then 25m correctly. Feel the difference. |
 | **Count Strokes** | Count strokes per length. Fewer strokes with same speed = better efficiency. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: 3-Kick Per Cycle Drill (4x50m, 3 dolphin kicks per arm cycle)
 **Self-Check:** Stroke count per 25m when using 3 kicks vs normal 2 kicks
 

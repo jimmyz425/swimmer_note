@@ -36,7 +36,7 @@ The catch is the most critical technique for propulsion in freestyle. The Early 
 | **Catch-Up with EVF** | Catch-up drill emphasizing high elbow catch position before pulling. |
 | **Single-Arm Catch Focus** | Swim one arm only, focus on perfect catch mechanics. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Fist Drill (4x100m set, swim with closed fists)
 **Self-Check:** Time difference between fist swimming vs normal swimming
 

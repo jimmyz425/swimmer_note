@@ -35,7 +35,7 @@ The pull phase is where the majority of propulsion happens in freestyle. After s
 | **Catch-Up Pull** | Catch-up emphasizing pull path and finish point. |
 | **Ankle Band Swimming** | No kick allowed, forces efficient pull for propulsion. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Single-Arm Pull (4x50m per arm, pull buoy only, no kick)
 **Self-Check:** Time per 50m single-arm swimming
 

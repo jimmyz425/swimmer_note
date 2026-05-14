@@ -69,6 +69,9 @@ public enum PlanType: String, CaseIterable, Identifiable, Codable {
 public struct PlanContext: Sendable {
     public let profile: UserProfile?
     public let notes: [TrainingNote]
+    public let pastSessions: [String]  // Individual session summaries from past plans within 2-week window
+    public let pastTechniqueSections: [String]  // Key focus and common mistakes from technique files used in past sessions
+    public let targetWeek: Date?  // Week starting date for the new plan
     public let poolType: PoolType
     public let sessionsPerWeek: Int  // 0 = not determined, LLM will decide based on tier guidance
     public let strokeBalance: [StrokeBalanceInfo]
@@ -77,6 +80,9 @@ public struct PlanContext: Sendable {
     public init(
         profile: UserProfile?,
         notes: [TrainingNote],
+        pastSessions: [String] = [],
+        pastTechniqueSections: [String] = [],
+        targetWeek: Date? = nil,
         poolType: PoolType,
         sessionsPerWeek: Int = 0,  // Default 0 - LLM determines from tier guidance
         strokeBalance: [StrokeBalanceInfo],
@@ -84,6 +90,9 @@ public struct PlanContext: Sendable {
     ) {
         self.profile = profile
         self.notes = notes
+        self.pastSessions = pastSessions
+        self.pastTechniqueSections = pastTechniqueSections
+        self.targetWeek = targetWeek
         self.poolType = poolType
         self.sessionsPerWeek = sessionsPerWeek
         self.strokeBalance = strokeBalance
@@ -133,7 +142,7 @@ public protocol PlanGenerationStrategy: Sendable {
     func buildSystemRole() -> String
     func buildUserPrompt(context: PlanContext) -> String
     func buildOutlinePrompt(context: PlanContext) -> String  // Phase 1: Rough outline
-    func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String  // Phase 2: Detailed session
+    func buildDetailPrompt(sessionOutline: SessionOutline, weeklyOutline: WeeklyPlanOutline, context: PlanContext) -> String  // Phase 2: Detailed session
     func buildDryLandPrompt(outline: WeeklyPlanOutline, context: PlanContext) -> String  // Phase 3: Weekly dryland
     func guidanceFiles() -> [String]
     func coachingRules() -> String
@@ -148,8 +157,8 @@ extension PlanGenerationStrategy {
     }
 
     /// Default Phase 2 prompt - detailed session for one outline (no dryland)
-    public func buildDetailPrompt(sessionOutline: SessionOutline, context: PlanContext) -> String {
-        return buildDefaultDetailPrompt(sessionOutline, context: context)
+    public func buildDetailPrompt(sessionOutline: SessionOutline, weeklyOutline: WeeklyPlanOutline, context: PlanContext) -> String {
+        return buildDefaultDetailPrompt(sessionOutline, weeklyOutline: weeklyOutline, context: context)
     }
 
     /// Default Phase 3 prompt - weekly dryland based on full plan
@@ -166,10 +175,13 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
     let isMacrocyclePhase = planType.requiresAdvancedTier
 
     var prompt = """
-    Generate a PHASE 1 WEEKLY PLAN OUTLINE for \(planType.rawValue).
-    This is a ROUGH outline - NO detailed sets, just session focuses and structure.
+    You are a professional swim coach preparing a weekly training plan for \(planType.rawValue).
 
-    MANDATORY FIRST STEPS - Call these tools BEFORE generating the outline:
+    You have all the context you need below: swimmer profile, past training sessions with technique details, and USA Swimming tier guidance. Review everything carefully before responding.
+
+    ---
+
+    TOOL CALLS (do these first):
 
     1. Call read_usa_swimming_structure(section: "all") to get comprehensive tier background:
        - Quick-Reference Summary Table with all tier definitions
@@ -179,14 +191,9 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
        - Sub-tier breakdowns with detailed criteria
        - Training focus allocation by tier
 
-       CRITICAL: Use this document to DETERMINE:
-       - Appropriate number of sessions per week for the swimmer's tier/sub-tier
-       - Weekly distance target (in meters, convert from km in document)
-       - Per-session distance target based on practice duration guidance
-       - Zone distribution percentages to follow
+       Use this to determine sessions/week, weekly distance, per-session targets, and zone distribution.
 
     2. Call get_tier_guidance() to get specific guidance for the swimmer's current tier/sub-tier.
-       This returns pre-calculated values, but cross-check with the full document for context.
 
     """
 
@@ -197,14 +204,6 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
        - Detailed zone distribution percentages for this specific phase
        - Interval characteristics (distance, rest patterns) for the phase
        - Sample week structures for each macrocycle phase
-       - Phase progression over training cycles
-
-       MACROCYCLE PHASE CONTEXT:
-       - General Preparation: High aerobic volume (60-75% Zone 1-2), threshold introduction (5-10%)
-       - Specific Preparation: Reduced aerobic, increased threshold (15-25% Zone 4), VO2max (10-15%)
-       - Pre-Competition: Race-pace specificity (15-20% Zone 5-6), reduced volume
-       - Competition Phase: High sprint/speed (20-30% Zone 6), race-pace precision
-       - Taper: Volume reduction 41-60%, intensity maintained, race-pace focus (30-40% Zone 6)
 
     """
     }
@@ -216,22 +215,11 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
         - Training Tier: \(profile.trainingTier.displayName) (\(profile.trainingTier.fullName))
         - Sub-Tier: \(profile.subTier.displayName)
 
-        CRITICAL: Use read_usa_swimming_structure() to understand what \(profile.trainingTier.displayName) \(profile.subTier.displayName) means.
-        The document has:
-        - Recommended practices per week for this tier/sub-tier
-        - Weekly distance ranges (in km - convert to meters: 1 km = 1000m)
-        - Per-session distance ranges based on practice duration
-        - Zone distribution percentages specific to this sub-tier
-
-        IMPORTANT: Determine sessions/week from tier guidance, NOT from user input.
-        Example: Bronze 1 typically trains 3 sessions/week, Silver 3 typically 4-5 sessions/week.
-
         Pool Type: \(context.poolType.fullLabel)
         Pool length: \(Int(context.poolType.poolLengthMeters))\(context.poolType == .scy ? "yd" : "m"). Adjust distance targets accordingly.
 
         """
     } else {
-        // Default tier description for intermediate level
         prompt += """
         SWIMMER PROFILE:
         - Training Level: Intermediate (Silver / Age Group)
@@ -242,43 +230,74 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
         """
     }
 
-    // Add recent training context if available
-    if !context.notes.isEmpty {
-        let recentDates = context.notes.prefix(7).map { $0.date }.joined(separator: ", ")
+    // Past training data
+    if !context.pastSessions.isEmpty {
         prompt += """
-        RECENT TRAINING (last 7 sessions): \(recentDates)
+        PAST TRAINING SESSIONS (\(context.pastSessions.count) sessions from the past 2 weeks):
+        \(context.pastSessions.joined(separator: "\n"))
 
         """
+
+        if !context.pastTechniqueSections.isEmpty {
+            prompt += """
+            TECHNIQUE DETAILS COVERED (key focus points and common mistakes from each technique file used in past sessions):
+            \(context.pastTechniqueSections.joined(separator: "\n\n"))
+
+            """
+        }
     } else {
         prompt += """
-        RECENT TRAINING: NO TRAINING HISTORY - This is a NEW swimmer.
-        Plan should focus on technique fundamentals and gradual volume introduction.
-        Do NOT reference any past sessions, drills, or training patterns.
+        NO PAST PLANS — This is a new swimmer. Focus on technique fundamentals and gradual volume introduction.
 
         """
     }
 
     prompt += """
-    YOUR TASK - Determine and generate:
+    ————————————————————————————————————————————————
 
-    STEP 1: From tier guidance, determine:
-    - Sessions per week (use practices_per_week recommendation from get_tier_guidance)
-    - Weekly total distance (use weekly_distance range, convert km to meters)
-    - Per-session target (use per_session_distance range)
+    YOUR ROLE: Write like a professional swim coach. Review all the data above — sessions, technique content, tier guidance — and produce three things in order:
 
-    STEP 2: Generate the weekly outline with:
-    - Number of sessions = practices_per_week recommendation for tier
-    - Each session with appropriate distance based on per_session_distance range
-    - Technique focus appropriate for tier's training focus allocation
-    - Zone distribution matching tier's zone percentages
+    ## PART 1: COACHING SUMMARY (the "State of the Swimmer")
 
-    OUTPUT JSON FORMAT (outline only - NO detailed sets):
+    Produce a clear, narrative summary of where this swimmer has been over the past 2 weeks. Write in plain English — like you're explaining it to the swimmer or their parent at a pool-side check-in. Include:
+
+    - **Volume & consistency** — How many sessions were planned, were they spread well across the week?
+    - **Stroke balance** — Which strokes got attention, which were neglected?
+    - **Technique progression** — Look at the technique details above. What specific skills were worked on? What level (body position → arm entry → catch → pull) is each stroke currently at? What's the natural next step for each stroke?
+    - **What needs revisiting** — Identify any fundamentals from 2+ weeks ago that should recur (e.g., body position always needs periodic reinforcement).
+    - **Goal progress** — Any active or achieved goals from recent logs.
+
+    If there are no past sessions, state this is a fresh start and outline what the first week should focus on.
+
+    ## PART 2: WEEK PREVIEW (the "What's Coming")
+
+    Before generating the JSON schedule, write a forward-looking preview of what this week's plan will accomplish and why. This should:
+
+    - Explain the weekly focus in coaching terms
+    - Reference specific past techniques this week builds on (e.g., "Now that freestyle body position and breathing are established, we introduce body rotation and early arm entry")
+    - Note which fundamentals will be revisited
+    - Explain the session structure rationale (why these strokes on these days)
+    - Address any neglected strokes and how they'll be reintroduced
+
+    ## PART 3: WEEKLY PLAN (JSON)
+
+    Generate the outline in the JSON format below. Each session must have:
+
+    - Session count from tier guidance (practices_per_week), NOT arbitrary selection
+    - Weekly distance aligned with tier's weekly_distance range
+    - Per-session distance aligned with tier's per_session_distance range
+    - Zone distribution matching tier's percentages
+    - Technique focus that progresses from what was covered before (see your Coaching Summary above)
+    - At least one REVISIT session if past training exists
+    - A neglected stroke session if applicable
+
+    ```
     {
       "tierGuidance": {
-        "tier": "string - tier name from document",
-        "subTier": "string - sub-tier name",
-        "sessionsPerWeek": "int - determined from tier guidance",
-        "weeklyDistanceTarget": "int - meters (converted from km in document)",
+        "tier": "string",
+        "subTier": "string",
+        "sessionsPerWeek": "int",
+        "weeklyDistanceTarget": "int - meters",
         "perSessionTarget": "int - meters",
         "zoneDistribution": {
           "zone0": "string - percentage",
@@ -293,8 +312,22 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
       "overview": {
         "weekFocus": "string - main focus for the week"
       },
-      "pastTrainingSummary": "string - 2-3 sentences summarizing recent training patterns",
-      "planConnectionRationale": "string - how this week's plan builds on past training",
+      "twoWeekSummary": {
+        "totalSessions": "int",
+        "strokeDistribution": {
+          "freestyle": "int",
+          "backstroke": "int",
+          "breaststroke": "int",
+          "butterfly": "int"
+        },
+        "neglectedStrokes": ["array of stroke names"],
+        "goalProgress": "string - goal status from logs",
+        "keyTrends": "string - patterns (e.g., 'freestyle heavy, no butterfly')",
+        "techniqueProgression": "string - where each stroke is technically and what level comes next",
+        "coveredTechniques": "string - specific focus points and mistakes covered (e.g., 'freestyle body position: look down, hips high. freestyle breathing: bilateral, avoid lifting head')"
+      },
+      "pastTrainingSummary": "string - the COACHING SUMMARY from Part 1 above — plain English narrative",
+      "planConnectionRationale": "string - the WEEK PREVIEW from Part 2 above — forward-looking plan rationale",
       "schedule": [
         {
           "sessionNumber": 1,
@@ -305,19 +338,18 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
           "techniqueFocus": "string - technique emphasis",
           "techniqueFileRef": "string - technique file reference",
           "addressesGoal": "string - which goal this addresses",
-          "estimatedDuration": "string - practice duration from tier guidance",
-          "estimatedDistance": "string - distance based on per_session range"
+          "estimatedDuration": "string - practice duration",
+          "estimatedDistance": "string - distance"
         }
       ],
-      "notes": "string - weekly rationale"
+      "notes": "string - weekly coaching rationale"
     }
+    ```
 
-    RULES:
-    - Session count MUST come from tier guidance (practices_per_week), NOT arbitrary selection
-    - Weekly distance MUST align with tier's weekly_distance range
-    - Per-session distance MUST align with tier's per_session_distance range
-    - Zone distribution MUST match tier's percentages (e.g., Bronze 1 has NO Zone 4-6)
-    - OUTPUT ONLY JSON (no explanations)
+    IMPORTANT:
+    - Output ONLY the JSON — no explanations before or after
+    - The pastTrainingSummary and planConnectionRationale fields should contain the full narrative text from Parts 1 and 2
+    - techniqueFileRef should reference specific technique files that match the session's focus (e.g., "freestyle-05-arm-entry" for an arm entry session)
     """
     return prompt
 }
@@ -325,7 +357,7 @@ private func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTyp
 // MARK: - Phase 2: Detail Prompt Builder
 
 /// Build default Phase 2 detail prompt for pool sessions (no dryland)
-private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context: PlanContext) -> String {
+private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyOutline: WeeklyPlanOutline, context: PlanContext) -> String {
     let cssPace: String
     if let profile = context.profile, let cssHistory = profile.cssHistory, let latestCSS = cssHistory.latestTest {
         cssPace = latestCSS.formattedPace
@@ -343,8 +375,20 @@ private func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, context:
     else if sessionOutline.poolSession.contains("Butterfly") { primaryStroke = "butterfly" }
     else { primaryStroke = "freestyle" }
 
+    let pastSummary = weeklyOutline.pastTrainingSummary ?? "No past training history available."
+    let planRationale = weeklyOutline.planConnectionRationale ?? ""
+    let coveredTech = weeklyOutline.twoWeekSummary?.coveredTechniques ?? ""
+    let techniqueProg = weeklyOutline.twoWeekSummary?.techniqueProgression ?? ""
+
     let prompt = """
     Generate PHASE 2 DETAILED SESSION for session #\(sessionOutline.sessionNumber).
+
+    PAST TRAINING: \(pastSummary)
+    PLAN RATIONALE: \(planRationale)
+
+    PAST TECHNIQUE COVERAGE (from Phase 1 summary):
+    \(coveredTech.isEmpty ? "No previous technique content to reference." : coveredTech)
+    \(techniqueProg.isEmpty ? "" : "TECHNIQUE PROGRESSION ANALYSIS: " + techniqueProg)
 
     SESSION CONTEXT:
     - Session focus: \(sessionOutline.poolSession) - \(sessionOutline.focus)
@@ -426,8 +470,12 @@ private func buildDefaultDryLandPrompt(_ outline: WeeklyPlanOutline, context: Pl
 
     let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
 
+    let drylandPastSummary = outline.pastTrainingSummary ?? "No past training history available."
+
     let prompt = """
     Generate DRY LAND EXERCISES to complement this week's swimming training plan.
+
+    PAST TRAINING: \(drylandPastSummary)
 
     WEEKLY POOL TRAINING SUMMARY:
     - Sessions: \(outline.schedule.count)
@@ -965,7 +1013,7 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
     public func coachingRules() -> String {
         return """
         SESSION BALANCE: 30% fundamentals, 50% current-level, 20% stretch.
-        For drills: read_technique_file("{stroke}-{number}-{name}.md") → tiered targets.
+        For drills: get_technique_drills("{stroke}-{number}-{name}") → specific + competitive drills with tiered targets.
         For intervals: get_css_info() + read_interval_research("zones") → accurate send-off times.
         """
     }

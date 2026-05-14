@@ -10,7 +10,7 @@
       "level": 1,
       "name": "Body Position",
       "description": "Body position is the foundation for all other backstroke techniques. A flat, horizontal body with hips riding high reduces drag and improves efficiency. This is the easiest technique to master and serves as the base upon which everything else is built.",
-      "revisit": true,
+      "revisit": false,
       "prerequisites": [],
       "children": [
         "back_head_position"

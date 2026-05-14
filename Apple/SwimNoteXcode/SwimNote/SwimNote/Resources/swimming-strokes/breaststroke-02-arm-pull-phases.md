@@ -40,7 +40,7 @@ The breaststroke arm pull consists of four distinct phases: Catch, Outsweep, Ins
 | **Single-Arm Breaststroke** | Keep one arm extended, pull with other arm. Switch halfway. |
 | **Sculling Drill** | Arms at chest level, small sculling motions. 2-3 minutes. |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Pull Only Drill (4x50m, pull buoy only, no kick)
 

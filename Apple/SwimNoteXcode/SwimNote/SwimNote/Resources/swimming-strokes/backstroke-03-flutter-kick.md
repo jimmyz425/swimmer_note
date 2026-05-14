@@ -38,7 +38,7 @@ The flutter kick in backstroke is a hip-driven, continuous motion that provides 
 | **Fin Training** | Use fins to develop ankle flexibility |
 | **Kick Count** | Count kicks per stroke cycle (6-beat standard) |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Vertical Back Kicking (deep water, arms crossed at chest)
 **Self-Check:** Hold vertical position with chin above water, no arm movement

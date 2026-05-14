@@ -40,14 +40,14 @@ struct ToolCallingConversationTests {
         #expect(openAI["content"] as? String == "Here is my advice")
     }
 
-    @Test("ConversationMessage.assistantToolCall converts to OpenAI format")
+    @Test("ConversationMessage.assistantToolCalls converts to OpenAI format")
     func conversationMessageToolCall() {
         let toolCall = ToolCall(
             id: "call_123",
             type: "function",
             function: ToolCallFunction(name: "read_technique_file", arguments: "{\"filename\": \"test\"}")
         )
-        let message = ConversationMessage.assistantToolCall(toolCall)
+        let message = ConversationMessage.assistantToolCalls([toolCall], reasoningContent: nil)
         let openAI = message.toOpenAIMessage()
 
         #expect(openAI["role"] as? String == "assistant")
@@ -69,19 +69,33 @@ struct ToolCallingConversationTests {
         #expect(openAI["content"] as? String == "File content here")
     }
 
-    @Test("ConversationMessage.assistantToolCall uses NSNull for content")
+    @Test("ConversationMessage.assistantToolCalls uses NSNull for content")
     func conversationMessageToolCallNSNull() {
         let toolCall = ToolCall(
             id: "call_123",
             type: "function",
             function: ToolCallFunction(name: "test", arguments: "{}")
         )
-        let message = ConversationMessage.assistantToolCall(toolCall)
+        let message = ConversationMessage.assistantToolCalls([toolCall], reasoningContent: nil)
         let openAI = message.toOpenAIMessage()
 
         // The content should be NSNull(), not nil or a string
         let content = openAI["content"]
         #expect(content is NSNull)
+    }
+
+    @Test("ConversationMessage.assistantToolCalls includes reasoning_content for DeepSeek V4")
+    func conversationMessageToolCallWithReasoning() {
+        let toolCall = ToolCall(
+            id: "call_123",
+            type: "function",
+            function: ToolCallFunction(name: "test", arguments: "{}")
+        )
+        let message = ConversationMessage.assistantToolCalls([toolCall], reasoningContent: "My reasoning process...")
+        let openAI = message.toOpenAIMessage()
+
+        #expect(openAI["role"] as? String == "assistant")
+        #expect(openAI["reasoning_content"] as? String == "My reasoning process...")
     }
 
     // MARK: - Conversation Flow Tests
@@ -114,11 +128,11 @@ struct ToolCallingConversationTests {
         let messages: [ConversationMessage] = [
             .system("You are a coach"),
             .user("Read freestyle technique"),
-            .assistantToolCall(ToolCall(
+            .assistantToolCalls([ToolCall(
                 id: "call_1",
                 type: "function",
                 function: ToolCallFunction(name: "read_technique_file", arguments: "{\"filename\": \"freestyle\"}")
-            )),
+            )], reasoningContent: nil),
             .toolResult("call_1", "{\"title\": \"Freestyle\"}")
         ]
 
@@ -131,24 +145,31 @@ struct ToolCallingConversationTests {
         #expect(openAIMessages[3]["role"] as? String == "tool")
     }
 
-    @Test("Multiple tool calls create multiple assistant messages")
+    @Test("Multiple tool calls create ONE assistant message (DeepSeek V4 compatible)")
     func multipleToolCallsMessages() {
+        // DeepSeek V4 requires ALL tool calls in ONE assistant message
         let messages: [ConversationMessage] = [
             .system("Coach"),
             .user("Help"),
-            .assistantToolCall(ToolCall(id: "call_1", type: "function", function: ToolCallFunction(name: "tool1", arguments: "{}"))),
-            .assistantToolCall(ToolCall(id: "call_2", type: "function", function: ToolCallFunction(name: "tool2", arguments: "{}"))),
+            .assistantToolCalls([
+                ToolCall(id: "call_1", type: "function", function: ToolCallFunction(name: "tool1", arguments: "{}")),
+                ToolCall(id: "call_2", type: "function", function: ToolCallFunction(name: "tool2", arguments: "{}"))
+            ], reasoningContent: nil),
             .toolResult("call_1", "result1"),
             .toolResult("call_2", "result2")
         ]
 
         let openAIMessages = messages.map { $0.toOpenAIMessage() }
 
-        #expect(openAIMessages.count == 6)
+        #expect(openAIMessages.count == 5)  // system, user, assistant (with 2 tool_calls), tool, tool
 
-        // Both tool calls should be in assistant messages
+        // ONE assistant message with ALL tool calls
         let assistantMessages = openAIMessages.filter { ($0["role"] as? String) == "assistant" }
-        #expect(assistantMessages.count == 2)
+        #expect(assistantMessages.count == 1)
+
+        // That single assistant message should have 2 tool_calls
+        let toolCalls = assistantMessages[0]["tool_calls"] as? [[String: Any]]
+        #expect(toolCalls?.count == 2)
 
         // Both results should be tool messages
         let toolMessages = openAIMessages.filter { ($0["role"] as? String) == "tool" }

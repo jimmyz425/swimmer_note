@@ -38,7 +38,7 @@ Body rotation in backstroke involves rolling 30-45 degrees (research range: 30-6
 | **Side Kick Back** | Kick on side on back, develop rotation feel |
 | **Catch-Up Rotation** | Pause between strokes at rotation peak |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: 6-1-6 Backstroke Drill (4x25m set)
 **Self-Check:** Stroke count per 25m

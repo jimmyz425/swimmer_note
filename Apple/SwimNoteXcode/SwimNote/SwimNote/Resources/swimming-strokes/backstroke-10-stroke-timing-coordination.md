@@ -36,7 +36,7 @@ Stroke timing and coordination integrate all other backstroke techniques into a 
 | **Tempo Trainer** | Use metronome for consistent rhythm |
 | **Stroke Count** | Count strokes per length for efficiency |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Metronome Swimming (4x200m set, use waterproof metronome or audible pool-side metronome)
 **Self-Check:** Perceived tempo consistency and stroke count stability

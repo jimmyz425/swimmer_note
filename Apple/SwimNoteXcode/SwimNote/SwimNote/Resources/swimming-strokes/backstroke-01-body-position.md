@@ -37,7 +37,7 @@ Body position is the foundation for all other backstroke techniques. A flat, hor
 | **Head Position Check** | Swim with small cup on forehead - keep it balanced |
 | **Streamline Back Kick** | Tight streamline position, kick to maintain body line |
 
-## Competitive Drills
+## Competitive Metrics
 
 #### Drill 1: Streamline Back Push-offs (15m wall)
 **Self-Check:** Count glide duration from push-off until you need to initiate first kick/stroke

@@ -35,7 +35,7 @@ The arm recovery is the phase where the arm moves through the air from exit to e
 | **Single-Arm Recovery** | Swim with one arm, focus purely on recovery mechanics. |
 | **Thumb-to-Thigh Drill** | Touch thumb to thigh during exit, then recover high elbow. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Finger Trail Drill (4x50m set)
 **Self-Check:** Count percentage of strokes where fingertips drag along water surface during recovery
 

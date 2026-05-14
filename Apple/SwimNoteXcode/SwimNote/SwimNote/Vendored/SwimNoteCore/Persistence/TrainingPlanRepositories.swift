@@ -14,7 +14,7 @@ public protocol TrainingPlanRepository: Sendable {
 public protocol WeeklyPlanRepository: Sendable {
     func listPlans(for userId: String) async -> [WeeklyTrainingPlan]
     func plan(for userId: String, weekStarting: String) async -> WeeklyTrainingPlan?
-    func sessionForDate(for userId: String, date: String) async -> DetailedSession?
+    func sessionsForDate(for userId: String, date: String) async -> [DetailedSession]
     func save(_ plan: WeeklyTrainingPlan, for userId: String) async throws
     func delete(planId: String, userId: String) async throws
 }
@@ -139,28 +139,35 @@ public actor JSONWeeklyPlanRepository: WeeklyPlanRepository {
         return try? decoder.decode(WeeklyTrainingPlan.self, from: data)
     }
 
-    /// Find session scheduled for a specific date
-    public func sessionForDate(for userId: String, date: String) async -> DetailedSession? {
+    /// Find all sessions scheduled for a specific date
+    public func sessionsForDate(for userId: String, date: String) async -> [DetailedSession] {
         // Parse the date string
         let formatter = DateFormatter()
         formatter.dateFormat = "yyyy-MM-dd"
-        guard formatter.date(from: date) != nil else { return nil }
+        guard formatter.date(from: date) != nil else { return [] }
 
-        // Find all plans for this user and search for session on this date
+        // Find all plans for this user and search for sessions on this date
         let plans = await listPlans(for: userId)
+
+        var matchingSessions: [DetailedSession] = []
 
         for plan in plans {
             for session in plan.detailedSessions {
                 if let sessionDate = session.scheduledDate {
                     let sessionDateStr = formatter.string(from: sessionDate)
                     if sessionDateStr == date {
-                        return session
+                        matchingSessions.append(session)
                     }
                 }
             }
         }
 
-        return nil
+        // Sort by time of day (morning → afternoon → evening)
+        return matchingSessions.sorted { first, second in
+            let firstOrder = first.timeOfDay?.rawValue ?? "morning"
+            let secondOrder = second.timeOfDay?.rawValue ?? "morning"
+            return firstOrder < secondOrder
+        }
     }
 
     public func save(_ plan: WeeklyTrainingPlan, for userId: String) async throws {

@@ -3,6 +3,8 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable var appModel: SwimNoteAppModel
     @State private var showLLMConfig: Bool = false
+    @State private var isSeedingDemoProfiles: Bool = false
+    @State private var seedResultMessage: String?
 
     private let credentialStore: any SecureCredentialStore = {
         #if canImport(Security)
@@ -19,6 +21,8 @@ struct SettingsView: View {
                     headerSection
 
                     llmStatusSection
+
+                    demoProfilesSection
 
                     iCloudSection
                 }
@@ -104,6 +108,52 @@ struct SettingsView: View {
             .frame(maxWidth: .infinity)
         }
         .poolCard()
+    }
+
+    private var demoProfilesSection: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Demo Profiles")
+                .font(.title3.bold())
+                .foregroundStyle(PoolTheme.deep)
+
+            HStack {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("\(appModel.profiles.count) profile(s)")
+                        .font(.headline)
+                        .foregroundStyle(PoolTheme.deep)
+                    Text("6 demo swimmers from pre-competitive to national level")
+                        .font(.caption)
+                        .foregroundStyle(PoolTheme.smoke)
+                }
+
+                Spacer()
+
+                Button("Seed") {
+                    Task { await seedDemoProfiles() }
+                }
+                .buttonStyle(.bordered)
+                .disabled(isSeedingDemoProfiles)
+            }
+
+            if let message = seedResultMessage {
+                Text(message)
+                    .font(.caption)
+                    .foregroundStyle(message.contains("failed") ? .red : .green)
+            }
+        }
+        .poolCard()
+    }
+
+    private func seedDemoProfiles() async {
+        isSeedingDemoProfiles = true
+        seedResultMessage = nil
+        let count = await appModel.seedDemoProfiles()
+        isSeedingDemoProfiles = false
+        if count > 0 {
+            seedResultMessage = "Seeded \(count) demo profile(s). Tap the profile icon in Tools to switch."
+        } else {
+            seedResultMessage = "Demo profiles already exist. Delete them first to re-seed."
+        }
     }
 
     private var iCloudSection: some View {

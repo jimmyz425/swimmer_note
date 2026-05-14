@@ -34,7 +34,7 @@ The dolphin kick originates from the hips and core using a whipping motion with 
 | **Kick with Fins** | Use short training fins to feel proper whip motion and develop ankle flexibility. |
 | **Underwater Dolphin Kick** | Push off wall in streamline, perform rapid dolphin kicks underwater. Builds power and timing. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Vertical Dolphin Kick (deep water, arms extended overhead in streamline)
 **Self-Check:** Hold vertical position with chin above water, no arm movement
 

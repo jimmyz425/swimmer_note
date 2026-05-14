@@ -10,7 +10,7 @@
       "level": 1,
       "name": "Body Position",
       "description": "Proper body position is the foundation of breaststroke technique. The goal is to keep the body flat and streamlined at the water surface during the glide phase, with the head looking down at the pool bottom. The wave-style undulation used in elite technique lifts the body slightly during the pull phase and \"dives\" the upper body forward during kick and glide, creating wave-like motion that reduces drag compared to traditional flat style. Body position accounts for approximately 20% of the breaststroke learning challenge.",
-      "revisit": true,
+      "revisit": false,
       "prerequisites": [],
       "children": [
         "breast_arm_pull_phases"

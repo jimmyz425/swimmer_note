@@ -78,6 +78,26 @@ public struct BundleContentLoader: Sendable {
         return TechniqueMarkdownParser().parse(filename: filename, rawContent: rawContent)
     }
 
+    /// Load just the key focus and common mistakes sections from a technique file.
+    /// Returns a concise summary suitable for inclusion in plan context.
+    public func loadTechniqueFocusAndMistakes(filename: String) -> String? {
+        let normalized = filename.hasSuffix(".md") ? filename : "\(filename).md"
+        guard let rawContent = try? loadMarkdown(filename: normalized) else { return nil }
+
+        let parser = TechniqueMarkdownParser()
+        let parsed = parser.parse(filename: filename, rawContent: rawContent)
+
+        var result = ""
+        if !parsed.keyPoints.isEmpty {
+            result += parsed.keyPoints.joined(separator: "\n")
+        }
+        if !parsed.commonMistakes.isEmpty {
+            if !result.isEmpty { result += "\n" }
+            result += parsed.commonMistakes.joined(separator: "\n")
+        }
+        return result.isEmpty ? nil : result
+    }
+
     public func loadAllTechniqueTrees() throws -> [TechniqueTree] {
         StrokeID.allCases
             .filter { $0 != .im }

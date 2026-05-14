@@ -35,7 +35,7 @@ Arm entry and extension set up the entire stroke cycle. The hand should enter cl
 | **Extension Pause** | After entry, pause 1 second in full extension, feel the reach. |
 | **Finger Trail Entry** | Drag fingertips during recovery, then enter clean and extend. |
 
-## Competitive Drills
+## Competitive Metrics
 #### Drill 1: Entry Placement Drill (use pool lane markers or deck tiles as shoulder-width reference)
 **Self-Check:** Count percentage of entries that land approximately at your shoulder line
 

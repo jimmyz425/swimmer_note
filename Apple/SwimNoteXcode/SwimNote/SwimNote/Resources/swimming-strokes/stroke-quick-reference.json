@@ -1,0 +1,200 @@
+{
+  "version": "1.0",
+  "strokes": {
+    "freestyle": {
+      "mentalCues": [],
+      "imageReferences": [
+        {
+          "title": "Streamline Position",
+          "cues": [
+            "Arms pressed together overhead",
+            "Head between biceps",
+            "Body completely straight",
+            "Think: \"Arrow position\" - minimal width, maximum length"
+          ]
+        },
+        {
+          "title": "High Elbow Catch (EVF)",
+          "cues": [
+            "Elbow above hand",
+            "Fingertips pointed down",
+            "Forearm vertical like a paddle",
+            "Think: \"Anchor your forearm, body moves past it\""
+          ]
+        },
+        {
+          "title": "Body Rotation (35-50 degrees)",
+          "cues": [
+            "Shoulders and hips rotate together",
+            "One shoulder higher than other",
+            "Rotation around spine axis",
+            "Think: \"Log rolling\" - rotate as a unit"
+          ]
+        },
+        {
+          "title": "Flutter Kick Position",
+          "cues": [
+            "Legs relatively straight (≤30 degrees knee bend at maximum)",
+            "Small amplitude (12-16 inches / 30-40cm, within body's \"shadow\")",
+            "Ankles loose and pointed",
+            "Think: \"Whipping motion from hips\""
+          ]
+        }
+      ]
+    },
+    "backstroke": {
+      "mentalCues": [],
+      "imageReferences": [
+        {
+          "title": "Horizontal Body Position",
+          "cues": [
+            "Body flat on surface",
+            "Head neutral, looking up",
+            "Hips high at surface",
+            "Think: \"Floating like a boat\" - stay flat"
+          ]
+        },
+        {
+          "title": "Hand Entry Position",
+          "cues": [
+            "Arm enters above shoulder",
+            "Hand enters pinky-first",
+            "Arm straight at entry",
+            "Think: \"Pinky leads, arm straight\""
+          ]
+        },
+        {
+          "title": "Body Rotation",
+          "cues": [
+            "Roll 30-45 degrees each side",
+            "Shoulders rotate with hips",
+            "One shoulder lifts out",
+            "Think: \"Log rolling on back\""
+          ]
+        },
+        {
+          "title": "Catch Position",
+          "cues": [
+            "Hand catches water deep",
+            "Forearm vertical",
+            "Pull toward feet",
+            "Think: \"Catch deep, pull straight\""
+          ]
+        }
+      ]
+    },
+    "breaststroke": {
+      "mentalCues": [
+        "\"Heels to bum\" - Correct knee bend",
+        "\"Narrow knees\" - Reduce drag",
+        "\"Fast hands\" - Accelerate through pull and recovery",
+        "\"Snap the feet\" - Power phase of kick",
+        "\"Long and strong\" - Extend fully during glide",
+        "\"Pull... Breathe... Kick... Glide\" - Timing sequence"
+      ],
+      "imageReferences": [
+        {
+          "title": "Whip Kick Foot Position (Critical)",
+          "cues": [
+            "Feet turned OUTWARD before propulsion",
+            "Heels close to buttocks",
+            "Knees narrow (not wide)",
+            "Think: \"Feet like duck feet\" - turned out, ready to whip"
+          ]
+        },
+        {
+          "title": "Narrow Knee Position",
+          "cues": [
+            "Knees hip-width or closer",
+            "NOT spread wide",
+            "Heels come to bum, not knees to chest",
+            "Think: \"Keep knees together, feet apart\""
+          ]
+        },
+        {
+          "title": "Arm Pull Phases",
+          "cues": [
+            "Outsweep: narrow, just past shoulders",
+            "Insweep: hands to chest, elbows HIGH",
+            "Shoot: arms drive forward quickly",
+            "Think: \"Small outsweep, big insweep, fast shoot\""
+          ]
+        },
+        {
+          "title": "Streamline Glide Position",
+          "cues": [
+            "Arms extended forward together",
+            "Head looking down",
+            "Body flat at surface",
+            "Think: \"Arrow gliding through water\""
+          ]
+        }
+      ]
+    },
+    "butterfly": {
+      "mentalCues": [
+        "\"Chest down, hips up\" - Body position",
+        "\"Two kicks\" - Never forget the second kick",
+        "\"Breathe on the push\" - Timing the breath",
+        "\"Wave motion\" - Whole body connected",
+        "\"Low recovery\" - Save energy on recovery",
+        "\"Enter-kick, Push-kick\" - Rhythm timing"
+      ],
+      "imageReferences": [
+        {
+          "title": "Body Undulation Wave Motion",
+          "cues": [
+            "CHEST ↓ → HIPS ↑ → LEGS ↓",
+            "Wave flows through entire body",
+            "Think: \"Body is a dolphin\" - continuous wave motion"
+          ]
+        },
+        {
+          "title": "Two-Kick Cycle (Critical)",
+          "cues": [
+            "KICK 1 (smaller) → KICK 2 (larger)",
+            "Kick 1: Timing with arm ENTRY",
+            "Kick 2: Timing with arm PUSH",
+            "Think: \"Enter-kick, Push-kick\" - say it aloud"
+          ]
+        },
+        {
+          "title": "Arm Entry Position",
+          "cues": [
+            "Hands shoulder-width apart",
+            "Fingertips enter first",
+            "Arms reach forward slightly",
+            "Think: \"Slide hands in, don't splash\""
+          ]
+        },
+        {
+          "title": "High Elbow Catch",
+          "cues": [
+            "Elbow above hand",
+            "Forearm vertical",
+            "Hands anchor water",
+            "Think: \"Anchor forearm, pull body past it\""
+          ]
+        },
+        {
+          "title": "Low Recovery Position",
+          "cues": [
+            "Arms sweep low over water",
+            "Slightly bent, relaxed",
+            "Lead with thumbs",
+            "Think: \"Skim the surface, don't lift high\""
+          ]
+        },
+        {
+          "title": "Breathing Position",
+          "cues": [
+            "Chin just above water",
+            "NOT lifting head high",
+            "Breathe during PUSH phase",
+            "Think: \"Chin on water, not head in air\""
+          ]
+        }
+      ]
+    }
+  }
+}

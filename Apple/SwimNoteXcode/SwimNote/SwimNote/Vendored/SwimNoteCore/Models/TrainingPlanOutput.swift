@@ -1,5 +1,69 @@
 import Foundation
 
+// MARK: - Two-Week Training Summary (Phase 1 Output)
+
+/// Structured summary of training from the past ~2 weeks, produced by Phase 1 outline generation
+public nonisolated struct TwoWeekTrainingSummary: Codable, Hashable, Sendable {
+    public var totalSessions: Int
+    public var strokeDistribution: StrokeDistribution
+    public var neglectedStrokes: [String]
+    public var goalProgress: String
+    public var keyTrends: String
+    public var techniqueProgression: String  // Analysis of which technique levels were covered and what's next
+    public var coveredTechniques: String  // Summary of specific key focus points and common mistakes covered
+
+    public nonisolated struct StrokeDistribution: Codable, Hashable, Sendable {
+        public var freestyle: Int
+        public var backstroke: Int
+        public var breaststroke: Int
+        public var butterfly: Int
+
+        public init(freestyle: Int = 0, backstroke: Int = 0, breaststroke: Int = 0, butterfly: Int = 0) {
+            self.freestyle = freestyle
+            self.backstroke = backstroke
+            self.breaststroke = breaststroke
+            self.butterfly = butterfly
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            freestyle = try container.decodeIfPresent(Int.self, forKey: .freestyle) ?? 0
+            backstroke = try container.decodeIfPresent(Int.self, forKey: .backstroke) ?? 0
+            breaststroke = try container.decodeIfPresent(Int.self, forKey: .breaststroke) ?? 0
+            butterfly = try container.decodeIfPresent(Int.self, forKey: .butterfly) ?? 0
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case freestyle, backstroke, breaststroke, butterfly
+        }
+    }
+
+    public init(totalSessions: Int = 0, strokeDistribution: StrokeDistribution = StrokeDistribution(), neglectedStrokes: [String] = [], goalProgress: String = "", keyTrends: String = "", techniqueProgression: String = "", coveredTechniques: String = "") {
+        self.totalSessions = totalSessions
+        self.strokeDistribution = strokeDistribution
+        self.neglectedStrokes = neglectedStrokes
+        self.goalProgress = goalProgress
+        self.keyTrends = keyTrends
+        self.techniqueProgression = techniqueProgression
+        self.coveredTechniques = coveredTechniques
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        totalSessions = try container.decodeIfPresent(Int.self, forKey: .totalSessions) ?? 0
+        strokeDistribution = try container.decodeIfPresent(StrokeDistribution.self, forKey: .strokeDistribution) ?? StrokeDistribution()
+        neglectedStrokes = try container.decodeIfPresent([String].self, forKey: .neglectedStrokes) ?? []
+        goalProgress = try container.decodeIfPresent(String.self, forKey: .goalProgress) ?? ""
+        keyTrends = try container.decodeIfPresent(String.self, forKey: .keyTrends) ?? ""
+        techniqueProgression = try container.decodeIfPresent(String.self, forKey: .techniqueProgression) ?? ""
+        coveredTechniques = try container.decodeIfPresent(String.self, forKey: .coveredTechniques) ?? ""
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case totalSessions, strokeDistribution, neglectedStrokes, goalProgress, keyTrends, techniqueProgression, coveredTechniques
+    }
+}
+
 // MARK: - Phase 1: Weekly Plan Outline (Rough Plan)
 
 /// Rough weekly plan outline for user review before detailed session generation
@@ -9,7 +73,8 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
     public var overview: PlanOverview
     public var schedule: [SessionOutline]  // Rough session focuses, no detailed sets
     public var techniqueProgressPlan: TechniqueProgressPlan?
-    public var pastTrainingSummary: String?  // Analysis of recent training sessions
+    public var twoWeekSummary: TwoWeekTrainingSummary?  // Structured summary of past 2 weeks training
+    public var pastTrainingSummary: String?  // Narrative summary of recent training sessions
     public var planConnectionRationale: String?  // How this plan connects to past training
     public var notes: String
 
@@ -23,6 +88,7 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         overview: PlanOverview,
         schedule: [SessionOutline],
         techniqueProgressPlan: TechniqueProgressPlan?,
+        twoWeekSummary: TwoWeekTrainingSummary? = nil,
         pastTrainingSummary: String? = nil,
         planConnectionRationale: String? = nil,
         notes: String,
@@ -33,6 +99,7 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         self.overview = overview
         self.schedule = schedule
         self.techniqueProgressPlan = techniqueProgressPlan
+        self.twoWeekSummary = twoWeekSummary
         self.pastTrainingSummary = pastTrainingSummary
         self.planConnectionRationale = planConnectionRationale
         self.notes = notes
@@ -46,6 +113,7 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
         overview = try container.decode(PlanOverview.self, forKey: .overview)
         schedule = try container.decode([SessionOutline].self, forKey: .schedule)
         techniqueProgressPlan = try container.decodeIfPresent(TechniqueProgressPlan.self, forKey: .techniqueProgressPlan)
+        twoWeekSummary = try container.decodeIfPresent(TwoWeekTrainingSummary.self, forKey: .twoWeekSummary)
         pastTrainingSummary = try container.decodeIfPresent(String.self, forKey: .pastTrainingSummary)
         planConnectionRationale = try container.decodeIfPresent(String.self, forKey: .planConnectionRationale)
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
@@ -55,7 +123,7 @@ public nonisolated struct WeeklyPlanOutline: Codable, Hashable, Identifiable, Se
     }
 
     private enum CodingKeys: String, CodingKey {
-        case overview, schedule, techniqueProgressPlan
+        case overview, schedule, techniqueProgressPlan, twoWeekSummary
         case pastTrainingSummary, planConnectionRationale, notes, weekStartingDate, poolTypeRaw, dryLandExercises
     }
 }
@@ -309,6 +377,42 @@ public nonisolated struct DaySchedule: Codable, Hashable, Identifiable, Sendable
     }
 }
 
+// MARK: - Session Time of Day
+
+/// Time of day for a training session (supports multiple sessions per day)
+public nonisolated enum SessionTimeOfDay: String, Codable, CaseIterable, Hashable, Sendable {
+    case morning
+    case afternoon
+    case evening
+
+    public var displayName: String {
+        switch self {
+        case .morning: "Morning"
+        case .afternoon: "Afternoon"
+        case .evening: "Evening"
+        }
+    }
+
+    public var shortName: String {
+        switch self {
+        case .morning: "AM"
+        case .afternoon: "PM"
+        case .evening: "Eve"
+        }
+    }
+
+    /// Typical time range for this session
+    public var timeRange: String {
+        switch self {
+        case .morning: "6:00 - 10:00"
+        case .afternoon: "14:00 - 18:00"
+        case .evening: "18:00 - 21:00"
+        }
+    }
+}
+
+// MARK: - Detailed Session
+
 public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Sendable {
     public var id: String
     public var sessionNumber: Int
@@ -327,6 +431,9 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
 
     // Computed: Scheduled date for this session (not from LLM)
     public var scheduledDate: Date?
+
+    // Time of day for this session (supports multiple sessions per day)
+    public var timeOfDay: SessionTimeOfDay?
 
     // Runtime state: Whether this session has been completed
     public var isCompleted: Bool = false
@@ -351,6 +458,7 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         progressionRationale: String?,
         sessionNotes: String? = nil,
         scheduledDate: Date? = nil,
+        timeOfDay: SessionTimeOfDay? = nil,
         isCompleted: Bool = false,
         isAssigned: Bool = false
     ) {
@@ -369,6 +477,7 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         self.progressionRationale = progressionRationale
         self.sessionNotes = sessionNotes
         self.scheduledDate = scheduledDate
+        self.timeOfDay = timeOfDay
         self.isCompleted = isCompleted
         self.isAssigned = isAssigned
     }
@@ -390,6 +499,7 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         progressionRationale = try container.decodeIfPresent(String.self, forKey: .progressionRationale)
         sessionNotes = try container.decodeIfPresent(String.self, forKey: .sessionNotes)
         scheduledDate = try container.decodeIfPresent(Date.self, forKey: .scheduledDate)
+        timeOfDay = try container.decodeIfPresent(SessionTimeOfDay.self, forKey: .timeOfDay)
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         isAssigned = try container.decodeIfPresent(Bool.self, forKey: .isAssigned) ?? (scheduledDate != nil)
     }
@@ -397,7 +507,7 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
     private enum CodingKeys: String, CodingKey {
         case id, sessionNumber, focus, warmUp, drillSet, mainSet, secondarySet, coolDown
         case techniqueFocus, techniqueFileRef, addressesGoal, sessionType, progressionRationale
-        case sessionNotes, scheduledDate, isCompleted, isAssigned
+        case sessionNotes, scheduledDate, timeOfDay, isCompleted, isAssigned
     }
 
     /// Convert this session to a TrainingPlan for display on Dashboard
@@ -690,28 +800,38 @@ public nonisolated struct TechniqueProgressPlan: Codable, Hashable, Sendable {
     }
 }
 
-// MARK: - Minimal Dry Land Exercise (from LLM, enriched from markdown)
+// MARK: - Minimal Dry Land Exercise (from LLM, enriched from JSON)
 
-/// Minimal dry land info from LLM - app enriches from markdown files
+/// Minimal dry land info from LLM - app enriches from JSON using exercise ID
 public nonisolated struct MinimalDryLandExercise: Codable, Hashable, Sendable {
     public var stroke: String
-    public var exercise: String
+    public var exerciseId: String  // LLM returns ID, app matches to full drill details
     public var setsReps: String
 
-    public init(stroke: String, exercise: String, setsReps: String) {
+    public init(stroke: String, exerciseId: String, setsReps: String) {
         self.stroke = stroke
-        self.exercise = exercise
+        self.exerciseId = exerciseId
         self.setsReps = setsReps
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         stroke = try container.decodeIfPresent(String.self, forKey: .stroke) ?? "freestyle"
-        exercise = try container.decode(String.self, forKey: .exercise)
+        exerciseId = try container.decode(String.self, forKey: .exerciseId)
         setsReps = try container.decode(String.self, forKey: .setsReps)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case stroke, exercise, setsReps
+        case stroke, exerciseId, setsReps
+    }
+
+    public func hash(into hasher: inout Hasher) {
+        hasher.combine(stroke)
+        hasher.combine(exerciseId)
+        hasher.combine(setsReps)
+    }
+
+    public static func == (lhs: Self, rhs: Self) -> Bool {
+        lhs.stroke == rhs.stroke && lhs.exerciseId == rhs.exerciseId && lhs.setsReps == rhs.setsReps
     }
 }
