@@ -88,7 +88,24 @@ struct LLMServiceTests {
 
         #expect(config.timeoutSeconds == 60)
         #expect(config.maxRetries == 3)
+        #expect(config.maxToolIterations == 8) // P2-2B
         #expect(config.baseURL == nil)
+    }
+
+    @Test("LLMConfiguration decodes legacy blob without maxToolIterations key (P2-2B)")
+    func llmConfigurationDecodesLegacyWithoutMaxToolIterations() throws {
+        // Legacy blob — what UserDefaults held before P2-2B.
+        let legacyJSON = """
+        {
+          "provider": "openai",
+          "apiKeyReference": "llm-openai",
+          "modelName": "gpt-4o",
+          "timeoutSeconds": 60,
+          "maxRetries": 3
+        }
+        """.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(LLMConfiguration.self, from: legacyJSON)
+        #expect(decoded.maxToolIterations == 8)
     }
 
     @Test("LLMConfiguration is Codable")

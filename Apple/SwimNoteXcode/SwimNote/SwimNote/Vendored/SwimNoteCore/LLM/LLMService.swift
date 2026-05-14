@@ -50,7 +50,14 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
     public var baseURL: URL?
     public var modelName: String
     public var timeoutSeconds: TimeInterval
+    /// Transport-level retries for a single HTTP request — distinct from
+    /// `maxToolIterations`, which counts agent-style tool rounds. P2-2B wired
+    /// this through `withTransportRetry` in `OpenAIClient.completeWithTools`.
     public var maxRetries: Int
+    /// How many tool-calling rounds the agent loop may take per call. Default 8
+    /// matches typical OpenAI agent budgets. Call sites can still override via
+    /// `ToolCallingConversation.run(maxIterations:)`.
+    public var maxToolIterations: Int
 
     public init(
         provider: LLMProvider,
@@ -58,7 +65,8 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         baseURL: URL? = nil,
         modelName: String,
         timeoutSeconds: TimeInterval = 60,
-        maxRetries: Int = 3
+        maxRetries: Int = 3,
+        maxToolIterations: Int = 8
     ) throws {
         if let baseURL, baseURL.scheme?.lowercased() != "https" {
             throw LLMConfigurationError.insecureBaseURL
@@ -69,10 +77,11 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         self.modelName = modelName
         self.timeoutSeconds = timeoutSeconds
         self.maxRetries = maxRetries
+        self.maxToolIterations = maxToolIterations
     }
 
     private enum CodingKeys: String, CodingKey {
-        case provider, apiKeyReference, baseURL, modelName, timeoutSeconds, maxRetries
+        case provider, apiKeyReference, baseURL, modelName, timeoutSeconds, maxRetries, maxToolIterations
     }
 
     public nonisolated init(from decoder: Decoder) throws {
@@ -83,6 +92,7 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         modelName = try container.decode(String.self, forKey: .modelName)
         timeoutSeconds = try container.decodeIfPresent(TimeInterval.self, forKey: .timeoutSeconds) ?? 60
         maxRetries = try container.decodeIfPresent(Int.self, forKey: .maxRetries) ?? 3
+        maxToolIterations = try container.decodeIfPresent(Int.self, forKey: .maxToolIterations) ?? 8
         if let baseURL, baseURL.scheme?.lowercased() != "https" {
             throw LLMConfigurationError.insecureBaseURL
         }
@@ -96,6 +106,7 @@ public struct LLMConfiguration: Codable, Hashable, Sendable {
         try container.encode(modelName, forKey: .modelName)
         try container.encode(timeoutSeconds, forKey: .timeoutSeconds)
         try container.encode(maxRetries, forKey: .maxRetries)
+        try container.encode(maxToolIterations, forKey: .maxToolIterations)
     }
 }
 
@@ -156,6 +167,105 @@ public struct LLMResponse: Sendable {
         // "non-nil and non-empty" on optional collections.
         toolCalls?.isEmpty == false
     }
+}
+
+// MARK: - Transport-level retry (P2-2B)
+
+/// Result of a single transport attempt — either a usable HTTP response or a
+/// retry-worthy classification. Non-retry-worthy errors (e.g. URLError that
+/// isn't transient) are thrown out of the closure directly.
+private enum TransportRetryDecision {
+    case success(Data, HTTPURLResponse)
+    case retryHTTP(Int)
+    case retryURLError(URLError)
+}
+
+/// Wrap a single HTTP attempt in exponential backoff with jitter.
+///
+/// Retries on 429, 5xx HTTP responses, and transient `URLError` codes
+/// (timeout, network connection lost, DNS, cannot connect to host, etc.).
+/// Backoff: `min(30s, 0.5s * 2^attempt) + uniform(0..0.5s)`.
+///
+/// `maxRetries` is *additional* attempts after the first call (so
+/// `maxRetries=3` -> up to 4 total attempts). After exhaustion, throws the
+/// classified error so callers see the final status code or URLError.
+private func withTransportRetry(
+    maxRetries: Int,
+    attempt: () async throws -> TransportRetryDecision
+) async throws -> (Data, HTTPURLResponse) {
+    var lastHTTPCode: Int?
+    var lastURLError: URLError?
+
+    let totalAttempts = max(0, maxRetries) + 1
+    for attemptIndex in 0..<totalAttempts {
+        let decision: TransportRetryDecision
+        do {
+            decision = try await attempt()
+        } catch let urlError as URLError where transportIsTransient(urlError: urlError) {
+            // The closure may also throw transient URLErrors directly (e.g. if
+            // the caller doesn't classify them itself). Treat as retryable.
+            lastURLError = urlError
+            if attemptIndex == totalAttempts - 1 {
+                throw urlError
+            }
+            try await transportSleepForBackoff(attemptIndex: attemptIndex)
+            continue
+        }
+
+        switch decision {
+        case .success(let data, let response):
+            return (data, response)
+        case .retryHTTP(let code):
+            lastHTTPCode = code
+            if attemptIndex == totalAttempts - 1 {
+                throw LLMServiceError.httpError(code)
+            }
+            try await transportSleepForBackoff(attemptIndex: attemptIndex)
+        case .retryURLError(let urlError):
+            lastURLError = urlError
+            if attemptIndex == totalAttempts - 1 {
+                throw urlError
+            }
+            try await transportSleepForBackoff(attemptIndex: attemptIndex)
+        }
+    }
+
+    // Should be unreachable; the loop body throws on the last attempt.
+    if let code = lastHTTPCode {
+        throw LLMServiceError.httpError(code)
+    }
+    if let urlError = lastURLError {
+        throw urlError
+    }
+    throw LLMServiceError.invalidResponse
+}
+
+/// `URLError` codes worth retrying — anything that's "the network just
+/// flickered" or "the server hung up" rather than a config/auth failure.
+private func transportIsTransient(urlError: URLError) -> Bool {
+    switch urlError.code {
+    case .timedOut,
+         .cannotFindHost,
+         .cannotConnectToHost,
+         .networkConnectionLost,
+         .dnsLookupFailed,
+         .notConnectedToInternet,
+         .resourceUnavailable,
+         .secureConnectionFailed:
+        return true
+    default:
+        return false
+    }
+}
+
+private func transportSleepForBackoff(attemptIndex: Int) async throws {
+    let base: Double = 0.5
+    let cap: Double = 30.0
+    let exp = min(cap, base * pow(2.0, Double(attemptIndex)))
+    let jitter = Double.random(in: 0...0.5)
+    let delaySeconds = min(cap, exp + jitter)
+    let nanoseconds = UInt64(delaySeconds * 1_000_000_000)
+    try await Task.sleep(nanoseconds: nanoseconds)
 }
 
 public struct OpenAIClient: LLMClient, Sendable {
@@ -257,11 +367,29 @@ public struct OpenAIClient: LLMClient, Sendable {
 
         httpRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
-        let (data, response) = try await URLSession.shared.data(for: httpRequest)
-
-        guard let httpResponse = response as? HTTPURLResponse else {
-            llmLog.error("Invalid response - not HTTPURLResponse")
-            throw LLMServiceError.invalidResponse
+        // P2-2B: transport retries with exponential backoff + jitter.
+        // The retry helper decides whether to retry based on classification
+        // returned from the closure; non-retryable HTTP errors (4xx other than
+        // 429) and decoded API error bodies throw straight out.
+        let httpRequestForRetry = httpRequest
+        let (data, httpResponse) = try await withTransportRetry(maxRetries: configuration.maxRetries) {
+            do {
+                let (responseData, response) = try await URLSession.shared.data(for: httpRequestForRetry)
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    llmLog.error("Invalid response - not HTTPURLResponse")
+                    throw LLMServiceError.invalidResponse
+                }
+                let status = httpResponse.statusCode
+                if status == 429 || (500...599).contains(status) {
+                    #if DEBUG
+                    print("🔧 Transient HTTP \(status); will retry")
+                    #endif
+                    return .retryHTTP(status)
+                }
+                return .success(responseData, httpResponse)
+            } catch let urlError as URLError where transportIsTransient(urlError: urlError) {
+                return .retryURLError(urlError)
+            }
         }
 
         llmLog.info("LLM Response status: \(httpResponse.statusCode)")
@@ -274,6 +402,8 @@ public struct OpenAIClient: LLMClient, Sendable {
         #endif
 
         guard httpResponse.statusCode == 200 else {
+            // Non-retryable error path: parse a server-supplied message if we
+            // can so the user sees something better than just "503".
             if let errorJson = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                let error = errorJson["error"] as? [String: Any],
                let message = error["message"] as? String {

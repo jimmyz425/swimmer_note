@@ -74,8 +74,10 @@ public final class ToolCallingConversation: Sendable {
         systemRole: String,
         userPrompt: String,
         tools: [Tool],
-        maxIterations: Int = 10
+        maxIterations: Int? = nil
     ) async throws -> String {
+        // P2-2B: caller can still override; otherwise defer to configuration.
+        let resolvedMaxIterations = maxIterations ?? configuration.maxToolIterations
         var messages: [ConversationMessage] = [
             .system(systemRole),
             .user(userPrompt)
@@ -84,7 +86,7 @@ public final class ToolCallingConversation: Sendable {
         let client = createClient()
         var consecutiveEmptyResponses = 0
 
-        for iteration in 1...maxIterations {
+        for iteration in 1...resolvedMaxIterations {
             #if DEBUG
             print("🔧 ToolCalling iteration \(iteration)")
             #endif
@@ -160,7 +162,7 @@ public final class ToolCallingConversation: Sendable {
                         consecutiveEmptyResponses = 0
                     }
 
-                    if iteration == maxIterations {
+                    if iteration == resolvedMaxIterations {
                         // Try to return any content we might have received
                         if let content = response.content, !content.isEmpty {
                             return content
@@ -168,17 +170,12 @@ public final class ToolCallingConversation: Sendable {
                         throw LLMServiceError.maxIterationsReached
                     }
                 }
-            } catch LLMServiceError.httpError(let code) where code >= 500 || code == 429 {
-                // Retry on server errors or rate limits
-                #if DEBUG
-                print("🔧 HTTP error \(code), retrying...")
-                #endif
-                if iteration < maxIterations {
-                    try await Task.sleep(nanoseconds: 2_000_000_000) // Wait 2 seconds
-                    continue
-                }
-                throw LLMServiceError.httpError(code)
             } catch {
+                // P2-2B: transport retries (429, 5xx, transient URLErrors) are
+                // now handled inside `OpenAIClient.completeWithTools` via
+                // `withTransportRetry`. By the time an error reaches here it's
+                // either non-retryable or has already exhausted its budget;
+                // bubble it up so iterations are not burned on retry sleeps.
                 #if DEBUG
                 print("🔧 API call failed: \(error.localizedDescription)")
                 #endif
