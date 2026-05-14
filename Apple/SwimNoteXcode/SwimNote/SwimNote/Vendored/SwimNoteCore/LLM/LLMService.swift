@@ -151,7 +151,10 @@ public struct LLMResponse: Sendable {
     }
 
     public var hasToolCalls: Bool {
-        toolCalls != nil && !toolCalls!.isEmpty
+        // Avoid force-unwrap so a future refactor can't turn this into a
+        // crash by accident. `?.isEmpty == false` is the standard idiom for
+        // "non-nil and non-empty" on optional collections.
+        toolCalls?.isEmpty == false
     }
 }
 

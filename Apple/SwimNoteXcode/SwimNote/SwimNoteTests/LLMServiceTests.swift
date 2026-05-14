@@ -272,4 +272,22 @@ struct LLMServiceTests {
 
         #expect(try store.load(account: "account1") == "new")
     }
+
+    // MARK: - LLMResponse.hasToolCalls
+
+    @Test("LLMResponse.hasToolCalls handles nil, empty, and populated cases without crashing")
+    func llmResponseHasToolCalls() {
+        // nil → false (was the crash path; force-unwrap removed in P0-1E)
+        let nilCase = LLMResponse(content: "hi", toolCalls: nil)
+        #expect(nilCase.hasToolCalls == false)
+
+        let emptyCase = LLMResponse(content: "hi", toolCalls: [])
+        #expect(emptyCase.hasToolCalls == false)
+
+        let populated = LLMResponse(
+            content: nil,
+            toolCalls: [ToolCall(id: "1", function: ToolCallFunction(name: "noop", arguments: "{}"))]
+        )
+        #expect(populated.hasToolCalls == true)
+    }
 }
