@@ -283,6 +283,36 @@ private func transportSleepForBackoff(attemptIndex: Int) async throws {
     try await Task.sleep(nanoseconds: nanoseconds)
 }
 
+/// P2-2E: log a sanitized summary of the outgoing LLM request instead of
+/// the full body. Full prompts can contain personal training notes, profile
+/// names, and goals — none of that belongs in unified logs by default.
+///
+/// Default (release + debug): url, body byte count, ~token estimate, first
+/// 200 chars of the body. Token estimate is bytes/4, the same back-of-envelope
+/// OpenAI uses in its docs; close enough for cost dashboards, never used for
+/// billing.
+///
+/// Opt-in: in DEBUG only, set `UserDefaults.standard.set(true, forKey: "llm.debug.fullBodies")`
+/// from the simulator console to dump full bodies. Never enabled implicitly.
+private func logSanitizedRequest(url: URL, bodyData: Data, body: [String: Any]) {
+    let byteCount = bodyData.count
+    let estimatedTokens = byteCount / 4
+    let previewBytes = bodyData.prefix(200)
+    let preview = String(data: previewBytes, encoding: .utf8) ?? "<non-utf8>"
+
+    #if DEBUG
+    let dumpFull = UserDefaults.standard.bool(forKey: "llm.debug.fullBodies")
+    if dumpFull {
+        llmLog.info("LLM Request to \(url, privacy: .public): \(body)")
+        return
+    }
+    #endif
+
+    llmLog.info(
+        "LLM Request to \(url, privacy: .public) bytes=\(byteCount) ~tokens=\(estimatedTokens) preview=\(preview, privacy: .public)"
+    )
+}
+
 public struct OpenAIClient: LLMClient, Sendable {
     public init() {}
 
@@ -381,9 +411,9 @@ public struct OpenAIClient: LLMClient, Sendable {
             }
         }
 
-        llmLog.info("LLM Request to \(url): \(body)")
-
-        httpRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
+        let bodyData = try JSONSerialization.data(withJSONObject: body)
+        httpRequest.httpBody = bodyData
+        logSanitizedRequest(url: url, bodyData: bodyData, body: body)
 
         // P2-2B: transport retries with exponential backoff + jitter.
         // The retry helper decides whether to retry based on classification
