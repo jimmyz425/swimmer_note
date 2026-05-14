@@ -932,20 +932,27 @@ public actor CoreDataTimerSessionRepository: TimerSessionRepository {
 
 public struct CoreDataMigration: Sendable {
     private let controller: CoreDataPersistenceController
+    private let appSupportURL: URL
     private let jsonProfileRepo: JSONUserProfileRepository
     private let jsonNoteRepo: JSONTrainingNoteRepository
     private let jsonPlanRepo: JSONWeeklyPlanRepository
+    private let fileAccessor: any FileAccessorProviding
 
     public init(
         controller: CoreDataPersistenceController,
-        appSupportURL: URL
+        appSupportURL: URL,
+        fileAccessor: any FileAccessorProviding = DefaultFileAccessor()
     ) {
         self.controller = controller
+        self.appSupportURL = appSupportURL
+        self.fileAccessor = fileAccessor
         self.jsonProfileRepo = JSONUserProfileRepository(
-            configDirectory: appSupportURL.appendingPathComponent("config")
+            configDirectory: appSupportURL.appendingPathComponent("config"),
+            fileAccessor: fileAccessor
         )
         self.jsonNoteRepo = JSONTrainingNoteRepository(
-            notesDirectory: appSupportURL.appendingPathComponent("notes")
+            notesDirectory: appSupportURL.appendingPathComponent("notes"),
+            fileAccessor: fileAccessor
         )
         self.jsonPlanRepo = JSONWeeklyPlanRepository(
             plansDirectory: appSupportURL.appendingPathComponent("weekly-plans")
@@ -973,6 +980,15 @@ public struct CoreDataMigration: Sendable {
             print("Migrated profile: \(profile.name)")
         }
 
+        // Migrate the active-profile pointer. JSON stored it in
+        // `config/active_profile.json`, but the Core Data repo reads
+        // UserDefaults["activeProfileId"]. Without copying it across the user
+        // would land back in profile selection on next launch.
+        if let activeId = await jsonProfileRepo.activeProfileId() {
+            try await coreDataProfileRepo.setActiveProfile(id: activeId)
+            print("Migrated active profile id: \(activeId)")
+        }
+
         // Migrate notes for each profile
         let coreDataNoteRepo = CoreDataTrainingNoteRepository(controller: controller)
         for profile in profiles {
@@ -993,12 +1009,47 @@ public struct CoreDataMigration: Sendable {
             }
         }
 
+        // Migration succeeded — drop the JSON sources of truth so we don't
+        // keep stale dual data on disk that could diverge from Core Data.
+        cleanupJSONSources(profileIds: profiles.map(\.id))
+
         // Mark migration complete with version
         UserDefaults.standard.set(2, forKey: "coreDataMigrationVersion")
         print("Core Data migration completed successfully")
         #else
         throw SwimNotePersistenceError.cloudKitStoreUnavailable
         #endif
+    }
+
+    /// Removes the JSON files that the Core Data backends have superseded:
+    /// `config/active_profile.json`, `notes/<profileId>/`, and
+    /// `weekly-plans/<profileId>/` for each migrated profile.
+    /// Errors are logged but not thrown — cleanup is best-effort and must
+    /// never undo a successful migration.
+    private func cleanupJSONSources(profileIds: [String]) {
+        let activeProfileFile = appSupportURL
+            .appendingPathComponent("config")
+            .appendingPathComponent("active_profile.json")
+        do {
+            try fileAccessor.remove(at: activeProfileFile)
+        } catch {
+            print("Cleanup: failed to remove active_profile.json: \(error)")
+        }
+
+        let notesRoot = appSupportURL.appendingPathComponent("notes")
+        let plansRoot = appSupportURL.appendingPathComponent("weekly-plans")
+        for id in profileIds {
+            do {
+                try fileAccessor.remove(at: notesRoot.appendingPathComponent(id))
+            } catch {
+                print("Cleanup: failed to remove notes/\(id): \(error)")
+            }
+            do {
+                try fileAccessor.remove(at: plansRoot.appendingPathComponent(id))
+            } catch {
+                print("Cleanup: failed to remove weekly-plans/\(id): \(error)")
+            }
+        }
     }
 
     private func clearAllData() async {

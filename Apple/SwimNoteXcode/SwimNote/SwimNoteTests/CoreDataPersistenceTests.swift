@@ -125,6 +125,78 @@ struct CoreDataPersistenceTests {
         #expect(sessions.first?.timeOfDay == .morning)
         #expect(sessions.last?.timeOfDay == .afternoon)
     }
+
+    @Test("CoreDataMigration copies active profile id and removes JSON sources")
+    @MainActor
+    func migrationMovesActiveProfileAndCleansJSON() async throws {
+        let now = SwimNoteDateFormatting.string(from: Date())
+        let profile = UserProfile(
+            id: UUID().uuidString,
+            name: "Migrated Swimmer",
+            birthday: "2000-01-01",
+            sex: .male,
+            skillLevel: .intermediate,
+            weeklySessionTarget: 3,
+            preferredStrokes: [.freestyle],
+            personalBests: PersonalBests(),
+            trainingGoals: [],
+            createdAt: now,
+            updatedAt: now
+        )
+
+        // Build a per-test app-support sandbox with the JSON layout the
+        // pre-migration app produced.
+        let appSupport = FileManager.default.temporaryDirectory
+            .appendingPathComponent("SwimNoteMigration-\(UUID().uuidString)", isDirectory: true)
+        defer { try? FileManager.default.removeItem(at: appSupport) }
+
+        let configDir = appSupport.appendingPathComponent("config", isDirectory: true)
+        let notesDir = appSupport.appendingPathComponent("notes", isDirectory: true)
+        let plansDir = appSupport.appendingPathComponent("weekly-plans", isDirectory: true)
+        let jsonProfileRepo = JSONUserProfileRepository(configDirectory: configDir)
+        try await jsonProfileRepo.save(profile)
+        try await jsonProfileRepo.setActiveProfile(id: profile.id)
+
+        // Drop a placeholder file in each per-profile directory so we can
+        // assert the cleanup actually wipes them after migration.
+        let profileNotesDir = notesDir.appendingPathComponent(profile.id, isDirectory: true)
+        let profilePlansDir = plansDir.appendingPathComponent(profile.id, isDirectory: true)
+        try FileManager.default.createDirectory(at: profileNotesDir, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: profilePlansDir, withIntermediateDirectories: true)
+        try Data().write(to: profileNotesDir.appendingPathComponent("placeholder.json"))
+        try Data().write(to: profilePlansDir.appendingPathComponent("placeholder.json"))
+
+        let activeProfileFile = configDir.appendingPathComponent("active_profile.json")
+        #expect(FileManager.default.fileExists(atPath: activeProfileFile.path))
+
+        // Force the version-gated re-migration path so we exercise the full flow.
+        let priorActiveId = UserDefaults.standard.string(forKey: "activeProfileId")
+        let priorVersion = UserDefaults.standard.integer(forKey: "coreDataMigrationVersion")
+        UserDefaults.standard.removeObject(forKey: "activeProfileId")
+        UserDefaults.standard.set(0, forKey: "coreDataMigrationVersion")
+        defer {
+            if let priorActiveId {
+                UserDefaults.standard.set(priorActiveId, forKey: "activeProfileId")
+            } else {
+                UserDefaults.standard.removeObject(forKey: "activeProfileId")
+            }
+            UserDefaults.standard.set(priorVersion, forKey: "coreDataMigrationVersion")
+        }
+
+        let controller = try await makeIsolatedController()
+        let migration = CoreDataMigration(controller: controller, appSupportURL: appSupport)
+        try await migration.migrateAll()
+
+        #expect(UserDefaults.standard.string(forKey: "activeProfileId") == profile.id)
+        #expect(!FileManager.default.fileExists(atPath: activeProfileFile.path))
+        #expect(!FileManager.default.fileExists(atPath: profileNotesDir.path))
+        #expect(!FileManager.default.fileExists(atPath: profilePlansDir.path))
+
+        // The migrated profile should be queryable through the Core Data repo.
+        let coreDataRepo = CoreDataUserProfileRepository(controller: controller)
+        let migrated = await coreDataRepo.profile(id: profile.id)
+        #expect(migrated?.name == "Migrated Swimmer")
+    }
 }
 
 #endif
