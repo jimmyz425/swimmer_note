@@ -55,13 +55,13 @@ public struct RacePrepStrategy: PlanGenerationStrategy, Sendable {
         }
 
         ALL string fields must be actual text, not booleans (except sessionNumber which is Int).
-        Generate \(context.sessionsPerWeek) RACE PREP sessions. Goal pace work. Start/turn practice.
+        Generate \(context.effectiveWeeklySessionCount) RACE PREP sessions. Goal pace work. Start/turn practice.
         OUTPUT ONLY JSON.
         """
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md"]
     }
 
     public func coachingRules() -> String {
@@ -139,13 +139,13 @@ public struct SpeedSprintStrategy: PlanGenerationStrategy, Sendable {
         }
 
         ALL string fields must be actual text, not booleans (except sessionNumber which is Int).
-        Generate \(context.sessionsPerWeek) SPEED sessions. Sprint intervals. High rest ratios.
+        Generate \(context.effectiveWeeklySessionCount) SPEED sessions. Sprint intervals. High rest ratios.
         OUTPUT ONLY JSON.
         """
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md"]
     }
 
     public func coachingRules() -> String {

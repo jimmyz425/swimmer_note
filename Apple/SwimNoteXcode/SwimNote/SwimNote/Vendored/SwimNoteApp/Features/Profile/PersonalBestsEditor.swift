@@ -23,7 +23,7 @@ struct PersonalBestsEditor: View {
         self._mainStroke = State(initialValue: profile.mainStroke)
         self._distancePreference = State(initialValue: profile.distancePreference)
         self._trainingTier = State(initialValue: profile.trainingTier)
-        self._subTier = State(initialValue: profile.subTier)
+        self._subTier = State(initialValue: profile.trainingTier.clampedSubTier(profile.subTier))
         self._profileIconType = State(initialValue: profile.profileIconType)
         self._profileImageData = State(initialValue: profile.profileImageData)
         self._profileIconName = State(initialValue: profile.profileIconName)
@@ -91,8 +91,7 @@ struct PersonalBestsEditor: View {
                     }
                     .pickerStyle(.navigationLink)
                     .onChange(of: trainingTier) { _, newTier in
-                        // Reset sub-tier when main tier changes
-                        subTier = newTier.defaultSubTier
+                        subTier = newTier.clampedSubTier(subTier)
                     }
 
                     // Sub-tier picker (only shown for tiers with sub-tiers)

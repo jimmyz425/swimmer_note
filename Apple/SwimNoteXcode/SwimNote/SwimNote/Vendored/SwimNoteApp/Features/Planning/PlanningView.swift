@@ -44,6 +44,7 @@ struct PlanningView: View {
     @State var poolType: PoolType = .scm
     @State var planType: PlanType = .mixed
     @State var weekStartingDate: Date = nextMonday()
+    @State var selectedCoachingStyleIDs: Set<String> = []
 
     let llmClient = OpenAIClient()
     let credentialStore: any SecureCredentialStore = {
@@ -71,6 +72,9 @@ struct PlanningView: View {
                         planType: $planType,
                         weekStartingDate: $weekStartingDate,
                         skillLevel: appModel.activeProfile?.skillLevel ?? .beginner,
+                        profile: appModel.activeProfile,
+                        coachTiers: CoachTierProfileMapping.coachTiersForStylePicker(profile: appModel.activeProfile),
+                        selectedCoachingStyleIDs: $selectedCoachingStyleIDs,
                         isGenerating: isGeneratingOutline,
                         onToggle: { isSettingsExpanded.toggle() },
                         onGenerate: { Task { await generateOutline() } },
@@ -137,6 +141,7 @@ struct PlanningView: View {
             }
             // Load saved outline on appear (for resumption)
             .onAppear {
+                syncCoachingStyleDefaultsIfNeeded()
                 Task {
                     await loadSavedOutline()
                 }

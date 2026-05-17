@@ -420,7 +420,7 @@ public enum ResourcesNavigationTools {
             description: """
             Extract only the drills section from a technique markdown file. Returns specific drills and competitive drills with tiered targets. Use this when you need drill names and targets for training plan generation — it's faster and more focused than read_technique_file.
 
-            REQUIRED: Call this when selecting drills for drillSet (standard technique work) in training plans. Do NOT use this tool for secondarySet — the evidence-based secondary set MUST come only from read_evidence_drills (stroke-evidence-based-drills.md). Returns drill names, descriptions, and tiered targets (Beginner/Intermediate/Advanced/Elite).
+            Call for drillSet (standard technique work from stroke technique files). For secondarySet, use read_evidence_drills only when the session's coaching style calls for an evidence/exploration block; otherwise omit secondarySet or use signature sets from read_coach_reference. Returns drill names, descriptions, and tiered targets (Beginner/Intermediate/Advanced/Elite).
 
             USAGE: get_technique_drills("freestyle-02-flutter-kick") → drills for that technique
             get_technique_drills("freestyle.md") → technique table + any drills from main file
@@ -692,10 +692,10 @@ public enum UserDataTools {
             - Constraints Circuit: Constraint-led approach — technique refinement
             - Timing/Phase Explorer: Phase isolation — timing refinement (breast/fly)
 
-            REQUIRED: Call this when generating secondarySet (evidence-based block only). For standard drillSet use get_technique_drills instead.
+            Use when secondarySet should be an evidence-based exploration block (Differential Learning, Salo, Touretski, Bowman race-prep, etc.). For standard drillSet use get_technique_drills; for style-driven main/drill work use read_coach_reference. secondarySet is optional — omit when user coaching styles do not call for it.
             After choosing a drill code (F1, B2, etc.), call again with drill="F1" (etc.) to load the full set table before writing JSON.
 
-            secondarySet rules: exactly ONE evidence drill per session. Expand it into separate JSON set objects — one entry per numbered row (#) in the drill's main table (match Reps × Distance, zone, rest, equipment per row). Never collapse multiple different row descriptions into a single set with a long improvised item string, and never invent hybrid drills (e.g. do not merge unrelated constraints or classic technique drills like 6-3-6 into this block unless that exact combination appears in the returned drill text).
+            When secondarySet uses evidence drills: exactly ONE drill code per session. One JSON set object per numbered table row (#). Never collapse rows into improvised hybrid item strings.
 
             USAGE: read_evidence_drills(stroke="freestyle") → all freestyle evidence drills
             read_evidence_drills(stroke="freestyle", drill="F1") → full details for one drill
@@ -717,6 +717,39 @@ public enum UserDataTools {
                 additionalProperties: false
             ),
             strict: true
+        )
+    )
+
+    public static let readCoachReference = Tool(
+        function: ToolFunction(
+            name: "read_coach_reference",
+            description: """
+            Read swimming-coach-role-reference.md — coaching styles by swimmer tier (YB, YD, NA, INT, ADV, ELT, SPT, DST).
+
+            Returns tier-specific recommended styles (with When to Use), Focus, Use, Avoid, and signature set ideas. Use to decide how to structure drillSet, mainSet, and whether to include secondarySet.
+
+            Call read_coach_reference(tier="INT") for the full tier section matching the swimmer.
+            Optional section: decision_tree, compatibility, signature_sets, evidence_mapping.
+
+            User-selected coaching styles are embedded in the plan prompt — align session design with those choices.
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "tier": JSONSchemaProperty(
+                        type: "string",
+                        description: "Coach tier code: YB, YD, NA, INT, ADV, ELT, SPT, DST",
+                        enumValues: ["YB", "YD", "NA", "INT", "ADV", "ELT", "SPT", "DST"]
+                    ),
+                    "section": JSONSchemaProperty(
+                        type: "string",
+                        description: "Optional: decision_tree, compatibility, signature_sets, evidence_mapping",
+                        enumValues: ["decision_tree", "compatibility", "signature_sets", "evidence_mapping"]
+                    )
+                ],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false
         )
     )
 
@@ -746,7 +779,7 @@ public enum UserDataTools {
     )
 
     public static var all: [Tool] {
-        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance, readUSASwimmingStructure, readEvidenceDrills, getDryLandExercises]
+        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance, readUSASwimmingStructure, readEvidenceDrills, readCoachReference, getDryLandExercises]
     }
 }
 

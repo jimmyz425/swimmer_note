@@ -60,31 +60,29 @@ Each pool session should include:
 - Rotate strokes in IM training; prioritize primary stroke(s) for specialists
 - Include at least one drill from the swimmer's focus technique per relevant session
 
-### 3.5 Evidence-Based Secondary Drill Set
+### 3.5 Coaching Styles & Session Structure
 
-Every pool session should include a **secondary drill set** (positioned between the standard drill set and main set) drawn from the evidence-based drill library (`stroke-evidence-based-drills.md`). This is complementary to regular drill work — not a replacement.
+Read `swimming-coach-role-reference.md` via `read_coach_reference(tier="…")` to match the swimmer’s tier and **user-selected coaching styles**. Styles define how to organize the whole session — not only drills.
 
-**Tool**: Call `read_evidence_drills(stroke="{stroke}")` to get available evidence-backed drills for the session's primary stroke. Each drill includes level adjustments, equipment needs, and progression guidance.
+**Typical structure** (adapt volumes to tier and style):
+- **warmUp** / **coolDown** — always present
+- **drillSet** — technique files (`get_technique_drills`), signature sets from the coach reference, or playful/differential games for youth tiers
+- **secondarySet** (optional) — evidence-based exploration when styles call for it (see below)
+- **mainSet** — primary training block (pace work, games, negative splits, stroke-rate sets, etc.)
 
-**Drill Types Available** (per stroke):
-| Type | Focus | Session Placement |
+**Evidence-based secondary set** (`stroke-evidence-based-drills.md`): use when coaching styles or session focus benefit from research-backed exploration (e.g. Differential Learning, Salo, Touretski, Bowman race-prep). **Omit** when styles are purely playful, Reese consistency, or McKeever choice — not every session needs this block.
+
+**Tool**: `read_evidence_drills(stroke="{stroke}")` when building secondarySet.
+
+| Type | Focus | Typical placement |
 |------|-------|-------------------|
-| Tempo Ladder | Stroke rate progression, physiological overload | secondarySet, Z3→Z6 build |
-| Roll Explorer | Body rotation angle exploration | secondarySet, Z2 exploration |
-| Differential Practice | Variable practice for motor learning | secondarySet, Z2 variety |
-| Build & Hold | Race-finish simulation, lactate tolerance | secondarySet, Z4→Z5 |
-| Constraints Circuit | Constraint-led adaptation | secondarySet, Z2 circuit |
-| Timing Explorer | Phase isolation (breast/fly only) | secondarySet, Z2 focus |
+| Tempo Ladder | Stroke rate progression | secondarySet, Z3→Z6 |
+| Roll Explorer | Rotation exploration | secondarySet, Z2 |
+| Differential Practice | Motor learning variety | secondarySet or drillSet |
+| Build & Hold | Race-finish simulation | secondarySet, Z4→Z5 |
+| Constraints Circuit | Constraint-led adaptation | secondarySet, Z2 |
 
-**Selection Rules:**
-- Pick ONE evidence-based drill per session as the secondary set (one code: F1, B2, BR3, etc.)
-- After choosing the code, call `read_evidence_drills(stroke="…", drill="F1")` (or your code) and build the workout **only** from that response’s set table: **one structured block per table row** (Reps × Distance, rest, zone, equipment) — do not merge several different rows into one “do N reps where each rep is different” prose line
-- For each row, include **Description** (work to do), **Equipment**, and **Notes** exactly as in the table; in JSON use `item`, `equipment`, and `notes` on each set so the app can show them in the session card
-- Do not put classic stroke drills from technique files (6-3-6, catch-up, single-arm, breath-to-one-side-only, etc.) into the secondary set unless that exact prescription appears in the evidence drill you selected; those belong in the standard drill set
-- Match the drill type to the session focus (e.g., speed → Tempo Ladder, technique variety → Differential Practice)
-- Apply level adjustments from the drill details (reduce reps, add rest for beginners)
-- Use the equipment specified in the drill (tempo trainer, fist, pull buoy, etc.)
-- Include the evidence citation in session notes for coaching context
+**When using evidence secondarySet:** one drill code per session; one JSON set per table row; `item` / `equipment` / `notes` from the table; classic technique drills stay in drillSet unless they appear verbatim in the evidence table.
 
 ### 4. Dry Land Integration
 

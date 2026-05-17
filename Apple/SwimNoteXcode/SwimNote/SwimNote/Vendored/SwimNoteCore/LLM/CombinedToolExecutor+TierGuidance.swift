@@ -18,6 +18,16 @@ extension CombinedToolExecutor {
         let zoneDistribution = zoneDistributionForTier(tier: tier, subTier: subTier)
         let trainingFocus = trainingFocusForTier(tier: tier, subTier: subTier)
 
+        let practicesForAppVolume = profile.weeklySessionTarget > 0 ? profile.weeklySessionTarget : recommendedPracticesPerWeek(tier: tier, subTier: subTier)
+        let appWeeklyMeters = weeklyDistanceTarget(
+            tier: tier,
+            subTier: subTier,
+            sessionsPerWeek: practicesForAppVolume,
+            poolType: .scm
+        )
+        let appVolumeDivisor = max(practicesForAppVolume, maximumPracticesPerWeek(tier: tier, subTier: subTier), 1)
+        let appPerSessionMeters = appWeeklyMeters / appVolumeDivisor
+
         let result: [String: Any] = [
             "tier": tier.displayName,
             "tier_raw": tier.rawValue,
@@ -27,6 +37,11 @@ extension CombinedToolExecutor {
             "weekly_distance": weeklyDistance,
             "per_session_distance": perSessionDistance,
             "practices_per_week": practicesPerWeek,
+            "app_plan_weekly_meters_scm_equivalent": appWeeklyMeters,
+            "app_plan_per_session_meters_scm_equivalent": appPerSessionMeters,
+            "app_plan_per_session_divisor": appVolumeDivisor,
+            "app_plan_practices_used_for_volume": practicesForAppVolume,
+            "app_volume_note": "app_plan_* matches SwimNote PlanWeeklyDistanceTargets; per-session uses max(practices, tier max practices/week) as divisor (SCM-equivalent; LCM uses pool type in app prompts).",
             "zone_distribution": zoneDistribution,
             "training_focus": trainingFocus,
             "guidance_source": "club-training-reference.md",

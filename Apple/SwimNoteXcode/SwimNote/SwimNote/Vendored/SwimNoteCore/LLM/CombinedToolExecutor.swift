@@ -72,6 +72,9 @@ public final class CombinedToolExecutor: Sendable {
         case "read_evidence_drills":
             return try readEvidenceDrills(stroke: args["stroke"] as? String, drill: args["drill"] as? String)
 
+        case "read_coach_reference":
+            return try readCoachReference(tier: args["tier"] as? String, section: args["section"] as? String)
+
         // Technique drills extraction tool
         case "get_technique_drills":
             return try getTechniqueDrills(filename: args["filename"] as? String)

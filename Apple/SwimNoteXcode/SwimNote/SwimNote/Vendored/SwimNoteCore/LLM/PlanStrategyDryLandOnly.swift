@@ -59,14 +59,14 @@ public struct DryLandOnlyStrategy: PlanGenerationStrategy, Sendable {
            - Age <12: NO weights, only bodyweight exercises
            - Age 12-15: Light resistance bands only
            - Age 16+: Full program allowed
-        4. COMPLETE PROGRAM: Generate at least \(context.sessionsPerWeek * 5) exercises (5+ per session).
+        4. COMPLETE PROGRAM: Generate at least \(context.effectiveWeeklySessionCount * 5) exercises (5+ per session).
         5. JSON VALIDITY: All setsReps are strings like "3x15", not numbers.
            - All exercise names are non-empty strings.
            - All focus categories are valid: Core, Rotation, Shoulder/Arm, Flexibility, Ankle/Kick.
 
         If any check fails, fix the JSON before outputting.
 
-        Generate \(context.sessionsPerWeek) DRY LAND sessions. NO pool. Full exercise program.
+        Generate \(context.effectiveWeeklySessionCount) DRY LAND sessions. NO pool. Full exercise program.
         OUTPUT ONLY JSON (after self-review passes).
         """
     }
@@ -112,7 +112,7 @@ public struct DryLandOnlyStrategy: PlanGenerationStrategy, Sendable {
 
         """
 
-        prompt += "Generate \(context.sessionsPerWeek) dry-land sessions. NO pool workouts.\n"
+        prompt += "Generate \(context.effectiveWeeklySessionCount) dry-land sessions. NO pool workouts.\n"
 
         return prompt
     }

@@ -56,13 +56,13 @@ public struct RecoveryStrategy: PlanGenerationStrategy, Sendable {
         }
 
         ALL string fields must be actual text, not booleans (except sessionNumber which is Int).
-        Generate \(context.sessionsPerWeek) LIGHT sessions. No sprint work. Extended rest.
+        Generate \(context.effectiveWeeklySessionCount) LIGHT sessions. No sprint work. Extended rest.
         OUTPUT ONLY JSON.
         """
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md"]
     }
 
     public func coachingRules() -> String {
@@ -140,13 +140,13 @@ public struct EnduranceStrategy: PlanGenerationStrategy, Sendable {
         }
 
         ALL string fields must be actual text, not booleans (except sessionNumber which is Int).
-        Generate \(context.sessionsPerWeek) ENDURANCE sessions. Long main sets. Pace targets.
+        Generate \(context.effectiveWeeklySessionCount) ENDURANCE sessions. Long main sets. Pace targets.
         OUTPUT ONLY JSON.
         """
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md"]
     }
 
     public func coachingRules() -> String {
@@ -231,13 +231,13 @@ public struct TechniqueFocusStrategy: PlanGenerationStrategy, Sendable {
         }
 
         ALL string fields must be actual text, not booleans (except sessionNumber which is Int).
-        Generate \(context.sessionsPerWeek) TECHNIQUE sessions. 40% drills. Multiple technique refs.
+        Generate \(context.effectiveWeeklySessionCount) TECHNIQUE sessions. 40% drills. Multiple technique refs.
         OUTPUT ONLY JSON.
         """
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md"]
     }
 
     public func coachingRules() -> String {

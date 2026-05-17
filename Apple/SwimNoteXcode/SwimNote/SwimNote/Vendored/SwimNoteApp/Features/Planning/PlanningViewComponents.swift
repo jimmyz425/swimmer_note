@@ -8,6 +8,9 @@ struct CollapsibleSettingsCard: View {
     @Binding var planType: PlanType
     @Binding var weekStartingDate: Date
     let skillLevel: SkillLevel  // For filtering plan types
+    let profile: UserProfile?
+    let coachTiers: [CoachSwimmerTier]
+    @Binding var selectedCoachingStyleIDs: Set<String>
     let isGenerating: Bool
     let onToggle: () -> Void
     let onGenerate: () -> Void
@@ -162,16 +165,27 @@ struct CollapsibleSettingsCard: View {
                         Divider()
                             .background(PoolTheme.border)
 
-                        // Row 3: Week
+                        CoachingStylesPickerSection(
+                            profile: profile,
+                            coachTiers: coachTiers,
+                            selectedIDs: $selectedCoachingStyleIDs
+                        )
+
+                        Divider()
+                            .background(PoolTheme.border)
+
+                        // Row 3: Week (compact picker — avoid scaleEffect; it causes invalid frame warnings)
                         HStack {
                             Text("Week")
                                 .font(.system(size: 11, weight: .semibold))
                                 .foregroundStyle(PoolTheme.smoke)
                                 .tracking(0.5)
 
+                            Spacer(minLength: 8)
+
                             DatePicker("", selection: $weekStartingDate, displayedComponents: .date)
                                 .labelsHidden()
-                                .scaleEffect(0.75)
+                                .datePickerStyle(.compact)
                         }
                     }
                     .padding(.horizontal, 14)
@@ -189,7 +203,7 @@ struct CollapsibleSettingsCard: View {
                                 if isGenerating {
                                     ProgressView()
                                         .tint(.white)
-                                        .scaleEffect(0.9)
+                                        .controlSize(.small)
                                 } else {
                                     Image(systemName: "sparkles")
                                         .font(.system(size: 14, weight: .semibold))
@@ -225,9 +239,12 @@ struct CollapsibleSettingsCard: View {
                     .padding(.horizontal, 14)
                     .padding(.bottom, 12)
                 }
-                .transition(.opacity.combined(with: .move(edge: .top)))
+                .transition(.opacity)
             }
         }
+        .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
+        .onAppear { clampPlanTypeIfNeeded() }
+        .onChange(of: skillLevel) { _, _ in clampPlanTypeIfNeeded() }
         .background(PoolTheme.cardSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
@@ -235,6 +252,11 @@ struct CollapsibleSettingsCard: View {
                 .strokeBorder(PoolTheme.border, lineWidth: 1)
         )
         .shadow(color: PoolTheme.shadow, radius: 8, x: 0, y: 4)
+    }
+
+    private func clampPlanTypeIfNeeded() {
+        guard !availablePlanTypes.contains(planType) else { return }
+        planType = availablePlanTypes.first ?? .mixed
     }
 }
 
@@ -348,7 +370,7 @@ struct SessionOutlineCard: View {
                                 if isGenerating {
                                     ProgressView()
                                         .tint(PoolTheme.mid)
-                                        .scaleEffect(0.7)
+                                        .controlSize(.small)
                                 } else {
                                     Image(systemName: "sparkles")
                                         .font(.caption)
@@ -554,5 +576,143 @@ struct SessionOutlineCard: View {
             .padding(.vertical, 3)
             .background(PoolTheme.light.opacity(0.2))
             .cornerRadius(4)
+    }
+}
+
+// MARK: - Coaching style multi-select
+
+struct CoachingStylesPickerSection: View {
+    let profile: UserProfile?
+    let coachTiers: [CoachSwimmerTier]
+    @Binding var selectedIDs: Set<String>
+
+    private var optionGroups: [(tier: CoachSwimmerTier, options: [CoachingStyleOption])] {
+        CoachingStyleCatalog.optionsGroupedForStylePicker(profile: profile)
+    }
+
+    private var mappingNote: String? {
+        guard let profile else { return nil }
+        return CoachTierProfileMapping.matchingRow(for: profile)?.notes
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack {
+                Text("Coaching styles")
+                    .font(.system(size: 11, weight: .semibold))
+                    .foregroundStyle(PoolTheme.smoke)
+                    .tracking(0.5)
+                Spacer()
+                if !selectedIDs.isEmpty {
+                    Text("\(selectedIDs.count) selected")
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(PoolTheme.mid)
+                }
+            }
+
+            if coachTiers.isEmpty {
+                Text("Set a training profile to see style options.")
+                    .font(.system(size: 11))
+                    .foregroundStyle(PoolTheme.smoke.opacity(0.8))
+            } else {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text("Coach tiers: \(coachTiers.map { $0.rawValue }.joined(separator: ", "))")
+                        .font(.system(size: 10, weight: .semibold))
+                        .foregroundStyle(PoolTheme.mid)
+                    Text(coachTiers.map(\.displayName).joined(separator: " · "))
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(PoolTheme.smoke.opacity(0.75))
+                    if let profile {
+                        Text(profileMappingLine(profile))
+                            .font(.system(size: 10))
+                            .foregroundStyle(PoolTheme.smoke.opacity(0.7))
+                    }
+                    if let mappingNote, !mappingNote.isEmpty {
+                        Text(mappingNote)
+                            .font(.system(size: 10))
+                            .foregroundStyle(PoolTheme.smoke.opacity(0.65))
+                            .italic()
+                    }
+                }
+
+                if optionGroups.isEmpty {
+                    Text("Could not load styles from coach reference.")
+                        .font(.system(size: 11))
+                        .foregroundStyle(PoolTheme.smoke.opacity(0.8))
+                } else {
+                    ForEach(optionGroups, id: \.tier) { group in
+                        VStack(alignment: .leading, spacing: 6) {
+                            if optionGroups.count > 1 {
+                                Text(group.tier.displayName)
+                                    .font(.system(size: 10, weight: .bold))
+                                    .foregroundStyle(PoolTheme.mid)
+                                    .textCase(.uppercase)
+                            }
+                            ForEach(group.options) { option in
+                                coachingStyleRow(option)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func coachingStyleRow(_ option: CoachingStyleOption) -> some View {
+        let isOn = selectedIDs.contains(option.id)
+        return Button {
+            if isOn {
+                selectedIDs.remove(option.id)
+            } else {
+                selectedIDs.insert(option.id)
+            }
+        } label: {
+            HStack(alignment: .top, spacing: 10) {
+                Image(systemName: isOn ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 18))
+                    .foregroundStyle(isOn ? PoolTheme.mid : PoolTheme.smoke.opacity(0.5))
+                    .padding(.top, 1)
+
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack(spacing: 6) {
+                        Text(option.styleName)
+                            .font(.system(size: 12, weight: .semibold))
+                            .foregroundStyle(PoolTheme.deep)
+                        if option.isDefaultRecommendation {
+                            Text("Suggested")
+                                .font(.system(size: 9, weight: .bold))
+                                .foregroundStyle(PoolTheme.mid)
+                                .padding(.horizontal, 5)
+                                .padding(.vertical, 2)
+                                .background(PoolTheme.light.opacity(0.35))
+                                .cornerRadius(4)
+                        }
+                    }
+                    Text(option.source)
+                        .font(.system(size: 10, weight: .medium))
+                        .foregroundStyle(PoolTheme.smoke.opacity(0.85))
+                    Text("When to use: \(option.whenToUse)")
+                        .font(.system(size: 10))
+                        .foregroundStyle(PoolTheme.smoke.opacity(0.9))
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(10)
+            .background(isOn ? PoolTheme.light.opacity(0.2) : PoolTheme.surface.opacity(0.6))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(isOn ? PoolTheme.mid.opacity(0.35) : PoolTheme.border.opacity(0.4), lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+
+    private func profileMappingLine(_ profile: UserProfile) -> String {
+        let tier = profile.trainingTier.displayName
+        let sub = profile.subTier.displayName
+        let subPart = sub.isEmpty ? "" : " \(sub)"
+        return "From profile: \(tier)\(subPart), age \(profile.age)"
     }
 }

@@ -116,7 +116,7 @@ public final class ProfileStore {
     ) async throws -> UserProfile {
         let now = Date()
         let timestamp = SwimNoteDateFormatting.string(from: now)
-        let effectiveSubTier = subTier == .none ? trainingTier.defaultSubTier : subTier
+        let effectiveSubTier = trainingTier.clampedSubTier(subTier)
 
         let profile = UserProfile(
             id: UUID().uuidString,

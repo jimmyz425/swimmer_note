@@ -72,26 +72,61 @@ extension PlanningView {
     }
 
     func parseDetailedSessionJSON(_ raw: String) throws -> DetailedSession {
-        var jsonString = raw.trimmingCharacters(in: .whitespaces)
-
-        // Remove markdown wrapper
-        if jsonString.hasPrefix("```json") {
-            jsonString = jsonString.dropFirst(7).trimmingCharacters(in: .whitespaces)
-        }
-        if jsonString.hasPrefix("```") {
-            jsonString = jsonString.dropFirst(3).trimmingCharacters(in: .whitespaces)
-        }
-        if jsonString.hasSuffix("```") {
-            jsonString = String(jsonString.dropLast(3).trimmingCharacters(in: .whitespaces))
+        guard let extracted = PlanningJSONRepair.extractJSONObject(from: raw) else {
+            let preview = String(raw.trimmingCharacters(in: .whitespacesAndNewlines).prefix(120))
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(
+                    codingPath: [],
+                    debugDescription: "No JSON object found in model response. Starts with: \(preview)"
+                )
+            )
         }
 
-        // Repair common issues
-        jsonString = PlanningJSONRepair.repairLLMJSON(jsonString)
+        let candidates = [
+            extracted,
+            PlanningJSONRepair.repairLLMJSON(extracted, mode: .detailedSession),
+            PlanningJSONRepair.repairLLMJSON(extracted, mode: .weeklyPlanOutline),
+        ]
 
         let decoder = JSONDecoder()
-        let data = jsonString.data(using: .utf8) ?? Data()
+        var lastData = Data()
+        var lastError: Error?
 
-        return try decoder.decode(DetailedSession.self, from: data)
+        for candidate in candidates {
+            guard let data = candidate.data(using: .utf8) else { continue }
+            lastData = data
+            do {
+                return try decoder.decode(DetailedSession.self, from: data)
+            } catch {
+                lastError = error
+            }
+        }
+
+        let decodingError = lastError ?? DecodingError.dataCorrupted(
+            DecodingError.Context(codingPath: [], debugDescription: "Detailed session JSON could not be decoded.")
+        )
+
+        #if DEBUG
+        if let decodingError = decodingError as? DecodingError {
+            let jsonString = String(data: lastData, encoding: .utf8) ?? ""
+            print("❌ Detailed session JSON decode failed (session payload first 500 chars):")
+            print(String(jsonString.prefix(500)))
+            switch decodingError {
+            case .keyNotFound(let key, let context):
+                print("Missing key: \(key.stringValue) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case .typeMismatch(let type, let context):
+                print("Type mismatch: \(type) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case .valueNotFound(let type, let context):
+                print("Value not found: \(type) at \(context.codingPath.map(\.stringValue).joined(separator: "."))")
+            case .dataCorrupted(let context):
+                print("Data corrupted: \(context.debugDescription)")
+            @unknown default:
+                break
+            }
+        }
+        #endif
+
+        throw decodingError
     }
 
     /// Parse dry land exercises from Phase 2 JSON (if present)

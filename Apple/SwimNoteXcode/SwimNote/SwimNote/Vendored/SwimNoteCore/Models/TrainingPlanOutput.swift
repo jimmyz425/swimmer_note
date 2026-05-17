@@ -1,5 +1,33 @@
 import Foundation
 
+// MARK: - Loose JSON string decoding (LLM outline drift)
+
+extension KeyedDecodingContainer where Key: CodingKey {
+    /// Decodes a value intended as a string; tolerates numeric/bool shapes from model output.
+    nonisolated fileprivate func decodeLLMStringIfPresent(forKey key: Key) throws -> String? {
+        guard contains(key) else { return nil }
+        if try decodeNil(forKey: key) { return nil }
+        if let s = try? decode(String.self, forKey: key) {
+            let trimmed = s.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? nil : trimmed
+        }
+        if let i = try? decode(Int.self, forKey: key) {
+            return String(i)
+        }
+        if let d = try? decode(Double.self, forKey: key) {
+            if d == d.rounded(.towardZero), abs(d) <= Double(Int.max) {
+                return String(Int(d))
+            }
+            return String(d)
+        }
+        if let b = try? decode(Bool.self, forKey: key) {
+            return b ? "true" : "false"
+        }
+        // Object or array: skip instead of failing the whole outline
+        return nil
+    }
+}
+
 // MARK: - Two-Week Training Summary (Phase 1 Output)
 
 /// Structured summary of training from the past ~2 weeks, produced by Phase 1 outline generation
@@ -183,7 +211,7 @@ public nonisolated struct SessionOutline: Codable, Hashable, Identifiable, Senda
         focus = try container.decodeIfPresent(String.self, forKey: .focus) ?? ""
         sessionType = try container.decodeIfPresent(String.self, forKey: .sessionType)
         techniqueFocus = try container.decodeIfPresent(String.self, forKey: .techniqueFocus)
-        techniqueFileRef = try container.decodeIfPresent(String.self, forKey: .techniqueFileRef)
+        techniqueFileRef = try container.decodeLLMStringIfPresent(forKey: .techniqueFileRef)
         addressesGoal = try container.decodeIfPresent(String.self, forKey: .addressesGoal)
         estimatedDuration = try container.decodeIfPresent(String.self, forKey: .estimatedDuration)
         estimatedDistance = try container.decodeIfPresent(String.self, forKey: .estimatedDistance)
@@ -512,7 +540,7 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         secondarySet = try container.decodeIfPresent(SessionSegment.self, forKey: .secondarySet)
         coolDown = try container.decode(SessionSegment.self, forKey: .coolDown)
         techniqueFocus = try container.decode(String.self, forKey: .techniqueFocus)
-        techniqueFileRef = try container.decodeIfPresent(String.self, forKey: .techniqueFileRef)
+        techniqueFileRef = try container.decodeLLMStringIfPresent(forKey: .techniqueFileRef)
         addressesGoal = try container.decodeIfPresent(String.self, forKey: .addressesGoal)
         sessionType = try container.decodeIfPresent(String.self, forKey: .sessionType)
         progressionRationale = try container.decodeIfPresent(String.self, forKey: .progressionRationale)

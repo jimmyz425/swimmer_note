@@ -35,7 +35,7 @@ public struct GeneralPrepStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {
@@ -82,7 +82,7 @@ public struct SpecificPrepStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {
@@ -130,7 +130,7 @@ public struct PreCompetitionStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {
@@ -178,7 +178,7 @@ public struct CompetitionPhaseStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {
@@ -232,7 +232,7 @@ public struct TaperStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {

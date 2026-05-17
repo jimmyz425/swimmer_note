@@ -73,9 +73,11 @@ public struct PlanContext: Sendable {
     public let pastTechniqueSections: [String]  // Key focus and common mistakes from technique files used in past sessions
     public let targetWeek: Date?  // Week starting date for the new plan
     public let poolType: PoolType
-    public let sessionsPerWeek: Int  // 0 = not determined, LLM will decide based on tier guidance
+    public let sessionsPerWeek: Int  // Usually profile `weeklySessionTarget` from buildPlanContext; 0 falls back in prompts via `effectiveWeeklySessionCount`
     public let strokeBalance: [StrokeBalanceInfo]
     public let goalProgress: GoalProgressInfo
+    /// Coaching style option ids from swimming-coach-role-reference.md (user multi-select in planner).
+    public let selectedCoachingStyleIDs: Set<String>
 
     public init(
         profile: UserProfile?,
@@ -84,9 +86,10 @@ public struct PlanContext: Sendable {
         pastTechniqueSections: [String] = [],
         targetWeek: Date? = nil,
         poolType: PoolType,
-        sessionsPerWeek: Int = 0,  // Default 0 - LLM determines from tier guidance
+        sessionsPerWeek: Int = 0,  // Prefer profile weeklySessionTarget when building PlanContext
         strokeBalance: [StrokeBalanceInfo],
-        goalProgress: GoalProgressInfo
+        goalProgress: GoalProgressInfo,
+        selectedCoachingStyleIDs: Set<String> = []
     ) {
         self.profile = profile
         self.notes = notes
@@ -97,6 +100,7 @@ public struct PlanContext: Sendable {
         self.sessionsPerWeek = sessionsPerWeek
         self.strokeBalance = strokeBalance
         self.goalProgress = goalProgress
+        self.selectedCoachingStyleIDs = selectedCoachingStyleIDs
     }
 }
 

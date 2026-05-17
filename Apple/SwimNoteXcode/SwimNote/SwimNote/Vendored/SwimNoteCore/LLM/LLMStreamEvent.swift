@@ -18,7 +18,7 @@ import Foundation
 /// Errors from the underlying transport are *thrown* by the
 /// `AsyncThrowingStream`, not surfaced as events — callers handle them via
 /// the standard `for try await` error path.
-public enum LLMStreamEvent: Sendable, Equatable {
+public enum LLMStreamEvent: Sendable {
     /// Incremental assistant content. Concatenate these to build the full
     /// reply string. Empty strings are valid (some providers emit them as
     /// keep-alives) and should be tolerated.
@@ -42,8 +42,25 @@ public enum LLMStreamEvent: Sendable, Equatable {
     case finished(LLMResponse)
 }
 
+extension LLMStreamEvent: Equatable {
+    public nonisolated static func == (lhs: LLMStreamEvent, rhs: LLMStreamEvent) -> Bool {
+        switch (lhs, rhs) {
+        case let (.contentDelta(a), .contentDelta(b)):
+            return a == b
+        case let (.toolCallDelta(i1, id1, n1, a1), .toolCallDelta(i2, id2, n2, a2)):
+            return i1 == i2 && id1 == id2 && n1 == n2 && a1 == a2
+        case let (.usage(p1, c1, t1), .usage(p2, c2, t2)):
+            return p1 == p2 && c1 == c2 && t1 == t2
+        case let (.finished(l), .finished(r)):
+            return l == r
+        default:
+            return false
+        }
+    }
+}
+
 extension LLMResponse: Equatable {
-    public static func == (lhs: LLMResponse, rhs: LLMResponse) -> Bool {
+    public nonisolated static func == (lhs: LLMResponse, rhs: LLMResponse) -> Bool {
         lhs.content == rhs.content &&
         lhs.reasoningContent == rhs.reasoningContent &&
         (lhs.toolCalls?.map(\.id) ?? []) == (rhs.toolCalls?.map(\.id) ?? [])

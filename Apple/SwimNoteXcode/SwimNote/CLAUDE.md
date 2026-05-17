@@ -44,6 +44,10 @@ JSON files in Application Support directory:
 - Dashboard → NavigationStack → TechniqueTree → NodeDetail
 - Sheets for modals: profile editing, tier selection, goal notes
 
+### Planning LLM JSON
+
+When editing prompts or `Codable` for weekly planning, keep the model’s JSON aligned with the app decoders. See **`SwimNote/Vendored/SwimNoteCore/docs/LLM_TRAINING_PLAN_JSON_SCHEMA.md`** (Phase 1 outline vs Phase 2 detail vs full `WeeklyTrainingPlan`, repair pipeline, `goalProgressPlan` vs `techniqueProgressPlan`).
+
 ### Key Patterns
 
 - `@Observable` for app model (iOS 17+ Observation)

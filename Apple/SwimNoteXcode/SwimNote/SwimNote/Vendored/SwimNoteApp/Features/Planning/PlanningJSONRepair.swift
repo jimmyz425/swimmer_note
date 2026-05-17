@@ -10,6 +10,94 @@ enum PlanningJSONRepair {
         /// WeeklyPlanOutline: no full-plan key renames or root `notes` injection; still runs
         /// truncation/brace repair so a hard `max_tokens` cutoff can yield decodable JSON.
         case weeklyPlanOutline
+        /// Phase 2 DetailedSession: same safety as outline (no full-plan key renames).
+        case detailedSession
+    }
+
+    /// Strips markdown fences and returns the first balanced `{...}` object if present.
+    static func extractJSONObject(from raw: String) -> String? {
+        var text = stripMarkdownCodeFences(raw)
+        text = text.trimmingCharacters(in: .whitespacesAndNewlines)
+
+        // Drop a single leading non-JSON line (e.g. "Note:", "Here is the session:")
+        if !text.hasPrefix("{"), let firstBrace = text.firstIndex(of: "{") {
+            let prefix = text[..<firstBrace].trimmingCharacters(in: .whitespacesAndNewlines)
+            if !prefix.isEmpty, !prefix.hasPrefix("{") {
+                text = String(text[firstBrace...])
+            }
+        }
+
+        guard let start = text.firstIndex(of: "{") else { return nil }
+        if let balanced = extractBalancedJSONObject(text, from: start) {
+            return balanced
+        }
+        // Truncated stream: repair from first `{` onward
+        let tail = String(text[start...])
+        return applyTruncationAndStructureRepair(tail)
+    }
+
+    /// Prefer the candidate that actually contains decodable JSON (streaming often leaves JSON in `aggregated`).
+    static func bestJSONPayload(final: String?, aggregated: String) -> String {
+        var candidates: [(source: String, extracted: String)] = []
+        for source in [final, aggregated].compactMap({ $0 }).filter({ !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }) {
+            if let extracted = extractJSONObject(from: source) {
+                candidates.append((source, extracted))
+            }
+        }
+        if let best = candidates.max(by: { $0.extracted.count < $1.extracted.count }) {
+            return best.source
+        }
+        if let final, !final.isEmpty { return final }
+        return aggregated
+    }
+
+    static func stripMarkdownCodeFences(_ raw: String) -> String {
+        var jsonString = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        if jsonString.hasPrefix("```json") {
+            jsonString = String(jsonString.dropFirst(7)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if jsonString.hasPrefix("```") {
+            jsonString = String(jsonString.dropFirst(3)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        if jsonString.hasSuffix("```") {
+            jsonString = String(jsonString.dropLast(3)).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+        return jsonString
+    }
+
+    private static func extractBalancedJSONObject(_ text: String, from start: String.Index) -> String? {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        var index = start
+        while index < text.endIndex {
+            let char = text[index]
+            if inString {
+                if escaped {
+                    escaped = false
+                } else if char == "\\" {
+                    escaped = true
+                } else if char == "\"" {
+                    inString = false
+                }
+            } else {
+                switch char {
+                case "\"":
+                    inString = true
+                case "{":
+                    depth += 1
+                case "}":
+                    depth -= 1
+                    if depth == 0 {
+                        return String(text[start...index])
+                    }
+                default:
+                    break
+                }
+            }
+            index = text.index(after: index)
+        }
+        return nil
     }
 
     static func repairLLMJSON(_ json: String, mode: Mode = .fullTrainingPlan) -> String {
@@ -20,7 +108,7 @@ enum PlanningJSONRepair {
         repaired = repaired.replacingOccurrences(of: "\"ills\" :", with: "\"drills\" :")
 
         if mode == .fullTrainingPlan {
-            // Fix wrong field names from LLM (WeeklyTrainingPlan schema only — do not apply to outlines)
+            // Fix wrong field names from LLM (WeeklyTrainingPlan schema only — do not apply to outlines / detailed sessions)
             repaired = repaired.replacingOccurrences(of: "\"sessions\":", with: "\"detailedSessions\":")
             repaired = repaired.replacingOccurrences(of: "\"exercisePlan\":", with: "\"dryLandProgram\":")
             repaired = repaired.replacingOccurrences(of: "\"dryLand\":", with: "\"dryLandProgram\":")

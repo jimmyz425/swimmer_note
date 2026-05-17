@@ -8,8 +8,10 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func buildUserPrompt(context: PlanContext) -> String {
-        let weeklyTotal = weeklyDistanceTarget(for: context)
-        let perSessionTarget = weeklyTotal / max(context.sessionsPerWeek, 1)
+        let sessionPlan = context.effectiveWeeklySessionCount
+        let weeklyTotal = context.weeklyPoolVolumeTargetMeters
+        let perSessionTarget = context.perSessionPoolVolumeTargetMeters
+        let perSessionDivisor = context.perSessionPoolVolumePlanningDivisor
 
         return """
         MANDATORY FIRST STEPS (call these tools BEFORE generating the plan):
@@ -120,7 +122,7 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         Warm-up: Zone 0-1 (easy, progressive build, 12-20s rest)
         Drill/Pre-set: Zone 1-2 (technique focus, 10-16s rest) — use get_technique_drills (classic drills)
         Main Set: Zone ___ (primary training zone - specify based on session focus AND TIER ALLOWANCE)
-        Secondary Set: read_evidence_drills ONLY — exactly one F/B/BR/FL code per session; multiple JSON sets, one per table row (#); no improvised hybrids
+        Secondary Set (optional): read_evidence_drills when coaching style calls for exploration — one code, one JSON set per table row; omit when not appropriate
         Cool-down: Zone 0 (recovery, 60-120s rest)
         Notes/Observations: coaching tips for this session
 
@@ -171,8 +173,8 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         IMPORTANT: Each set must have repeatCount (Int), item (String), zone (Int 0-6), swimSeconds (Int), and restSeconds (Int).
         IMPORTANT: distancePerRep and durationSeconds are Int, not String.
         IMPORTANT: Include "restSeconds" in EACH set based on zone from interval research.
-        IMPORTANT: Include "secondarySet" on pool sessions — always one evidence drill (read_evidence_drills), expanded into multiple sets (one per main table row #), never a single vague block.
-        IMPORTANT: secondarySet sets MUST include "equipment" and "notes" strings copied from the evidence drill table for each row (use "none" for equipment when the table says none).
+        Include "secondarySet" only when user coaching styles or session focus benefit from evidence-based exploration (read_evidence_drills). When present: one drill code, one set per table row, equipment + notes from table.
+        Use read_coach_reference for drillSet/mainSet structure from selected coaching styles.
         IMPORTANT: Include "sessionNotes" for coaching tips specific to the session.
 
         SELF-REVIEW (CRITICAL - perform before outputting):
@@ -186,7 +188,7 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
            - Check: 6×50=300, 4×25=100, total=400m ✓
            - If mismatch found, CORRECT the sets before outputting.
         3. SESSION TOTALS: Each session's segments (warmUp+drillSet+mainSet+secondarySet+coolDown) should total roughly the per-session target.
-           - Target: ~\(perSessionTarget)m per session (weekly total divided by \(context.sessionsPerWeek) sessions).
+           - Target: ~\(perSessionTarget)m per session (weekly \(weeklyTotal)m ÷ \(perSessionDivisor); divisor = max(\(sessionPlan) session(s), tier max practices/week) so fewer days does not inflate per-practice volume).
            - MUST be within tier guidance per_session_distance range.
         4. ZONE FIELDS: Each set AND each segment has zone field (Int 0-6):
            - Warm-up sets: zone 0-1
@@ -214,13 +216,13 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
            - All repeatCount are Int > 0.
            - All zone fields are Int 0-6 (in both sets AND segments).
            - All item fields are non-empty strings.
-        9. COMPLETE SESSIONS: Generate exactly \(context.sessionsPerWeek) sessions.
+        9. COMPLETE SESSIONS: Generate exactly \(sessionPlan) sessions.
         10. FUNDAMENTALS: At least 30% of sessions include fundamental revisit.
         11. SECONDARY SET: If secondarySet is present, verify it is one evidence drill code only, sets align with that drill's table (no get_technique_drills content such as 6-3-6 unless it is literally a row in the chosen evidence drill), no multi-drill prose in a single item field, and each set includes equipment + notes from the table (app UI shows these per rep).
 
         If any check fails, fix the JSON before outputting the final result.
 
-        Generate \(context.sessionsPerWeek) sessions. Include fundamentals in 30%+ sessions. Match drills to skill tier.
+        Generate \(sessionPlan) sessions. Include fundamentals in 30%+ sessions. Match drills to skill tier.
         USE TIER GUIDANCE for zone distribution and session volumes.
         USE CSS ZONE PACES for interval targets when CSS is available.
         OUTPUT ONLY JSON (after self-review passes).
@@ -228,14 +230,16 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
     }
 
     public func guidanceFiles() -> [String] {
-        return ["coach_prompt.md", "swimming-interval-training-research.md"]
+        return ["coach_prompt.md", "swimming-coach-role-reference.md", "swimming-interval-training-research.md"]
     }
 
     public func coachingRules() -> String {
         return """
         SESSION BALANCE: 30% fundamentals, 50% current-level, 20% stretch.
-        For drillSet: get_technique_drills("{stroke}-{number}-{name}") → specific + competitive drills with tiered targets.
-        For secondarySet ONLY: read_evidence_drills → pick one F/B/BR/FL code; expand table rows as separate JSON sets; no classic drills or improvised hybrids here.
+        Honor user-selected coaching styles from swimming-coach-role-reference.md (embedded in context).
+        For drillSet: get_technique_drills and/or signature sets from read_coach_reference — match active coaching style(s).
+        For mainSet: structure from coaching style (Reese pace work, Bowman negatives, Salo SR sets, playful youth games, etc.).
+        For secondarySet: optional — read_evidence_drills when style/session needs exploration block; omit otherwise.
         For intervals: get_css_info() + read_interval_research("zones") → accurate send-off times.
         """
     }
@@ -280,11 +284,13 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
             }
         }
 
-        let weeklyTotal = weeklyDistanceTarget(for: context)
-        let sessionDivisor = max(context.sessionsPerWeek, 1)
+        let sessionPlan = context.effectiveWeeklySessionCount
+        let weeklyTotal = context.weeklyPoolVolumeTargetMeters
+        let volDivisor = context.perSessionPoolVolumePlanningDivisor
+        let perSessionFromPlanning = context.perSessionPoolVolumeTargetMeters
         prompt += """
         WEEKLY TOTAL DISTANCE: \(weeklyTotal) across ALL sessions combined.
-        Each session should be roughly \(weeklyTotal / sessionDivisor)m (divide weekly total by session count).
+        Each session should be roughly \(perSessionFromPlanning)m (weekly ÷ \(volDivisor); divisor is max of your \(sessionPlan) session(s) and the tier’s high-end practices/week so per-session load stays steady if you miss a day).
 
         """
 
@@ -324,7 +330,11 @@ public struct MixedTrainingStrategy: PlanGenerationStrategy, Sendable {
         }
 
         // Settings
-        prompt += "SETTINGS: Pool \(context.poolType.fullLabel), \(context.sessionsPerWeek) sessions\n"
+        #if DEBUG
+        prompt += "SETTINGS: Pool \(context.poolType.fullLabel), \(sessionPlan) sessions [debug: PlanContext.sessionsPerWeek=\(context.sessionsPerWeek) profile.weeklySessionTarget=\(context.profile?.weeklySessionTarget ?? -1)]\n"
+        #else
+        prompt += "SETTINGS: Pool \(context.poolType.fullLabel), \(sessionPlan) sessions\n"
+        #endif
 
         return prompt
     }

@@ -10,33 +10,21 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
     var prompt = """
     You are a professional swim coach preparing a weekly training plan for \(planType.rawValue).
 
-    You have all the context you need below: swimmer profile, past training sessions with technique details, and USA Swimming tier guidance. Review everything carefully before responding.
+    You have all the context you need below: swimmer profile, embedded tier guidance (speed level and zone mix), past training sessions with technique details, and app volume targets. Review everything carefully before responding. Do not call tools — all tier and volume data is embedded.
 
     ---
 
-    TOOL CALLS (do these first):
+    \(context.embeddedTierGuidance)
 
-    1. Call read_usa_swimming_structure(section: "all") to get comprehensive tier background:
-       - Quick-Reference Summary Table with all tier definitions
-       - Zone distribution percentages per tier and sub-tier
-       - Volume progression (weekly/per-session distances in km)
-       - Practices per week recommendations by tier
-       - Sub-tier breakdowns with detailed criteria
-       - Training focus allocation by tier
+    \(context.embeddedCoachingStyleGuidance)
 
-       Use this to determine sessions/week, weekly distance, per-session targets, and zone distribution.
-
-    2. Call get_tier_guidance() to get specific guidance for the swimmer's current tier/sub-tier.
+    ---
 
     """
 
-    // Add macrocycle phase-specific tool call
     if isMacrocyclePhase {
         prompt += """
-    3. CRITICAL FOR MACROCYCLE PHASE: Call read_interval_research(section: "periodization") to get:
-       - Detailed zone distribution percentages for this specific phase
-       - Interval characteristics (distance, rest patterns) for the phase
-       - Sample week structures for each macrocycle phase
+    MACROCYCLE PHASE (\(planType.rawValue)): Align weekly zone mix and session types with this training phase. Use embedded zone distribution as a baseline, then bias toward phase-appropriate emphasis (e.g. taper = lower volume, higher quality; general prep = more aerobic base).
 
     """
     }
@@ -85,10 +73,23 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
         """
     }
 
+    let weeklyPoolM = context.weeklyPoolVolumeTargetMeters
+    let planSessions = context.effectiveWeeklySessionCount
+    let perSessionDiv = context.perSessionPoolVolumePlanningDivisor
+    let perSessionPoolM = context.perSessionPoolVolumeTargetMeters
+    prompt += """
+    APP VOLUME TARGETS (use these exact numbers in JSON `tierGuidance` and each session’s `estimatedDistance`):
+    - `tierGuidance.weeklyDistanceTarget`: \(weeklyPoolM) (meters, all pool sessions this week combined)
+    - `tierGuidance.sessionsPerWeek`: \(planSessions)
+    - `tierGuidance.perSessionTarget`: \(perSessionPoolM) (meters; \(weeklyPoolM) ÷ \(perSessionDiv), where divisor = max(\(planSessions), tier’s high-end practices/week) so fewer swim days do not push per-practice meters up)
+    - Schedule: aim for \(planSessions) pool sessions in `schedule`; total swim volume across the week should approximate \(weeklyPoolM) meters.
+
+    """
+
     prompt += """
     ————————————————————————————————————————————————
 
-    YOUR ROLE: Write like a professional swim coach. Review all the data above — sessions, technique content, tier guidance — and produce three things in order:
+    YOUR ROLE: Write like a professional swim coach. Review all the data above — sessions, technique content, embedded tier guidance — and produce three things in order:
 
     ## PART 1: COACHING SUMMARY (the "State of the Swimmer")
 
@@ -180,9 +181,11 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
     ```
 
     IMPORTANT:
-    - Output ONLY the JSON — no explanations before or after
-    - The pastTrainingSummary and planConnectionRationale fields should contain the full narrative text from Parts 1 and 2
-    - techniqueFileRef should reference specific technique files that match the session's focus (e.g., "freestyle-05-arm-entry" for an arm entry session)
+    - Output ONLY a single JSON object — no markdown fences, no text before or after
+    - Put the full Part 1 narrative in `pastTrainingSummary` and Part 2 in `planConnectionRationale` only
+    - `tierGuidance.zoneDistribution` must match the embedded DETAILED ZONE DISTRIBUTION (zone0–zone6)
+    - `tierGuidance` weeklyDistanceTarget, sessionsPerWeek, and perSessionTarget must match APP VOLUME TARGETS exactly
+    - techniqueFileRef must be a JSON **string** in double quotes (e.g., "freestyle-05-arm-entry"), never a bare number; use a slug that matches the session focus or null if unsure
     """
     return prompt
 }
@@ -213,6 +216,8 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
     let coveredTech = weeklyOutline.twoWeekSummary?.coveredTechniques ?? ""
     let techniqueProg = weeklyOutline.twoWeekSummary?.techniqueProgression ?? ""
 
+    let pacingGuidance = PlanTierGuidancePrompt.phase2PacingGuidance(for: context)
+
     let prompt = """
     Generate PHASE 2 DETAILED SESSION for session #\(sessionOutline.sessionNumber).
 
@@ -223,23 +228,32 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
     \(coveredTech.isEmpty ? "No previous technique content to reference." : coveredTech)
     \(techniqueProg.isEmpty ? "" : "TECHNIQUE PROGRESSION ANALYSIS: " + techniqueProg)
 
+    \(context.embeddedTierGuidance)
+
+    \(context.embeddedCoachingStyleGuidance)
+
+    PACING (read before building sets):
+    \(pacingGuidance)
+
     SESSION CONTEXT:
     - Session focus: \(sessionOutline.poolSession) - \(sessionOutline.focus)
     - Technique focus: \(sessionOutline.techniqueFocus ?? "general")
-    - Estimated distance: \(sessionOutline.estimatedDistance ?? "~3000m")
+    - Estimated distance (outline): \(sessionOutline.estimatedDistance ?? "not specified — use app per-session target below")
     - Primary stroke: \(primaryStroke)
+
+    POOL METERS (Phase 2): Aim for total swim distance (sum of repeatCount×distancePerRep in all segments with distancePerRep) within ~15% of the outline’s `estimatedDistance`, or ~\(context.perSessionPoolVolumeTargetMeters)m if the outline string is vague. Weekly plan context: \(context.weeklyPoolVolumeTargetMeters)m/week across \(context.effectiveWeeklySessionCount) sessions.
 
     SWIMMER CONTEXT:
     - Skill Level: \(skillLevel)
     - Pool Type: \(context.poolType.fullLabel)
     - CSS Pace: \(cssPace)/100m
 
-    MANDATORY — Evidence-Based Secondary Drill Set (stroke-evidence-based-drills.md ONLY):
-    1. Call read_evidence_drills(stroke="\(primaryStroke)") to list codes (F1, F2, …).
-    2. Pick exactly ONE code that matches this session's focus, then call read_evidence_drills(stroke="\(primaryStroke)", drill="<CODE>") for the full set table and level adjustments.
-    3. Build secondarySet ONLY from that returned text. Do not use get_technique_drills or classic stroke drills (e.g. 6-3-6, catch-up, single-arm) here unless they appear verbatim as a row in that evidence drill table.
-    4. STRUCTURE: secondarySet.sets must be a list of separate objects — typically one JSON set per table row (# column). Each set's repeatCount × distancePerRep must match that row's Reps × Distance. Map columns: **item** = Description, **equipment** = Equipment (use "none" when the table says none), **notes** = Notes (verbatim from the table). Do not merge rows or omit equipment/notes for secondary sets.
-    5. Include the evidence citation from the tool result in sessionNotes.
+    COACHING & SET DESIGN:
+    1. Honor user-selected coaching styles above. Call read_coach_reference(tier="\(context.coachSwimmerTiers.first?.rawValue ?? "INT")") when you need Use/Avoid lists or signature sets for this session.
+    2. drillSet: get_technique_drills for stroke technique work and/or signature sets from the coach reference — match the active style(s), not a generic drill list.
+    3. mainSet: primary block aligned with style (e.g. Reese pace 100s, Bowman negative splits, Salo stroke-rate work, playful short reps for youth). Use embedded tier zones for intensity.
+    4. secondarySet: OPTIONAL. Include only when styles or session focus benefit from an evidence/exploration block. If used: read_evidence_drills(stroke="\(primaryStroke)") → pick ONE code → read_evidence_drills(stroke="\(primaryStroke)", drill="<CODE>") → one JSON set per table row with item/equipment/notes from the table. Omit secondarySet entirely when styles do not call for it (e.g. pure Reese consistency, playful YB sessions).
+    5. sessionNotes: cite coaching style rationale and any evidence drill source when secondarySet is present.
 
     OUTPUT JSON FORMAT (detailed session with sets):
     {
@@ -294,15 +308,9 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
 internal func buildDefaultDryLandPrompt(_ outline: WeeklyPlanOutline, context: PlanContext) -> String {
     // Summarize the week's technique focuses
     let techniqueFocuses = outline.schedule.compactMap { $0.techniqueFocus }.joined(separator: ", ")
-    let strokes = outline.schedule.compactMap { session -> String? in
-        // Extract stroke from poolSession if possible
-        if session.poolSession.contains("Freestyle") { return "freestyle" }
-        if session.poolSession.contains("Backstroke") { return "backstroke" }
-        if session.poolSession.contains("Breaststroke") { return "breaststroke" }
-        if session.poolSession.contains("Butterfly") { return "butterfly" }
-        return nil
-    }
-    let uniqueStrokes = Array(Set(strokes)).joined(separator: ", ")
+    let strokeList = DryLandExerciseCatalog.strokesFromWeeklyOutline(outline)
+    let uniqueStrokes = strokeList.joined(separator: ", ")
+    let allowedExercises = DryLandExerciseCatalog.allowedExercisesPromptSection(strokes: strokeList)
 
     let skillLevel = context.profile?.skillLevel.rawValue ?? "intermediate"
 
@@ -322,19 +330,15 @@ internal func buildDefaultDryLandPrompt(_ outline: WeeklyPlanOutline, context: P
     SWIMMER CONTEXT:
     - Skill Level: \(skillLevel)
 
-    IMPORTANT: You MUST call get_dry_land_exercises for EACH stroke covered this week BEFORE generating exercises.
-    - Call: get_dry_land_exercises(stroke="freestyle") to get available exercises
-    - Call: get_dry_land_exercises(stroke="backstroke") if backstroke is covered
-    - Call: get_dry_land_exercises(stroke="breaststroke") if breaststroke is covered
-    - Call: get_dry_land_exercises(stroke="butterfly") if butterfly is covered
+    \(context.embeddedTierGuidance)
 
-    YOU MUST ONLY USE EXERCISES RETURNED BY THE TOOL. Do NOT invent or create new exercises. If you need an exercise that isn't in the returned list, skip it.
+    \(allowedExercises)
 
     DRY LAND REQUIREMENTS:
     1. Generate 5-7 exercises that complement the pool training
     2. Target areas based on technique focuses: Core stability, Rotation power, Shoulder strength, Flexibility
     3. Match exercises to swimmer's skill level
-    4. Use exercise IDs from tool results (e.g., "plank-hold", "medicine-ball-rotational-throws")
+    4. Use exerciseId values ONLY from ALLOWED DRY LAND EXERCISES above (e.g., "plank-hold"). Do not invent IDs.
 
     OUTPUT JSON FORMAT:
     {
@@ -347,7 +351,7 @@ internal func buildDefaultDryLandPrompt(_ outline: WeeklyPlanOutline, context: P
     }
 
     RULES:
-    - Return exerciseId (NOT exercise name) - use IDs from get_dry_land_exercises tool (e.g., "plank-hold")
+    - Return exerciseId (NOT exercise name) — must match an id from ALLOWED DRY LAND EXERCISES (e.g., "plank-hold")
     - Each exercise must have: stroke, exerciseId, setsReps format (e.g., "3x10", "3x30s")
     - Distribute exercises across the week's technique focuses
     - OUTPUT ONLY JSON (no explanations)

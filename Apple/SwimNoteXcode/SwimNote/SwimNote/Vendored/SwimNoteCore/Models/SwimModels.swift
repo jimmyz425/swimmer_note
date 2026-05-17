@@ -204,6 +204,11 @@ public enum TrainingTier: String, Codable, CaseIterable, Hashable, Sendable, Ide
         hasSubTiers ? availableSubTiers.first! : .none
     }
 
+    /// Sub-tier valid for this tier; otherwise `defaultSubTier` (fixes Picker tag mismatches).
+    public func clampedSubTier(_ subTier: SubTier) -> SubTier {
+        availableSubTiers.contains(subTier) ? subTier : defaultSubTier
+    }
+
     /// Time standards reference
     public var timeStandardReference: String {
         switch self {
@@ -833,7 +838,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         }
 
         if let sub = try container.decodeIfPresent(SubTier.self, forKey: .subTier) {
-            subTier = sub
+            subTier = trainingTier.clampedSubTier(sub)
         } else {
             subTier = trainingTier.defaultSubTier
         }
@@ -921,7 +926,7 @@ public struct UserProfile: Codable, Hashable, Identifiable, Sendable {
         self.birthday = birthday
         self.sex = sex
         self.trainingTier = trainingTier
-        let effectiveSubTier = subTier == .none ? trainingTier.defaultSubTier : subTier
+        let effectiveSubTier = trainingTier.clampedSubTier(subTier)
         self.subTier = effectiveSubTier
         self.skillLevel = skillLevel ?? Self.computeSkillLevel(tier: trainingTier, sub: effectiveSubTier)
         self.weeklySessionTarget = weeklySessionTarget

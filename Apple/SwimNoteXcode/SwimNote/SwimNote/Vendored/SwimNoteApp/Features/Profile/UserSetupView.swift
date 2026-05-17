@@ -107,8 +107,7 @@ struct UserSetupView: View {
                     }
                     .pickerStyle(.navigationLink)
                     .onChange(of: trainingTier) { _, newTier in
-                        // Reset sub-tier when main tier changes
-                        subTier = newTier.defaultSubTier
+                        subTier = newTier.clampedSubTier(subTier)
                     }
 
                     // Sub-tier picker (only shown for tiers with sub-tiers)

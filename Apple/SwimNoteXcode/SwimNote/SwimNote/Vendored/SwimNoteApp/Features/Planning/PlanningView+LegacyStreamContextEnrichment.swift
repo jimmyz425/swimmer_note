@@ -146,8 +146,10 @@ extension PlanningView {
                 break
             }
         }
-        if let lastFinalText, !lastFinalText.isEmpty { return lastFinalText }
-        if !aggregated.isEmpty { return aggregated }
+        let payload = PlanningJSONRepair.bestJSONPayload(final: lastFinalText, aggregated: aggregated)
+        if !payload.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return payload
+        }
         throw LLMServiceError.invalidResponse
     }
 
@@ -223,16 +225,27 @@ extension PlanningView {
         print("[PlanContext] Unique technique files: \(uniqueTechRefs.count)")
         #endif
 
-        return PlanContext(
+        let profileSessions = appModel.activeProfile?.weeklySessionTarget ?? 0
+        let planContext = PlanContext(
             profile: appModel.activeProfile,
             notes: recentNotes,
             pastSessions: pastSessions,
             pastTechniqueSections: pastTechniqueSections,
             targetWeek: targetWeek,
             poolType: poolType,
+            sessionsPerWeek: profileSessions,
             strokeBalance: strokeBalance,
-            goalProgress: goalProgress
+            goalProgress: goalProgress,
+            selectedCoachingStyleIDs: selectedCoachingStyleIDs
         )
+
+        #if DEBUG
+        print(
+            "[PlanContext volume] profileWeeklySessionTarget=\(profileSessions) effectiveSessions=\(planContext.effectiveWeeklySessionCount) weeklyPoolM=\(planContext.weeklyPoolVolumeTargetMeters) perSessionDivisor=\(planContext.perSessionPoolVolumePlanningDivisor) perSessionM≈\(planContext.perSessionPoolVolumeTargetMeters) pool=\(poolType)"
+        )
+        #endif
+
+        return planContext
     }
 
     func analyzeStrokeBalance(_ notes: [TrainingNote]) -> [StrokeBalanceInfo] {

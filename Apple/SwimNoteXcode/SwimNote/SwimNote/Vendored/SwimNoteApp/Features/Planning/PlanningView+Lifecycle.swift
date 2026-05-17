@@ -44,8 +44,21 @@ extension PlanningView {
         }
     }
 
+    /// Pre-select tier-appropriate coaching styles when profile loads or selection is empty.
+    func syncCoachingStyleDefaultsIfNeeded() {
+        let profile = appModel.activeProfile
+        let pruned = CoachingStyleCatalog.pruneSelection(selectedCoachingStyleIDs, profile: profile)
+        if pruned != selectedCoachingStyleIDs {
+            selectedCoachingStyleIDs = pruned
+        }
+        guard selectedCoachingStyleIDs.isEmpty else { return }
+        selectedCoachingStyleIDs = CoachingStyleCatalog.defaultSelectionIDs(forProfile: profile)
+    }
+
     /// Reset all plan generation state when switching profiles
     func resetPlanState() {
+        selectedCoachingStyleIDs = []
+        syncCoachingStyleDefaultsIfNeeded()
         generatedPlan = nil
         parsedPlan = nil
         planOutline = nil

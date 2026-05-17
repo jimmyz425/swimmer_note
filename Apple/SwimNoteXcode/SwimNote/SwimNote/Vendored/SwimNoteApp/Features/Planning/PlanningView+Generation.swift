@@ -124,7 +124,7 @@ extension PlanningView {
         )
 
         // Tools for Phase 2: technique file reading + evidence-based drills
-        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference]
 
         do {
             let rawOutput = try await streamToolConversationToString(
@@ -324,7 +324,7 @@ extension PlanningView {
         )
 
         // Tools for Phase 2: technique file reading + evidence-based drills
-        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills]
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference]
 
         do {
             let rawOutput = try await streamToolConversationToString(

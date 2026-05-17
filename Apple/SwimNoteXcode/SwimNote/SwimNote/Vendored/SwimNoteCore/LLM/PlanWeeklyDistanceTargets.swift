@@ -11,6 +11,11 @@ import Foundation
 /// document's **Practices/Week** (recommended denominator). When `sessionsPerWeek` is unknown
 /// (≤ 0), returns the midpoint volume at the tier's typical practice load (no scaling).
 ///
+/// **Per-session planning:** `perSessionPoolVolumeTargetMeters` divides weekly volume by
+/// `max(effectiveWeeklySessionCount, maximumPracticesPerWeek)` so when a swimmer drops a day,
+/// we still use the tier’s **upper** typical practice count as the divisor — shorter, stabler
+/// per-session targets than dividing only by the lower session count.
+///
 /// LCM: same relative load is often expressed as ~2× SCM distance for comparable time-on-task;
 /// that adjustment is preserved below.
 
@@ -39,7 +44,7 @@ internal func weeklyDistanceTarget(for context: PlanContext) -> Int {
 // MARK: - Tier + sub-tier (USA Swimming club structure)
 
 /// Documented typical practices/week for scaling (see sub-tier tables, same markdown file).
-private func recommendedPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -> Int {
+internal func recommendedPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -> Int {
     switch tier {
     case .preCompetitive:
         switch subTier {
@@ -66,6 +71,37 @@ private func recommendedPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -
         return 6 // doc 6–8
     case .national:
         return 8 // doc 8–12+
+    }
+}
+
+/// Upper end of documented practices/week (same ranges as `practices_per_week` max in tier guidance).
+internal func maximumPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -> Int {
+    switch tier {
+    case .preCompetitive:
+        switch subTier {
+        case .a, .b: return 2
+        case .c: return 3
+        default: return 3
+        }
+    case .bronze:
+        switch subTier {
+        case .one: return 3
+        case .two: return 4
+        case .three: return 4
+        default: return 4
+        }
+    case .silver:
+        switch subTier {
+        case .one, .two: return 4
+        case .three: return 5
+        default: return 5
+        }
+    case .gold:
+        return 6
+    case .senior:
+        return 8
+    case .national:
+        return 12
     }
 }
 
@@ -111,4 +147,36 @@ internal func weeklyDistanceTarget(tier: TrainingTier, subTier: SubTier, session
         return adjusted
     }
     return adjusted * sessionsPerWeek / max(recommended, 1)
+}
+
+// MARK: - PlanContext volume (prompts + tools)
+
+extension PlanContext {
+    /// Practices/week used in prompts when `sessionsPerWeek` was not set (0): profile target, else tier doc default.
+    public var effectiveWeeklySessionCount: Int {
+        if sessionsPerWeek > 0 { return sessionsPerWeek }
+        if let profile, profile.weeklySessionTarget > 0 { return profile.weeklySessionTarget }
+        let tier = profile?.trainingTier ?? .silver
+        let sub = profile?.subTier ?? .one
+        return recommendedPracticesPerWeek(tier: tier, subTier: sub)
+    }
+
+    /// Weekly pool volume target (meters) from tier/sub-tier, profile practices (when wired), and pool type.
+    public var weeklyPoolVolumeTargetMeters: Int {
+        weeklyDistanceTarget(for: self)
+    }
+
+    /// Divisor for per-session pool volume: at least the tier’s **max** documented practices/week,
+    /// and at least the swimmer’s effective session count (so extra practices still scale up).
+    public var perSessionPoolVolumePlanningDivisor: Int {
+        let tier = profile?.trainingTier ?? .silver
+        let sub = profile?.subTier ?? .one
+        let docMax = maximumPracticesPerWeek(tier: tier, subTier: sub)
+        return max(effectiveWeeklySessionCount, docMax, 1)
+    }
+
+    /// Target swim meters per pool session for prompts (stable when session count dips within the tier band).
+    public var perSessionPoolVolumeTargetMeters: Int {
+        weeklyPoolVolumeTargetMeters / perSessionPoolVolumePlanningDivisor
+    }
 }

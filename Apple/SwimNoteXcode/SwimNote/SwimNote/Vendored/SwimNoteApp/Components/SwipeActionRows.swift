@@ -17,7 +17,7 @@ struct SwipeToDeleteRow<Content: View>: View {
         ZStack(alignment: .trailing) {
             // Delete background
             Color.red
-                .frame(width: max(-offset, 0))
+                .frame(width: finitePositiveWidth(-offset))
                 .clipShape(RoundedRectangle(cornerRadius: 8))
 
             // Delete icon
@@ -90,7 +90,7 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
             // Green for "complete", Orange for "uncomplete"
             if offset > 20 && isAssigned {
                 (isCompleted ? Color.orange : Color.green)
-                    .frame(width: max(offset, 0))
+                    .frame(width: finitePositiveWidth(offset))
                     .clipShape(RoundedRectangle(cornerRadius: 12))
                 HStack {
                     Image(systemName: isCompleted ? "xmark.circle.fill" : "checkmark.circle.fill")
@@ -99,7 +99,7 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
                     Spacer()
                 }
                 .padding(.leading, 16)
-                .frame(width: max(offset, 0))
+                .frame(width: finitePositiveWidth(offset))
             }
 
             // Content
@@ -150,4 +150,9 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .clipShape(RoundedRectangle(cornerRadius: 12))
     }
+}
+
+private func finitePositiveWidth(_ width: CGFloat) -> CGFloat {
+    guard width.isFinite, width > 0 else { return 0 }
+    return width
 }

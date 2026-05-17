@@ -143,10 +143,7 @@ struct SessionCard: View, Equatable {
                         SessionNotesRow(notes: notes)
                     }
                 }
-                .transition(.asymmetric(
-                    insertion: .opacity.combined(with: .scale(scale: 0.95, anchor: .top)),
-                    removal: .opacity
-                ))
+                .transition(.opacity)
             }
         }
         .background(
@@ -361,7 +358,7 @@ private struct SessionSummaryBar: View {
                         displayedComponents: .date
                     )
                     .labelsHidden()
-                    .scaleEffect(0.85)
+                    .datePickerStyle(.compact)
                     .tint(PoolTheme.mid)
                 } else if let scheduledDate = scheduledDate {
                     SummaryMetric(
