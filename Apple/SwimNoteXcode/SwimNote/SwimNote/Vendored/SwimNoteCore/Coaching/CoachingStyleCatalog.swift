@@ -1,39 +1,11 @@
 import Foundation
 
-// MARK: - Coach swimmer tier (from swimming-coach-role-reference.md)
-
-public enum CoachSwimmerTier: String, CaseIterable, Codable, Sendable, Identifiable {
-    case youthBeginner = "YB"
-    case youthDeveloping = "YD"
-    case noviceAdult = "NA"
-    case intermediate = "INT"
-    case advanced = "ADV"
-    case elite = "ELT"
-    case sprintFocused = "SPT"
-    case distanceFocused = "DST"
-
-    public var id: String { rawValue }
-
-    public var displayName: String {
-        switch self {
-        case .youthBeginner: return "Youth Beginner (5–9)"
-        case .youthDeveloping: return "Youth Developing (9–12)"
-        case .noviceAdult: return "Novice Adult"
-        case .intermediate: return "Intermediate"
-        case .advanced: return "Advanced"
-        case .elite: return "Elite"
-        case .sprintFocused: return "Sprint-Focused"
-        case .distanceFocused: return "Distance-Focused"
-        }
-    }
-}
-
 // MARK: - Coaching style option
 
 public struct CoachingStyleOption: Identifiable, Hashable, Sendable, Codable {
-    /// Stable id, e.g. `int-salo`
+    /// Stable id, e.g. `silver-a-salo`
     public let id: String
-    public let tier: CoachSwimmerTier
+    public let tier: TrainingTier
     public let optionLetter: String
     public let styleName: String
     public let source: String
@@ -45,7 +17,7 @@ public struct CoachingStyleOption: Identifiable, Hashable, Sendable, Codable {
 
     public init(
         id: String,
-        tier: CoachSwimmerTier,
+        tier: TrainingTier,
         optionLetter: String,
         styleName: String,
         source: String,
@@ -92,28 +64,32 @@ public enum CoachingStyleCatalog {
         return parsed
     }
 
-    public static func options(for tiers: [CoachSwimmerTier]) -> [CoachingStyleOption] {
+    public static func options(for tiers: [TrainingTier]) -> [CoachingStyleOption] {
         let tierSet = Set(tiers)
         return allOptions().filter { tierSet.contains($0.tier) }
     }
 
-    /// Style options for the planner UI — filtered to picker tiers only.
+    /// Style options for the planner UI — filtered to the profile's TrainingTier only.
     public static func optionsForStylePicker(profile: UserProfile?) -> [CoachingStyleOption] {
-        options(for: CoachTierProfileMapping.coachTiersForStylePicker(profile: profile))
+        guard let profile else { return allOptions().filter { $0.tier == .silver } }
+        return allOptions().filter { $0.tier == profile.trainingTier }
     }
 
-    /// Options grouped by coach tier (for sectioned UI).
+    /// Options for the single tier the profile belongs to.
     public static func optionsGroupedForStylePicker(
         profile: UserProfile?
-    ) -> [(tier: CoachSwimmerTier, options: [CoachingStyleOption])] {
-        CoachTierProfileMapping.coachTiersForStylePicker(profile: profile).compactMap { tier in
-            let tierOptions = options(for: [tier])
-            guard !tierOptions.isEmpty else { return nil }
-            return (tier, tierOptions)
+    ) -> [(tier: TrainingTier, options: [CoachingStyleOption])] {
+        guard let profile else {
+            let silverOptions = allOptions().filter { $0.tier == .silver }
+            guard silverOptions.isEmpty else { return [(.silver, silverOptions)] }
+            return []
         }
+        let tierOptions = allOptions().filter { $0.tier == profile.trainingTier }
+        guard !tierOptions.isEmpty else { return [] }
+        return [(profile.trainingTier, tierOptions)]
     }
 
-    public static func defaultSelectionIDs(for tiers: [CoachSwimmerTier]) -> Set<String> {
+    public static func defaultSelectionIDs(for tiers: [TrainingTier]) -> Set<String> {
         let available = options(for: tiers)
         let defaults = available.filter(\.isDefaultRecommendation).map(\.id)
         if !defaults.isEmpty { return Set(defaults) }
@@ -121,23 +97,60 @@ public enum CoachingStyleCatalog {
     }
 
     public static func defaultSelectionIDs(forProfile profile: UserProfile?) -> Set<String> {
-        defaultSelectionIDs(for: CoachTierProfileMapping.coachTiersForStylePicker(profile: profile))
+        guard let profile else { return defaultSelectionIDs(for: [.silver]) }
+        return defaultSelectionIDs(for: [profile.trainingTier])
     }
 
-    /// Drop selections that are not valid for the current profile’s picker tiers.
+    /// Drop selections that are not valid for the current profile's TrainingTier.
     public static func pruneSelection(_ selected: Set<String>, profile: UserProfile?) -> Set<String> {
         let allowed = Set(optionsForStylePicker(profile: profile).map(\.id))
         return selected.intersection(allowed)
     }
 
-    public static func resolvedCoachTiers(profile: UserProfile?) -> [CoachSwimmerTier] {
-        CoachTierProfileMapping.resolve(profile: profile)
+    /// Migrate old-style IDs (yb-*, yd-*, na-*, int-*, adv-*, elt-*) to new TrainingTier IDs.
+    public static func migrateSelectionIDs(_ ids: Set<String>) -> Set<String> {
+        let migrationMap: [String: String] = [
+            // Youth Beginner -> Pre-Competitive
+            "yb-a-playful-learning": "pre_competitive-a-playful-learning",
+            "yb-b-differential-learning": "pre_competitive-b-differential-learning",
+            "yb-c-ltad-fundamentals": "pre_competitive-c-ltad-fundamentals",
+            "yb-d-sakamoto": "pre_competitive-d-sakamoto",
+            // Youth Developing -> Bronze
+            "yd-a-differential-learning": "bronze-a-differential-learning",
+            "yd-b-mckeever": "bronze-b-mckeever",
+            "yd-c-ltad-learn-to-train": "bronze-c-ltad-learn-to-train",
+            "yd-d-reese": "bronze-d-reese",
+            "yd-e-touretski": "silver-e-touretski",
+            // Novice Adult -> Bronze / Silver
+            "na-a-reese": "bronze-a-reese",
+            "na-b-mckeever": "bronze-b-mckeever",
+            "na-c-counsilman": "silver-c-counsilman",
+            "na-d-touretski": "silver-d-touretski",
+            // Intermediate -> Silver
+            "int-a-salo": "silver-a-salo",
+            "int-b-bowman": "silver-b-bowman",
+            "int-c-touretski": "silver-c-touretski",
+            "int-d-reese": "silver-d-reese",
+            "int-e-mckeever": "silver-e-mckeever",
+            // Advanced -> Gold
+            "adv-a-bowman": "gold-a-bowman",
+            "adv-b-salo": "gold-b-salo",
+            "adv-c-sweetenham": "gold-c-sweetenham",
+            "adv-d-touretski": "gold-d-touretski",
+            "adv-e-skinner": "gold-e-skinner",
+            // Elite -> National
+            "elt-a-bowman": "national-a-bowman",
+            "elt-b-touretski": "national-b-touretski",
+            "elt-c-salo": "national-c-salo",
+            "elt-d-sweetenham": "national-d-sweetenham",
+        ]
+        return Set(ids.map { migrationMap[$0] ?? $0 })
     }
 
-    public static func extractTierSection(content: String, tier: CoachSwimmerTier) -> String {
+    public static func extractTierSection(content: String, tier: TrainingTier) -> String {
         let header = tierSectionHeader(for: tier)
         guard let start = content.range(of: header) else {
-            return "Section not found for tier \(tier.rawValue)"
+            return "Section not found for tier \(tier.displayName)"
         }
         let remainder = content[start.lowerBound...]
         let endMarkers = [
@@ -181,17 +194,8 @@ public enum CoachingStyleCatalog {
         ?? Bundle.main.url(forResource: filename, withExtension: "md")
     }
 
-    private static func tierSectionHeader(for tier: CoachSwimmerTier) -> String {
-        switch tier {
-        case .youthBeginner: return "### Tier: Youth Beginner"
-        case .youthDeveloping: return "### Tier: Youth Developing"
-        case .noviceAdult: return "### Tier: Novice Adult"
-        case .intermediate: return "### Tier: Intermediate"
-        case .advanced: return "### Tier: Advanced"
-        case .elite: return "### Tier: Elite"
-        case .sprintFocused: return "### Tier: Sprint-Focused"
-        case .distanceFocused: return "### Tier: Distance-Focused"
-        }
+    private static func tierSectionHeader(for tier: TrainingTier) -> String {
+        "### Tier: \(tier.displayName)"
     }
 
     private static func parseOptions(from content: String) -> [CoachingStyleOption] {
@@ -220,7 +224,8 @@ public enum CoachingStyleCatalog {
                     .replacingOccurrences(of: " ", with: "-")
                     .replacingOccurrences(of: "(", with: "")
                     .replacingOccurrences(of: ")", with: "")
-                let id = "\(tier.rawValue.lowercased())-\(letter.lowercased())-\(slug)"
+                let tierSlug = tier.rawValue.replacingOccurrences(of: " ", with: "_")
+                let id = "\(tierSlug)-\(letter.lowercased())-\(slug)"
                 options.append(
                     CoachingStyleOption(
                         id: id,
@@ -236,43 +241,41 @@ public enum CoachingStyleCatalog {
         return options.isEmpty ? fallbackOptions() : options
     }
 
-    private static func tierFromSectionTitle(_ section: String) -> CoachSwimmerTier? {
+    private static func tierFromSectionTitle(_ section: String) -> TrainingTier? {
         let firstLine = section.split(separator: "\n", maxSplits: 1).first.map(String.init) ?? section
         let title = firstLine.trimmingCharacters(in: .whitespaces)
-        if title.hasPrefix("Youth Beginner") { return .youthBeginner }
-        if title.hasPrefix("Youth Developing") { return .youthDeveloping }
-        if title.hasPrefix("Novice Adult") { return .noviceAdult }
-        if title.hasPrefix("Intermediate") { return .intermediate }
-        if title.hasPrefix("Advanced") { return .advanced }
-        if title.hasPrefix("Elite") { return .elite }
-        if title.hasPrefix("Sprint-Focused") { return .sprintFocused }
-        if title.hasPrefix("Distance-Focused") { return .distanceFocused }
+        if title.hasPrefix("Pre-Competitive") { return .preCompetitive }
+        if title.hasPrefix("Bronze") { return .bronze }
+        if title.hasPrefix("Silver") { return .silver }
+        if title.hasPrefix("Gold") { return .gold }
+        if title.hasPrefix("Senior") { return .senior }
+        if title.hasPrefix("National") { return .national }
         return nil
     }
 
     private static func fallbackOptions() -> [CoachingStyleOption] {
         [
             CoachingStyleOption(
-                id: "int-a-salo",
-                tier: .intermediate,
+                id: "silver-a-salo",
+                tier: .silver,
                 optionLetter: "A",
                 styleName: "Salo (data-informed)",
                 source: "David Salo",
                 whenToUse: "When the swimmer responds to numbers and measurement"
             ),
             CoachingStyleOption(
-                id: "int-d-reese",
-                tier: .intermediate,
+                id: "silver-d-reese",
+                tier: .silver,
                 optionLetter: "D",
                 styleName: "Reese (consistency)",
                 source: "Eddie Reese",
                 whenToUse: "When steady progression over seasons is the goal"
             ),
             CoachingStyleOption(
-                id: "na-a-reese",
-                tier: .noviceAdult,
+                id: "bronze-a-reese",
+                tier: .bronze,
                 optionLetter: "A",
-                styleName: "Reese (consistency)",
+                styleName: "Reese (adapted)",
                 source: "Eddie Reese",
                 whenToUse: "Default — steady, patient, relationship-focused"
             ),

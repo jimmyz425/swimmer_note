@@ -724,11 +724,11 @@ public enum UserDataTools {
         function: ToolFunction(
             name: "read_coach_reference",
             description: """
-            Read swimming-coach-role-reference.md — coaching styles by swimmer tier (YB, YD, NA, INT, ADV, ELT, SPT, DST).
+            Read swimming-coach-role-reference.md — coaching styles by swimmer tier (Pre-Competitive, Bronze, Silver, Gold, Senior, National).
 
             Returns tier-specific recommended styles (with When to Use), Focus, Use, Avoid, and signature set ideas. Use to decide how to structure drillSet, mainSet, and whether to include secondarySet.
 
-            Call read_coach_reference(tier="INT") for the full tier section matching the swimmer.
+            Call read_coach_reference(tier="silver") for the full tier section matching the swimmer.
             Optional section: decision_tree, compatibility, signature_sets, evidence_mapping.
 
             User-selected coaching styles are embedded in the plan prompt — align session design with those choices.
@@ -737,13 +737,40 @@ public enum UserDataTools {
                 properties: [
                     "tier": JSONSchemaProperty(
                         type: "string",
-                        description: "Coach tier code: YB, YD, NA, INT, ADV, ELT, SPT, DST",
-                        enumValues: ["YB", "YD", "NA", "INT", "ADV", "ELT", "SPT", "DST"]
+                        description: "Training tier: pre_competitive, bronze, silver, gold, senior, national",
+                        enumValues: ["pre_competitive", "bronze", "silver", "gold", "senior", "national"]
                     ),
                     "section": JSONSchemaProperty(
                         type: "string",
                         description: "Optional: decision_tree, compatibility, signature_sets, evidence_mapping",
                         enumValues: ["decision_tree", "compatibility", "signature_sets", "evidence_mapping"]
+                    )
+                ],
+                required: [],
+                additionalProperties: false
+            ),
+            strict: false
+        )
+    )
+
+    public static let readSessionTemplate = Tool(
+        function: ToolFunction(
+            name: "read_session_template",
+            description: """
+            Read the canonical 10-slot session template (swimming-session-template.md).
+            Contains slot definitions (A-H: warm-up through cool-down), option catalogs
+            (C1a-C1h, E1a-E1k, F1-F8, etc.), tier-to-distance scaling, and equipment rules.
+
+            Use this to understand slot option IDs before building session segments.
+            Call with section="slots" for slot definitions, "options" for the option catalog,
+            "scaling" for tier distance table, or omit for a summary of all sections.
+            """,
+            parameters: JSONSchema(
+                properties: [
+                    "section": JSONSchemaProperty(
+                        type: "string",
+                        description: "Optional: 'slots', 'options', 'scaling', or omit for summary",
+                        enumValues: ["slots", "options", "scaling"]
                     )
                 ],
                 required: [],
@@ -779,7 +806,7 @@ public enum UserDataTools {
     )
 
     public static var all: [Tool] {
-        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance, readUSASwimmingStructure, readEvidenceDrills, readCoachReference, getDryLandExercises]
+        [getUserProfile, getTrainingHistory, getActiveGoals, getTrainingCalendar, getCSSInfo, readIntervalResearch, getTierGuidance, readUSASwimmingStructure, readEvidenceDrills, readCoachReference, readSessionTemplate, getDryLandExercises]
     }
 }
 

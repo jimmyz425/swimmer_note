@@ -171,6 +171,8 @@ public nonisolated struct SessionOutline: Codable, Hashable, Identifiable, Senda
     public var estimatedDistance: String?  // "~800m"
     public var isDetailsGenerated: Bool = false  // Whether detailed session was generated
     public var detailedSession: DetailedSession?  // Populated after Phase 2
+    public var slotTemplate: [String]?  // ["A", "B", "C1", "E1", "H"] — which slots this session uses
+    public var slotOptionIds: [String: String]?  // {"C1": "C1a", "E1": "E1h"} — per-slot option selection
 
     public init(
         id: String = UUID().uuidString,
@@ -217,12 +219,15 @@ public nonisolated struct SessionOutline: Codable, Hashable, Identifiable, Senda
         estimatedDistance = try container.decodeIfPresent(String.self, forKey: .estimatedDistance)
         isDetailsGenerated = try container.decodeIfPresent(Bool.self, forKey: .isDetailsGenerated) ?? false
         detailedSession = try container.decodeIfPresent(DetailedSession.self, forKey: .detailedSession)
+        slotTemplate = try container.decodeIfPresent([String].self, forKey: .slotTemplate)
+        slotOptionIds = try container.decodeIfPresent([String: String].self, forKey: .slotOptionIds)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, sessionNumber, dayOfWeek, poolSession, focus, sessionType
         case techniqueFocus, techniqueFileRef, addressesGoal
         case estimatedDuration, estimatedDistance, isDetailsGenerated, detailedSession
+        case slotTemplate, slotOptionIds
     }
 }
 
@@ -469,6 +474,16 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
     public var mainSet: SessionSegment
     public var secondarySet: SessionSegment?
     public var coolDown: SessionSegment
+
+    // Additional 10-slot template segments (optional)
+    public var activation: SessionSegment?    // Slot B — Activation / Pre-set
+    public var kickSet: SessionSegment?       // Slot D — Kick Set
+    public var mainSet2: SessionSegment?      // Slot E2 — Main Set 2
+    public var speedSkills: SessionSegment?   // Slot F — Speed / Race Skills
+    public var pullSet: SessionSegment?       // Slot G — Pull Set
+
+    // Active slots list for this session (A-H identifiers)
+    public var activeSlots: [String]?
     public var techniqueFocus: String
     public var techniqueFileRef: String?
     public var addressesGoal: String?
@@ -498,6 +513,12 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         mainSet: SessionSegment,
         secondarySet: SessionSegment? = nil,
         coolDown: SessionSegment,
+        activation: SessionSegment? = nil,
+        kickSet: SessionSegment? = nil,
+        mainSet2: SessionSegment? = nil,
+        speedSkills: SessionSegment? = nil,
+        pullSet: SessionSegment? = nil,
+        activeSlots: [String]? = nil,
         techniqueFocus: String,
         techniqueFileRef: String?,
         addressesGoal: String?,
@@ -517,6 +538,12 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         self.mainSet = mainSet
         self.secondarySet = secondarySet
         self.coolDown = coolDown
+        self.activation = activation
+        self.kickSet = kickSet
+        self.mainSet2 = mainSet2
+        self.speedSkills = speedSkills
+        self.pullSet = pullSet
+        self.activeSlots = activeSlots
         self.techniqueFocus = techniqueFocus
         self.techniqueFileRef = techniqueFileRef
         self.addressesGoal = addressesGoal
@@ -549,12 +576,19 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         timeOfDay = try container.decodeIfPresent(SessionTimeOfDay.self, forKey: .timeOfDay)
         isCompleted = try container.decodeIfPresent(Bool.self, forKey: .isCompleted) ?? false
         isAssigned = try container.decodeIfPresent(Bool.self, forKey: .isAssigned) ?? (scheduledDate != nil)
+        activation = try container.decodeIfPresent(SessionSegment.self, forKey: .activation)
+        kickSet = try container.decodeIfPresent(SessionSegment.self, forKey: .kickSet)
+        mainSet2 = try container.decodeIfPresent(SessionSegment.self, forKey: .mainSet2)
+        speedSkills = try container.decodeIfPresent(SessionSegment.self, forKey: .speedSkills)
+        pullSet = try container.decodeIfPresent(SessionSegment.self, forKey: .pullSet)
+        activeSlots = try container.decodeIfPresent([String].self, forKey: .activeSlots)
     }
 
     private enum CodingKeys: String, CodingKey {
         case id, sessionNumber, focus, warmUp, drillSet, mainSet, secondarySet, coolDown
         case techniqueFocus, techniqueFileRef, addressesGoal, sessionType, progressionRationale
         case sessionNotes, scheduledDate, timeOfDay, isCompleted, isAssigned
+        case activation, kickSet, mainSet2, speedSkills, pullSet, activeSlots
     }
 
     /// Convert this session to a TrainingPlan for display on Dashboard
@@ -583,13 +617,14 @@ public nonisolated struct DetailedSession: Codable, Hashable, Identifiable, Send
         var parts: [String] = []
 
         parts.append("Warm-up: \(warmUp.distance) - \(warmUp.description)")
+        if let activation { parts.append("Activation: \(activation.distance) - \(activation.description)") }
         parts.append("Drills: \(drillSet.distance) - \(drillSet.description)")
+        if let kickSet { parts.append("Kick: \(kickSet.distance) - \(kickSet.description)") }
         parts.append("Main: \(mainSet.distance) - \(mainSet.description)")
-
-        if let secondary = secondarySet {
-            parts.append("Secondary: \(secondary.distance) - \(secondary.description)")
-        }
-
+        if let mainSet2 { parts.append("Main Set 2: \(mainSet2.distance) - \(mainSet2.description)") }
+        if let secondary = secondarySet { parts.append("Secondary: \(secondary.distance) - \(secondary.description)") }
+        if let speedSkills { parts.append("Speed: \(speedSkills.distance) - \(speedSkills.description)") }
+        if let pullSet { parts.append("Pull: \(pullSet.distance) - \(pullSet.description)") }
         parts.append("Cool-down: \(coolDown.distance) - \(coolDown.description)")
 
         return parts.joined(separator: "\n")
@@ -610,6 +645,7 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
     public var equipment: String?      // Equipment for this set (evidence drills: Equipment column; omit or "none" if none)
     public var notes: String?          // Coaching / table notes (evidence drills: Notes column)
     public var zone: Int?              // Training zone (0-6 based on CSS zones)
+    public var slotOptionId: String?   // Canonical slot option ID (C1a, E1h, F1, etc.)
 
     /// Calculate total distance for this set
     public var totalDistance: Int {
@@ -690,10 +726,11 @@ public nonisolated struct SetItem: Codable, Hashable, Identifiable, Sendable {
         equipment = try container.decodeIfPresent(String.self, forKey: .equipment)
         notes = try container.decodeIfPresent(String.self, forKey: .notes)
         zone = try container.decodeIfPresent(Int.self, forKey: .zone)
+        slotOptionId = try container.decodeIfPresent(String.self, forKey: .slotOptionId)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, repeatCount, distancePerRep, swimSeconds, restSeconds, item, equipment, notes, zone
+        case id, repeatCount, distancePerRep, swimSeconds, restSeconds, item, equipment, notes, zone, slotOptionId
     }
 }
 
@@ -709,18 +746,26 @@ public nonisolated struct SessionSegment: Codable, Hashable, Sendable {
     // Training zone for this segment (0-6 based on CSS zones)
     public var zone: Int?
 
+    // Session slot identifier (A, B, C1, C2, D, E1, E2, F, G, H)
+    public var slotId: String?
+
+    // Evidence-based drill code (F1, B3, BR2, FL5, etc.)
+    public var evidenceDrillCode: String?
+
     /// Calculate total distance from sets array
     public var calculatedDistance: Int {
         guard let sets = sets, !sets.isEmpty else { return 0 }
         return sets.reduce(0) { $0 + $1.totalDistance }
     }
 
-    public init(distance: String, description: String, drills: [String]? = nil, sets: [SetItem]? = nil, zone: Int? = nil) {
+    public init(distance: String, description: String, drills: [String]? = nil, sets: [SetItem]? = nil, zone: Int? = nil, slotId: String? = nil, evidenceDrillCode: String? = nil) {
         self.distance = distance
         self.description = description
         self.drills = drills
         self.sets = sets
         self.zone = zone
+        self.slotId = slotId
+        self.evidenceDrillCode = evidenceDrillCode
     }
 
     public init(from decoder: Decoder) throws {
@@ -730,10 +775,12 @@ public nonisolated struct SessionSegment: Codable, Hashable, Sendable {
         drills = try container.decodeIfPresent([String].self, forKey: .drills)
         sets = try container.decodeIfPresent([SetItem].self, forKey: .sets)
         zone = try container.decodeIfPresent(Int.self, forKey: .zone)
+        slotId = try container.decodeIfPresent(String.self, forKey: .slotId)
+        evidenceDrillCode = try container.decodeIfPresent(String.self, forKey: .evidenceDrillCode)
     }
 
     private enum CodingKeys: String, CodingKey {
-        case distance, description, drills, sets, zone
+        case distance, description, drills, sets, zone, slotId, evidenceDrillCode
     }
 }
 

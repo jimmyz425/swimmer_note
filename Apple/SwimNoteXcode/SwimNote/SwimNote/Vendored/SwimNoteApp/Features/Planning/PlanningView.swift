@@ -43,6 +43,7 @@ struct PlanningView: View {
     // Plan settings - sessions determined by tier guidance, not user selection
     @State var poolType: PoolType = .scm
     @State var planType: PlanType = .mixed
+    @State var racePrepPhase: RacePrepPhase?
     @State var weekStartingDate: Date = nextMonday()
     @State var selectedCoachingStyleIDs: Set<String> = []
 
@@ -70,10 +71,11 @@ struct PlanningView: View {
                         isExpanded: isSettingsExpanded,
                         poolType: $poolType,
                         planType: $planType,
+                        racePrepPhase: $racePrepPhase,
                         weekStartingDate: $weekStartingDate,
                         skillLevel: appModel.activeProfile?.skillLevel ?? .beginner,
                         profile: appModel.activeProfile,
-                        coachTiers: CoachTierProfileMapping.coachTiersForStylePicker(profile: appModel.activeProfile),
+                        coachTiers: [appModel.activeProfile?.trainingTier].compactMap { $0 },
                         selectedCoachingStyleIDs: $selectedCoachingStyleIDs,
                         isGenerating: isGeneratingOutline,
                         onToggle: { isSettingsExpanded.toggle() },
@@ -142,6 +144,15 @@ struct PlanningView: View {
             // Load saved outline on appear (for resumption)
             .onAppear {
                 syncCoachingStyleDefaultsIfNeeded()
+                // Race prep is Gold+ only — reset if current profile isn't eligible
+                if planType == .racePrep {
+                    let tier = appModel.activeProfile?.trainingTier ?? .preCompetitive
+                    let isGoldPlus = tier == .gold || tier == .senior || tier == .national
+                    if !isGoldPlus {
+                        planType = .mixed
+                        racePrepPhase = nil
+                    }
+                }
                 Task {
                     await loadSavedOutline()
                 }

@@ -1,28 +1,72 @@
 import SwiftUI
 
+// MARK: - Pool Type Button (extracted for compiler)
+
+private struct PoolTypeButton: View {
+    let `type`: PoolType
+    let isSelected: Bool
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Text(type.shortLabel)
+                .font(.system(size: 11, weight: .semibold, design: .monospaced))
+                .padding(.horizontal, 8)
+                .padding(.vertical, 5)
+                .background(isSelected ? PoolTheme.mid : Color.clear)
+                .foregroundStyle(isSelected ? .white : PoolTheme.deep)
+                .cornerRadius(5)
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct PlanTypeMenuItem: View {
+    let type: PlanType
+    let planType: PlanType
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            Label(type.rawValue, systemImage: type.icon)
+        }
+    }
+}
+
 // MARK: - Collapsible Settings Card
 
 struct CollapsibleSettingsCard: View {
     let isExpanded: Bool
     @Binding var poolType: PoolType
     @Binding var planType: PlanType
+    @Binding var racePrepPhase: RacePrepPhase?
     @Binding var weekStartingDate: Date
-    let skillLevel: SkillLevel  // For filtering plan types
+    let skillLevel: SkillLevel
     let profile: UserProfile?
-    let coachTiers: [CoachSwimmerTier]
+    let coachTiers: [TrainingTier]
     @Binding var selectedCoachingStyleIDs: Set<String>
     let isGenerating: Bool
     let onToggle: () -> Void
     let onGenerate: () -> Void
     let onLoadSample: () -> Void
+    let isGoldPlus: Bool
 
-    /// Filter plan types based on skill level - macrocycle phases only for Silver+ (intermediate+)
-    private var availablePlanTypes: [PlanType] {
-        let isSilverOrHigher = skillLevel == .intermediate ||
-                               skillLevel == .advanced ||
-                               skillLevel == .competitive ||
-                               skillLevel == .elite
-        return PlanType.allCases.filter { !$0.requiresAdvancedTier || isSilverOrHigher }
+    init(isExpanded: Bool, poolType: Binding<PoolType>, planType: Binding<PlanType>, racePrepPhase: Binding<RacePrepPhase?>, weekStartingDate: Binding<Date>, skillLevel: SkillLevel, profile: UserProfile?, coachTiers: [TrainingTier], selectedCoachingStyleIDs: Binding<Set<String>>, isGenerating: Bool, onToggle: @escaping () -> Void, onGenerate: @escaping () -> Void, onLoadSample: @escaping () -> Void) {
+        self.isExpanded = isExpanded
+        self._poolType = poolType
+        self._planType = planType
+        self._racePrepPhase = racePrepPhase
+        self._weekStartingDate = weekStartingDate
+        self.skillLevel = skillLevel
+        self.profile = profile
+        self.coachTiers = coachTiers
+        self._selectedCoachingStyleIDs = selectedCoachingStyleIDs
+        self.isGenerating = isGenerating
+        self.onToggle = onToggle
+        self.onGenerate = onGenerate
+        self.onLoadSample = onLoadSample
+        let tier = profile?.trainingTier ?? .preCompetitive
+        self.isGoldPlus = tier == .gold || tier == .senior || tier == .national
     }
 
     var body: some View {
@@ -82,18 +126,9 @@ struct CollapsibleSettingsCard: View {
                             // Segmented buttons
                             HStack(spacing: 2) {
                                 ForEach(PoolType.allCases, id: \.self) { type in
-                                    Button {
+                                    PoolTypeButton(type: type, isSelected: poolType == type) {
                                         poolType = type
-                                    } label: {
-                                        Text(type.shortLabel)
-                                            .font(.system(size: 11, weight: .semibold, design: .monospaced))
-                                            .padding(.horizontal, 8)
-                                            .padding(.vertical, 5)
-                                            .background(poolType == type ? PoolTheme.mid : Color.clear)
-                                            .foregroundStyle(poolType == type ? .white : PoolTheme.deep)
-                                            .cornerRadius(5)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                             .padding(2)
@@ -131,12 +166,15 @@ struct CollapsibleSettingsCard: View {
                             Spacer()
 
                             Menu {
-                                ForEach(availablePlanTypes) { type in
-                                    Button {
+                                ForEach(PlanType.allCases.filter { $0 == .racePrep ? isGoldPlus : true }) { type in
+                                    PlanTypeMenuItem(type: type, planType: planType, action: {
                                         planType = type
-                                    } label: {
-                                        Label(type.rawValue, systemImage: type.icon)
-                                    }
+                                        if type != .racePrep {
+                                            racePrepPhase = nil
+                                        } else if racePrepPhase == nil {
+                                            racePrepPhase = .baseBuilding
+                                        }
+                                    })
                                 }
                             } label: {
                                 HStack(spacing: 6) {
@@ -161,6 +199,68 @@ struct CollapsibleSettingsCard: View {
                             .foregroundStyle(PoolTheme.smoke.opacity(0.8))
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .padding(.top, -4)
+
+                        // Race Prep: phase picker (Gold+ only)
+                        if planType == .racePrep && isGoldPlus {
+                            Divider()
+                                .background(PoolTheme.border)
+
+                            HStack {
+                                Text("Phase")
+                                    .font(.system(size: 11, weight: .semibold))
+                                    .foregroundStyle(PoolTheme.smoke)
+                                    .tracking(0.5)
+
+                                Spacer()
+
+                                Menu {
+                                    ForEach(RacePrepPhase.allCases) { phase in
+                                        Button {
+                                            racePrepPhase = phase
+                                        } label: {
+                                            Label(phase.rawValue, systemImage: phaseIcon(for: phase))
+                                        }
+                                    }
+                                } label: {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: phaseIcon(for: racePrepPhase ?? .baseBuilding))
+                                            .font(.system(size: 11, weight: .semibold))
+                                        Text((racePrepPhase ?? .baseBuilding).rawValue)
+                                            .font(.system(size: 12, weight: .semibold, design: .rounded))
+                                        Image(systemName: "chevron.down")
+                                            .font(.system(size: 9, weight: .bold))
+                                    }
+                                    .foregroundStyle(PoolTheme.mid)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 7)
+                                    .background(PoolTheme.light.opacity(0.25))
+                                    .cornerRadius(8)
+                                }
+                            }
+
+                            if let phase = racePrepPhase {
+                                HStack(spacing: 4) {
+                                    Text(phase.description)
+                                        .font(.system(size: 11, weight: .medium))
+                                        .foregroundStyle(PoolTheme.smoke.opacity(0.8))
+                                    Text("\(phase.weekRange.lowerBound)–\(phase.weekRange.upperBound) weeks")
+                                        .font(.system(size: 10, weight: .semibold))
+                                        .foregroundStyle(PoolTheme.mid)
+                                        .padding(.horizontal, 6)
+                                        .padding(.vertical, 2)
+                                        .background(PoolTheme.light.opacity(0.3))
+                                        .cornerRadius(4)
+                                    Spacer()
+                                }
+                                .padding(.top, -2)
+                            } else {
+                                Text((RacePrepPhase.baseBuilding).description)
+                                    .font(.system(size: 11, weight: .medium))
+                                    .foregroundStyle(PoolTheme.smoke.opacity(0.8))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                    .padding(.top, -4)
+                            }
+                        }
 
                         Divider()
                             .background(PoolTheme.border)
@@ -243,8 +343,6 @@ struct CollapsibleSettingsCard: View {
             }
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: isExpanded)
-        .onAppear { clampPlanTypeIfNeeded() }
-        .onChange(of: skillLevel) { _, _ in clampPlanTypeIfNeeded() }
         .background(PoolTheme.cardSurface)
         .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
         .overlay(
@@ -254,9 +352,14 @@ struct CollapsibleSettingsCard: View {
         .shadow(color: PoolTheme.shadow, radius: 8, x: 0, y: 4)
     }
 
-    private func clampPlanTypeIfNeeded() {
-        guard !availablePlanTypes.contains(planType) else { return }
-        planType = availablePlanTypes.first ?? .mixed
+    private func phaseIcon(for phase: RacePrepPhase) -> String {
+        switch phase {
+        case .baseBuilding: return "chart.line.uptrend.xyaxis"
+        case .buildPhase: return "flame"
+        case .sharpening: return "arrow.up.right"
+        case .competition: return "trophy"
+        case .taper: return "sparkles"
+        }
     }
 }
 
@@ -583,16 +686,11 @@ struct SessionOutlineCard: View {
 
 struct CoachingStylesPickerSection: View {
     let profile: UserProfile?
-    let coachTiers: [CoachSwimmerTier]
+    let coachTiers: [TrainingTier]
     @Binding var selectedIDs: Set<String>
 
-    private var optionGroups: [(tier: CoachSwimmerTier, options: [CoachingStyleOption])] {
+    private var optionGroups: [(tier: TrainingTier, options: [CoachingStyleOption])] {
         CoachingStyleCatalog.optionsGroupedForStylePicker(profile: profile)
-    }
-
-    private var mappingNote: String? {
-        guard let profile else { return nil }
-        return CoachTierProfileMapping.matchingRow(for: profile)?.notes
     }
 
     var body: some View {
@@ -626,12 +724,6 @@ struct CoachingStylesPickerSection: View {
                         Text(profileMappingLine(profile))
                             .font(.system(size: 10))
                             .foregroundStyle(PoolTheme.smoke.opacity(0.7))
-                    }
-                    if let mappingNote, !mappingNote.isEmpty {
-                        Text(mappingNote)
-                            .font(.system(size: 10))
-                            .foregroundStyle(PoolTheme.smoke.opacity(0.65))
-                            .italic()
                     }
                 }
 

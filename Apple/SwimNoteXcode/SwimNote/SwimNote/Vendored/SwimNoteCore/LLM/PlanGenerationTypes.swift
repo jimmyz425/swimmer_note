@@ -5,44 +5,15 @@ import Foundation
 public enum PlanType: String, CaseIterable, Identifiable, Codable {
     case mixed = "Mixed Training"
     case recovery = "Recovery Week"
-    case endurance = "Endurance Focus"
-    case technique = "Technique Focus"
-    case dryLandOnly = "Dry Land Only"
     case racePrep = "Race Prep"
-    case speed = "Speed & Sprint"
-    // Macrocycle phases (Silver+ only)
-    case generalPrep = "General Preparation"
-    case specificPrep = "Specific Preparation"
-    case preCompetition = "Pre-Competition"
-    case competition = "Competition Phase"
-    case taper = "Taper"
 
     public var id: String { rawValue }
-
-    /// Whether this plan type requires advanced tier (Silver+)
-    public var requiresAdvancedTier: Bool {
-        switch self {
-        case .generalPrep, .specificPrep, .preCompetition, .competition, .taper:
-            return true
-        default:
-            return false
-        }
-    }
 
     public var description: String {
         switch self {
         case .mixed: "Balanced club training"
         case .recovery: "Active recovery, light technique"
-        case .endurance: "Distance and stamina building"
-        case .technique: "Low intensity, high quality"
-        case .dryLandOnly: "No pool sessions"
-        case .racePrep: "Competition readiness"
-        case .speed: "Sprint and pace work"
-        case .generalPrep: "Base building (Zone 1-2 focus)"
-        case .specificPrep: "Threshold development phase"
-        case .preCompetition: "Sharpening, race-pace specificity"
-        case .competition: "Meet season, high quality"
-        case .taper: "10-21 days before major meet"
+        case .racePrep: "Competition readiness through 5 sub-phases"
         }
     }
 
@@ -50,16 +21,49 @@ public enum PlanType: String, CaseIterable, Identifiable, Codable {
         switch self {
         case .mixed: "figure.pool.swim"
         case .recovery: "moon"
-        case .endurance: "heart"
-        case .technique: "figure.pool.swim"
-        case .dryLandOnly: "figure.strengthtraining.traditional"
         case .racePrep: "flag"
-        case .speed: "bolt"
-        case .generalPrep: "chart.line.uptrend.xyaxis"
-        case .specificPrep: "flame"
-        case .preCompetition: "trophy"
-        case .competition: "medal"
-        case .taper: "sparkles"
+        }
+    }
+}
+
+// MARK: - Race Prep Phase
+
+public enum RacePrepPhase: String, CaseIterable, Identifiable, Codable {
+    case baseBuilding = "Base Building"
+    case buildPhase = "Build Phase"
+    case sharpening = "Sharpening"
+    case competition = "Competition"
+    case taper = "Taper"
+
+    public var id: String { rawValue }
+
+    public var description: String {
+        switch self {
+        case .baseBuilding: "Aerobic foundation (4-8 weeks, Zone 1-2 dominant)"
+        case .buildPhase: "Threshold development (4-8 weeks, Zone 3-4 focus)"
+        case .sharpening: "Race-pace specificity (3-6 weeks, Zone 4-5)"
+        case .competition: "Meet readiness (2-6 weeks, Zone 5-6 dominant)"
+        case .taper: "Volume reduction, intensity maintained (10-21 days)"
+        }
+    }
+
+    public var defaultWeeks: Int {
+        switch self {
+        case .baseBuilding: 6
+        case .buildPhase: 6
+        case .sharpening: 4
+        case .competition: 3
+        case .taper: 2
+        }
+    }
+
+    public var weekRange: ClosedRange<Int> {
+        switch self {
+        case .baseBuilding: 4...8
+        case .buildPhase: 4...8
+        case .sharpening: 3...6
+        case .competition: 2...6
+        case .taper: 1...3
         }
     }
 }
@@ -78,6 +82,8 @@ public struct PlanContext: Sendable {
     public let goalProgress: GoalProgressInfo
     /// Coaching style option ids from swimming-coach-role-reference.md (user multi-select in planner).
     public let selectedCoachingStyleIDs: Set<String>
+    /// Race prep phase (only set when planType is .racePrep).
+    public let racePrepPhase: RacePrepPhase?
 
     public init(
         profile: UserProfile?,
@@ -89,7 +95,8 @@ public struct PlanContext: Sendable {
         sessionsPerWeek: Int = 0,  // Prefer profile weeklySessionTarget when building PlanContext
         strokeBalance: [StrokeBalanceInfo],
         goalProgress: GoalProgressInfo,
-        selectedCoachingStyleIDs: Set<String> = []
+        selectedCoachingStyleIDs: Set<String> = [],
+        racePrepPhase: RacePrepPhase? = nil
     ) {
         self.profile = profile
         self.notes = notes
@@ -101,6 +108,7 @@ public struct PlanContext: Sendable {
         self.strokeBalance = strokeBalance
         self.goalProgress = goalProgress
         self.selectedCoachingStyleIDs = selectedCoachingStyleIDs
+        self.racePrepPhase = racePrepPhase
     }
 }
 

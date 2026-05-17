@@ -5,9 +5,10 @@ import Foundation
 internal enum PlanTierGuidancePrompt {
 
     static func resolvedTierAndSubTier(for context: PlanContext) -> (TrainingTier, SubTier) {
-        let tier = context.profile?.trainingTier ?? .silver
-        let subTier = context.profile?.subTier ?? .one
-        return (tier, subTier)
+        if let profile = context.profile {
+            return (profile.trainingTier, profile.subTier)
+        }
+        return (.silver, .one)
     }
 
     /// Full tier background for prompts: capabilities, time standards, zones, focus, PBs, CSS.

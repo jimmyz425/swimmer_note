@@ -48,29 +48,44 @@ internal func recommendedPracticesPerWeek(tier: TrainingTier, subTier: SubTier) 
     switch tier {
     case .preCompetitive:
         switch subTier {
-        case .a, .b: return 2
-        case .c: return 2 // doc 2–3; use 2 so an extra third practice scales volume up slightly
+        case .one, .two: return 2
+        case .three: return 2
         default: return 2
         }
     case .bronze:
         switch subTier {
         case .one: return 3
-        case .two: return 3 // doc 3–4
-        case .three: return 4 // doc: Bronze 3 → 4 practices/week
+        case .two: return 3
+        case .three: return 4
         default: return 3
         }
     case .silver:
         switch subTier {
         case .one, .two: return 4
-        case .three: return 4 // doc 4–5
+        case .three: return 4
         default: return 4
         }
     case .gold:
-        return 5 // doc 5–6
+        switch subTier {
+        case .sprint: return 5
+        case .distance: return 5
+        case .mixed: return 5
+        default: return 5
+        }
     case .senior:
-        return 6 // doc 6–8
+        switch subTier {
+        case .sprint: return 6
+        case .distance: return 6
+        case .mixed: return 6
+        default: return 6
+        }
     case .national:
-        return 8 // doc 8–12+
+        switch subTier {
+        case .sprint: return 8
+        case .distance: return 10
+        case .mixed: return 8
+        default: return 8
+        }
     }
 }
 
@@ -79,8 +94,8 @@ internal func maximumPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -> I
     switch tier {
     case .preCompetitive:
         switch subTier {
-        case .a, .b: return 2
-        case .c: return 3
+        case .one, .two: return 2
+        case .three: return 3
         default: return 3
         }
     case .bronze:
@@ -97,11 +112,26 @@ internal func maximumPracticesPerWeek(tier: TrainingTier, subTier: SubTier) -> I
         default: return 5
         }
     case .gold:
-        return 6
+        switch subTier {
+        case .sprint: return 5
+        case .distance: return 6
+        case .mixed: return 6
+        default: return 6
+        }
     case .senior:
-        return 8
+        switch subTier {
+        case .sprint: return 6
+        case .distance: return 8
+        case .mixed: return 8
+        default: return 8
+        }
     case .national:
-        return 12
+        switch subTier {
+        case .sprint: return 10
+        case .distance: return 12
+        case .mixed: return 12
+        default: return 12
+        }
     }
 }
 
@@ -110,31 +140,46 @@ private func baseWeeklyMeters(tier: TrainingTier, subTier: SubTier) -> Int {
     switch tier {
     case .preCompetitive:
         switch subTier {
-        case .a: return 1_750 // 1–2.5 km
-        case .b: return 3_000 // 2–4 km
-        case .c: return 5_000 // 3–7 km
-        default: return 5_500 // whole Pre-Comp group 3–8 km (summary table)
+        case .one: return 1_750
+        case .two: return 3_000
+        case .three: return 5_000
+        default: return 5_500
         }
     case .bronze:
         switch subTier {
-        case .one: return 6_000 // 4.5–7.5 km
-        case .two: return 10_000 // 6–14 km
-        case .three: return 14_000 // 10–18 km
-        default: return 13_000 // Bronze group 8–18 km
+        case .one: return 6_000
+        case .two: return 10_000
+        case .three: return 14_000
+        default: return 13_000
         }
     case .silver:
         switch subTier {
-        case .one: return 13_000 // 10–16 km
-        case .two: return 16_000 // 12–20 km
-        case .three: return 21_000 // 14–28 km
-        default: return 21_500 // Silver group 15–28 km
+        case .one: return 13_000
+        case .two: return 16_000
+        case .three: return 21_000
+        default: return 21_500
         }
     case .gold:
-        return 32_500 // 25–40 km
+        switch subTier {
+        case .sprint: return 26_000
+        case .distance: return 34_000
+        case .mixed: return 30_500
+        default: return 32_500
+        }
     case .senior:
-        return 50_000 // 40–60 km
+        switch subTier {
+        case .sprint: return 42_500
+        case .distance: return 55_000
+        case .mixed: return 47_500
+        default: return 50_000
+        }
     case .national:
-        return 65_000 // 50–80+ km
+        switch subTier {
+        case .sprint: return 55_000
+        case .distance: return 70_000
+        case .mixed: return 62_500
+        default: return 65_000
+        }
     }
 }
 

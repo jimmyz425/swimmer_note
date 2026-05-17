@@ -236,7 +236,8 @@ extension PlanningView {
             sessionsPerWeek: profileSessions,
             strokeBalance: strokeBalance,
             goalProgress: goalProgress,
-            selectedCoachingStyleIDs: selectedCoachingStyleIDs
+            selectedCoachingStyleIDs: selectedCoachingStyleIDs,
+            racePrepPhase: racePrepPhase
         )
 
         #if DEBUG
@@ -416,19 +417,48 @@ extension PlanningView {
                 fixedSession.secondarySet = fixSegmentDistance(secondary, poolType: poolType)
             }
             fixedSession.coolDown = fixSegmentDistance(session.coolDown, poolType: poolType)
+            if let activation = session.activation {
+                fixedSession.activation = fixSegmentDistance(activation, poolType: poolType)
+            }
+            if let kick = session.kickSet {
+                fixedSession.kickSet = fixSegmentDistance(kick, poolType: poolType)
+            }
+            if let mainSet2 = session.mainSet2 {
+                fixedSession.mainSet2 = fixSegmentDistance(mainSet2, poolType: poolType)
+            }
+            if let speed = session.speedSkills {
+                fixedSession.speedSkills = fixSegmentDistance(speed, poolType: poolType)
+            }
+            if let pull = session.pullSet {
+                fixedSession.pullSet = fixSegmentDistance(pull, poolType: poolType)
+            }
             return fixedSession
         }
 
         // Calculate total distance from detailed sessions (now with corrected distances)
         let totalMeters = enriched.detailedSessions.reduce(0) { sum, session in
-            let sessionDistance = sum
+            var sessionDistance = sum
                 + parseDistance(session.warmUp.distance)
                 + parseDistance(session.drillSet.distance)
                 + parseDistance(session.mainSet.distance)
                 + parseDistance(session.coolDown.distance)
-            // Add secondary set distance if present
             if let secondary = session.secondarySet {
-                return sessionDistance + parseDistance(secondary.distance)
+                sessionDistance += parseDistance(secondary.distance)
+            }
+            if let activation = session.activation {
+                sessionDistance += parseDistance(activation.distance)
+            }
+            if let kick = session.kickSet {
+                sessionDistance += parseDistance(kick.distance)
+            }
+            if let mainSet2 = session.mainSet2 {
+                sessionDistance += parseDistance(mainSet2.distance)
+            }
+            if let speed = session.speedSkills {
+                sessionDistance += parseDistance(speed.distance)
+            }
+            if let pull = session.pullSet {
+                sessionDistance += parseDistance(pull.distance)
             }
             return sessionDistance
         }

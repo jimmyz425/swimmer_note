@@ -4,9 +4,6 @@ import Foundation
 
 /// Build default Phase 1 outline prompt with pre-gathered data
 internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanType) -> String {
-    // Check if this is a macrocycle phase (requires interval training research reference)
-    let isMacrocyclePhase = planType.requiresAdvancedTier
-
     var prompt = """
     You are a professional swim coach preparing a weekly training plan for \(planType.rawValue).
 
@@ -21,13 +18,6 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
     ---
 
     """
-
-    if isMacrocyclePhase {
-        prompt += """
-    MACROCYCLE PHASE (\(planType.rawValue)): Align weekly zone mix and session types with this training phase. Use embedded zone distribution as a baseline, then bias toward phase-appropriate emphasis (e.g. taper = lower volume, higher quality; general prep = more aerobic base).
-
-    """
-    }
 
     if let profile = context.profile {
         prompt += """
@@ -84,12 +74,67 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
     - `tierGuidance.perSessionTarget`: \(perSessionPoolM) (meters; \(weeklyPoolM) ÷ \(perSessionDiv), where divisor = max(\(planSessions), tier’s high-end practices/week) so fewer swim days do not push per-practice meters up)
     - Schedule: aim for \(planSessions) pool sessions in `schedule`; total swim volume across the week should approximate \(weeklyPoolM) meters.
 
+    PER-SESSION DISTANCE vs DURATION:
+    - Target the **upper end** of each tier's typical duration range to allow adequate coaching time.
+    - Silver 1: aim for 75 min (range 60-75). At ~50-60 m/min active swim time, ~60 min active → ~3,000-3,600m.
+    - Silver 2-3: aim for 90 min. At ~50-65 m/min active, ~70 min active → ~3,500-4,500m.
+    - Bronze: aim for 75 min (range 45-75).
+    - Gold: aim for 120 min (range 90-120).
+    - Senior: aim for 150 min (range 90-150).
+    - Pre-Comp: aim for 60 min (range 30-60).
+    - National: aim for 180 min (range 120-180).
+    - `estimatedDuration` should reflect total pool time (warm-up through cool-down, including rest, instruction, and coaching time).
+
     """
 
     prompt += """
     ————————————————————————————————————————————————
 
-    YOUR ROLE: Write like a professional swim coach. Review all the data above — sessions, technique content, embedded tier guidance — and produce three things in order:
+    YOUR ROLE: Write like a professional swim coach. Before generating JSON, reason through the following steps mentally:
+
+    STEP 1 — PROFILE ANALYSIS:
+    - Identify tier, sub-tier, and skill level from the embedded guidance
+    - Check CSS pace and personal bests for intensity calibration
+    - Note pool type (SCM/SCY) for distance scaling
+
+    STEP 2 — PAST SESSION REVIEW:
+    - For each past session: what was the focus? what zones? which strokes?
+    - Identify technique continuity: what was covered, what comes next naturally?
+    - Spot neglected strokes or gaps in zone distribution
+    - Note recurring technique fundamentals that need periodic reinforcement
+
+    STEP 3 — ZONE DISTRIBUTION:
+    - Use the embedded tier guidance zone distribution as your baseline
+    - Adjust based on plan type: Mixed = balanced, Recovery = Z0-Z2 heavy, Race Prep = Z4-Z6 heavy
+    - For sub-tiers: sprint = more Z5-Z6, distance = more Z1-Z2
+
+    STEP 4 — SLOT TEMPLATE PER SESSION:
+    For each session, decide which of the 10 canonical slots (A-H) to activate:
+    - REQUIRED: A (warm-up), E1 (main set 1), H (cool-down)
+    - USUALLY: C1 (drill block 1)
+    - OPTIONAL based on session type and tier:
+      B (activation): Gold+ nearly always; Pre-Comp merge into warm-up
+      C2 (drill block 2): when two technique focuses are needed
+      D (kick set): leg strength focus or all-stroke session
+      E2 (main set 2): Gold+ when dual stimulus needed
+      F (speed/race skills): sprint sessions, race prep, Gold+
+      G (pull set): upper-body endurance, aerobic without legs
+    - Pre-Competitive minimal: A, C1, E1, H
+    - Gold+ typical: A, B, C1, C2, D, E1, E2, F, H (8-10 slots)
+    - For each active slot, select a slot option ID from the session template system:
+      C1: C1a (freestyle), C1b (backstroke), C1c (breaststroke), C1d (butterfly), C1e (mixed), C1f (underwater), C1g (sculling), C1h (skill stations)
+      C2: C2a (different stroke), C2b (starts/turns), C2c (contrast drill), C2d (differential learning), C2e (video/feedback), C2f (skip)
+      E1: E1a (aerobic base), E1b (all-four), E1c (threshold), E1d (sprint), E1e (VO2max), E1h (race-pace intervals)
+      F: F1 (start practice), F2 (turn practice), F3 (breakout), F4 (race pace), F5 (speed play)
+
+    STEP 5 — TECHNIQUE CONTINUITY:
+    - Map past technique files to current session needs
+    - Ensure progressive difficulty (don't skip levels in technique progression)
+    - Plan at least one REVISIT session per week if past training exists
+
+    ————————————————————————————————————————————————
+
+    Generate the outline in the JSON format below. Each session must have:
 
     ## PART 1: COACHING SUMMARY (the "State of the Swimmer")
 
@@ -172,8 +217,11 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
           "techniqueFocus": "string - technique emphasis",
           "techniqueFileRef": "string - technique file reference",
           "addressesGoal": "string - which goal this addresses",
-          "estimatedDuration": "string - practice duration",
-          "estimatedDistance": "string - distance"
+          "estimatedDuration": "string - practice duration, e.g. ~60min",
+          "estimatedDistance": "string - distance, e.g. ~3000m",
+          "slotTemplate": ["array of active slot IDs, e.g. A, B, C1, E1, H"],
+          "slotOptionIds": {"object mapping slot ID to option, e.g. {\"C1\": \"C1a\", \"E1\": \"E1h\"}"},
+          "techniqueContinuity": "string - how this session builds on past technique work"
         }
       ],
       "notes": "string - weekly coaching rationale"
@@ -249,30 +297,56 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
     - CSS Pace: \(cssPace)/100m
 
     COACHING & SET DESIGN:
-    1. Honor user-selected coaching styles above. Call read_coach_reference(tier="\(context.coachSwimmerTiers.first?.rawValue ?? "INT")") when you need Use/Avoid lists or signature sets for this session.
-    2. drillSet: get_technique_drills for stroke technique work and/or signature sets from the coach reference — match the active style(s), not a generic drill list.
-    3. mainSet: primary block aligned with style (e.g. Reese pace 100s, Bowman negative splits, Salo stroke-rate work, playful short reps for youth). Use embedded tier zones for intensity.
-    4. secondarySet: OPTIONAL. Include only when styles or session focus benefit from an evidence/exploration block. If used: read_evidence_drills(stroke="\(primaryStroke)") → pick ONE code → read_evidence_drills(stroke="\(primaryStroke)", drill="<CODE>") → one JSON set per table row with item/equipment/notes from the table. Omit secondarySet entirely when styles do not call for it (e.g. pure Reese consistency, playful YB sessions).
-    5. sessionNotes: cite coaching style rationale and any evidence drill source when secondarySet is present.
+    1. Honor user-selected coaching styles above. Call read_coach_reference(tier="\(context.profile?.trainingTier.rawValue ?? "silver")") when you need Use/Avoid lists or signature sets for this session.
+    2. drillSet: get_technique_drills for stroke technique work and/or signature sets from the coach reference — match the active style(s), not a generic drill list. Set slotId="C1" and if using an evidence drill, set evidenceDrillCode (e.g. "F1").
+    3. mainSet: primary block aligned with style. Set slotId="E1". Use embedded tier zones for intensity.
+    4. Optional slots: When the session's outline slotTemplate includes B, C2, D, E2, F, or G, generate the corresponding segment:
+       - activation (slotId="B"): bridge warm-up to main work
+       - secondarySet (slotId="C2"): second drill block or exploration set
+       - kickSet (slotId="D"): leg strength or kick technique
+       - mainSet2 (slotId="E2"): secondary training stimulus
+       - speedSkills (slotId="F"): max velocity, starts, turns, breakouts
+       - pullSet (slotId="G"): upper-body endurance, stroke feel
+    5. secondarySet: OPTIONAL evidence/exploration block. If used: read_evidence_drills(stroke="\(primaryStroke)") → pick ONE code → read_evidence_drills(stroke="\(primaryStroke)", drill="<CODE>") → one JSON set per table row with item/equipment/notes from the table. Set evidenceDrillCode on the segment. Omit entirely when styles don't call for it.
+    6. For every segment, set the slotId field to the canonical slot (A, B, C1, C2, D, E1, E2, F, G, H). Set slotOptionId on individual SetItems when referencing the option catalog.
+    7. sessionNotes: cite coaching style rationale and any evidence drill source when secondarySet is present.
 
     OUTPUT JSON FORMAT (detailed session with sets):
     {
       "sessionNumber": \(sessionOutline.sessionNumber),
       "focus": "\(sessionOutline.focus)",
       "techniqueFocus": "\(sessionOutline.techniqueFocus ?? "general")",
+      "activeSlots": ["array of active slot IDs for this session"],
       "warmUp": {
+        "slotId": "A",
         "sets": [
           {"repeatCount": 4, "distancePerRep": 100, "swimSeconds": 120, "item": "easy freestyle", "zone": 1, "restSeconds": 15}
         ],
         "zone": 1
       },
       "drillSet": {
+        "slotId": "C1",
         "sets": [
           {"repeatCount": 3, "distancePerRep": 50, "swimSeconds": 60, "item": "drill", "zone": 2, "restSeconds": 12}
         ],
         "zone": 2
       },
+      "mainSet": {
+        "slotId": "E1",
+        "sets": [
+          {"repeatCount": 8, "distancePerRep": 100, "swimSeconds": 85, "item": "freestyle tempo", "zone": 3, "restSeconds": 10}
+        ],
+        "zone": 3
+      },
+      "coolDown": {
+        "slotId": "H",
+        "sets": [
+          {"repeatCount": 2, "distancePerRep": 100, "swimSeconds": 120, "item": "easy mixed", "zone": 0, "restSeconds": 30}
+        ],
+        "zone": 0
+      },
       "secondarySet": {
+        "slotId": "C2",
         "sets": [
           {"repeatCount": 2, "distancePerRep": 25, "swimSeconds": 40, "item": "Easy swim at comfortable stroke rate", "equipment": "none", "notes": "CSS + 10-15s/100m; loose, relaxed", "zone": 1, "restSeconds": 15},
           {"repeatCount": 8, "distancePerRep": 25, "swimSeconds": 35, "item": "Build stroke rate progressively each 25m", "equipment": "tempo trainer", "notes": "Start Z3 (CSS pace); end Z6 (race pace); +2-4 BPM per rep", "zone": 3, "restSeconds": 20},
@@ -280,21 +354,42 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
         ],
         "zone": 2
       },
-      "mainSet": {
-        "sets": [
-          {"repeatCount": 8, "distancePerRep": 100, "swimSeconds": 85, "item": "freestyle tempo", "zone": 3, "restSeconds": 10}
-        ],
-        "zone": 3
+      "activation": {
+        "slotId": "B",
+        "sets": [{"repeatCount": 4, "distancePerRep": 25, "swimSeconds": 30, "item": "build each 25", "zone": 2, "restSeconds": 10}],
+        "zone": 2
       },
-      "coolDown": {
-        "sets": [
-          {"repeatCount": 2, "distancePerRep": 100, "swimSeconds": 120, "item": "easy mixed", "zone": 0, "restSeconds": 30}
-        ],
-        "zone": 0
+      "kickSet": {
+        "slotId": "D",
+        "sets": [{"repeatCount": 6, "distancePerRep": 50, "swimSeconds": 60, "item": "kick with board", "equipment": "board", "zone": 2, "restSeconds": 15}],
+        "zone": 2
+      },
+      "mainSet2": {
+        "slotId": "E2",
+        "sets": [{"repeatCount": 4, "distancePerRep": 100, "swimSeconds": 85, "item": "threshold pace", "zone": 4, "restSeconds": 15}],
+        "zone": 4
+      },
+      "speedSkills": {
+        "slotId": "F",
+        "sets": [{"repeatCount": 8, "distancePerRep": 25, "swimSeconds": 15, "item": "race pace sprint", "zone": 5, "restSeconds": 45}],
+        "zone": 5
+      },
+      "pullSet": {
+        "slotId": "G",
+        "sets": [{"repeatCount": 4, "distancePerRep": 100, "swimSeconds": 90, "item": "pull with buoy", "equipment": "pull buoy", "zone": 2, "restSeconds": 15}],
+        "zone": 2
       },
       "sessionNotes": "string - coaching tips for this session, include evidence-based drill source",
       "progressionRationale": "string - why this progression"
     }
+
+    RULES:
+    - warmUp, drillSet, mainSet, and coolDown are ALWAYS required
+    - activation, kickSet, mainSet2, secondarySet, speedSkills, and pullSet are OPTIONAL — include only when the session's slotTemplate lists the corresponding slot
+    - Set slotId on every segment to match the canonical slot
+    - Set evidenceDrillCode on drillSet when using an evidence-based drill (F1-F5, B1-B5, BR1-BR5, FL1-FL5)
+    - Set slotOptionId on individual SetItems when referencing the option catalog (C1a, E1h, etc.)
+    - Set equipment to "none" or omit when no equipment is used
 
     OUTPUT ONLY JSON (no explanations).
     """
@@ -423,9 +518,9 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
     case .preCompetitive:
         return TierInfo(
             practicesPerWeek: "2-3",
-            practiceDuration: "45-60 min",
+            practiceDuration: "30-60 min",
             weeklyDistance: "3-8 km (3,000-8,000m)",
-            perSessionTarget: "1,500-2,500m",
+            perSessionTarget: "1,000-2,500m",
             techniquePercent: 65,
             aerobicPercent: 20,
             thresholdPercent: 5,
@@ -447,9 +542,9 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
     case .bronze:
         return TierInfo(
             practicesPerWeek: "3-4",
-            practiceDuration: "60-75 min",
+            practiceDuration: "45-75 min",
             weeklyDistance: "8-18 km (8,000-18,000m)",
-            perSessionTarget: "2,500-4,500m",
+            perSessionTarget: "2,000-4,500m",
             techniquePercent: 45,
             aerobicPercent: 25,
             thresholdPercent: 10,
@@ -470,9 +565,9 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
     case .silver:
         return TierInfo(
             practicesPerWeek: "4-5",
-            practiceDuration: "75-90 min",
+            practiceDuration: "60-90 min",
             weeklyDistance: "15-28 km (15,000-28,000m)",
-            perSessionTarget: "4,000-6,000m",
+            perSessionTarget: "3,000-6,000m",
             techniquePercent: 35,
             aerobicPercent: 35,
             thresholdPercent: 15,
@@ -493,9 +588,9 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
     case .gold:
         return TierInfo(
             practicesPerWeek: "5-6",
-            practiceDuration: "90-105 min",
+            practiceDuration: "90-120 min",
             weeklyDistance: "25-40 km (25,000-40,000m)",
-            perSessionTarget: "5,000-7,000m",
+            perSessionTarget: "5,000-8,000m",
             techniquePercent: 25,
             aerobicPercent: 35,
             thresholdPercent: 20,
@@ -516,9 +611,9 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
     case .senior:
         return TierInfo(
             practicesPerWeek: "6-8",
-            practiceDuration: "90-120 min",
+            practiceDuration: "90-150 min",
             weeklyDistance: "40-60 km (40,000-60,000m)",
-            perSessionTarget: "6,000-8,000m",
+            perSessionTarget: "6,000-9,000m",
             techniquePercent: 20,
             aerobicPercent: 30,
             thresholdPercent: 25,
@@ -565,19 +660,21 @@ internal func getTierInfo(_ tier: TrainingTier) -> TierInfo {
 /// Get sub-tier indicator description
 internal func getSubTierInfo(_ subTier: SubTier, _ tier: TrainingTier) -> String {
     switch subTier {
-    case .a:
-        return "A - Developing, newest to this tier group, still building foundational skills"
-    case .b:
-        return "B - Progressing, mid-level within tier, showing consistent improvement"
-    case .c:
-        return "C - Advancing, ready for promotion to next tier, meeting most criteria"
     case .one:
         return "1 - Entry level in this tier, building volume and skills for the group"
     case .two:
         return "2 - Mid-level, comfortable with tier expectations, steady improvement"
     case .three:
         return "3 - Top of tier, ready for next group, meeting time standards"
+    case .sprint:
+        return "Sprint - 50–200 m event focus; neuromuscular speed and race-pace specificity"
+    case .distance:
+        return "Distance - 400 m+ event focus; aerobic capacity and pacing strategy"
+    case .mixed:
+        return "Mixed - IM/versatile approach; balanced speed–endurance"
     case .none:
         return "Single-level tier (no sub-tiers)"
+    case .a, .b, .c:
+        return subTier.description(for: tier)
     }
 }

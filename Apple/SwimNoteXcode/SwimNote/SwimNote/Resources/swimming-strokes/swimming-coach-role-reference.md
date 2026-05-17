@@ -9,88 +9,25 @@
 ## How to Use This Document
 
 When coaching a swimmer:
-1. Identify their **tier** (below)
+1. Identify their **tier** from their profile (`TrainingTier`: Pre-Competitive, Bronze, Silver, Gold, Senior, National)
 2. Choose a **coaching style** from the options for that tier
-3. Apply the recommended **tricks/sets**, **focus areas**, and **avoid** the listed pitfalls
-4. Adjust intensity using CSS zones from [[swimming-interval-training-research|Interval Training Research]]
-5. Supplement with evidence-based drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidence-Based Drills]]
+3. Build the session using the **slot system** — see [[swimming-session-template|Session Template]] for the full slot option catalog (A1-A6, B1-B6, C1a-C1h, etc.)
+4. Use the **Signature Sets → Session Slot Mapping** to map your coaching style's preferred sets to specific slot options
+5. Adjust intensity using CSS zones from [[swimming-interval-training-research|Interval Training Research]]
+6. Supplement with evidence-based drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidence-Based Drills]]
 
 ---
 
 ## Swimmer Tier Definitions
 
-| Tier | Code | Description | Typical CSS | Training Age |
+| Tier | Description | Typical Age | CSS Range | Training Age |
 |---|---|---|---|---|
-| **Youth Beginner** | YB | Ages 5-9, learning to swim, water familiarization | N/A | 0-1 years |
-| **Youth Developing** | YD | Ages 9-12, knows all 4 strokes, learning technique | N/A | 1-3 years |
-| **Novice Adult** | NA | Adult beginner or returning swimmer, can swim 200m+ but technique inconsistent | CSS > 2:00/100m | 0-2 years |
-| **Intermediate** | INT | Can swim all 4 strokes with reasonable form, training 2-3x/week | CSS 1:30-2:00/100m | 2-5 years |
-| **Advanced** | ADV | Competitive club/masters swimmer, training 4-5x/week, racing | CSS 1:10-1:30/100m | 5-10 years |
-| **Elite** | ELT | Collegiate, national-level, or former competitive swimmer | CSS < 1:10/100m | 10+ years |
-| **Sprint-Focused** | SPT | Any tier but focused on 50-100m events | Varies | Varies |
-| **Distance-Focused** | DST | Any tier but focused on 400m+ events | Varies | Varies |
-
----
-
-## Profile ↔ Coach Tier Mapping (SwimNote app)
-
-SwimNote stores **USA Swimming club groups** on the profile (`TrainingTier` + `SubTier` + age + `SkillLevel` + `DistancePreference`). Coach styles in this document use **coach tiers** (YB, YD, NA, …). They are not the same labels — use the table below (implemented in app code as `CoachTierProfileMapping`).
-
-### Age bands
-
-| Band | Ages | Used for |
-|---|---|---|
-| `under_9` | &lt; 9 | YB / early YD |
-| `9_12` | 9–12 | YD |
-| `13_17` | 13–17 | YD, NA, or INT by club group |
-| `18_plus` | 18+ | NA / INT / ADV / ELT by skill + group |
-
-### Club group → primary coach tier
-
-| Profile `TrainingTier` | Sub-tier | Age band | Primary coach tier(s) | Also consider | Notes |
-|---|---|---|---|---|---|
-| Pre-Competitive | any | under_9 | **YB** | — | Water comfort |
-| Pre-Competitive | any | 9_12 | **YD** | — | FUNdamentals |
-| Pre-Competitive | any | 13_17 | **YD** | NA | Late team entry |
-| Pre-Competitive | any | 18_plus | **NA** | — | Adult developmental |
-| Bronze | 1–3 | 9_12 | **YD** | INT (Bronze 3) | Youth competitive |
-| Bronze | 1 | 13_17 | **NA** | YD | Teen new to team |
-| Bronze | 2 | 13_17 | **NA** | — | Teen bronze |
-| Bronze | 3 | 13_17 | **INT** | NA | → Silver transition |
-| Bronze | any | 18_plus | **NA** | INT | Masters beginner default |
-| Silver | 1 | 9_12 | **YD** | INT | Young silver |
-| Silver | 1 | 13_17 | **INT** | — | Early silver teen |
-| Silver | 2 | any | **INT** | — | Aerobic + technique |
-| Silver | 3 | any | **INT** | **ADV** | → Gold |
-| Silver | any | 18_plus | **INT** | — | Masters age-group |
-| Gold | any | 13_17 | **ADV** | INT | Senior age-group |
-| Gold | any | 18_plus | **ADV** | — | Masters gold |
-| Senior | any | any | **ADV** | **ELT** | Championship; ELT if national-level skill |
-| National | any | any | **ELT** | — | Elite qualifier group |
-
-### Adults (18+) skill override
-
-When age band is `18_plus`, a matching row may also require `SkillLevel`:
-
-| Skill level | Typical coach tier |
-|---|---|
-| beginner | **NA** |
-| intermediate | **INT** |
-| advanced | **ADV** |
-| competitive | **ADV**, **ELT** |
-| elite | **ELT** |
-
-### Event focus (additive)
-
-| Profile `DistancePreference` | Adds coach tier |
-|---|---|
-| short (50–100m) | **SPT** |
-| long (800m+) | **DST** |
-| mid / general | — |
-
-**UI style picker:** options from **primary** coach tier(s) only, plus **SPT** or **DST** when distance preference is short/long (~4–5 choices per section). `alsoConsider` tiers (e.g. ADV when primary is INT) are for LLM context only, not shown in the picker.
-
-**LLM planning:** may use primary + also-consider + event-focus tiers via `CoachTierProfileMapping.resolve`.
+| **Pre-Competitive** | Learn-to-swim, water comfort, basic strokes | 5-8 years | N/A | 0-1 years |
+| **Bronze** | First-year competitive, legal strokes, all four strokes | 8-10 years | N/A | 0-2 years |
+| **Silver** | Age group, aerobic base building, technique refinement | 10-12 years | CSS > 1:30/100m | 1-3 years |
+| **Gold** | Senior age group, threshold training, race-pace introduction | 12-14 years | CSS 1:10-1:30/100m | 3-5 years |
+| **Senior** | Championship-level, race specificity, lactate tolerance | 14-18 years | CSS 1:00-1:15/100m | 5-8 years |
+| **National** | Elite / national qualifier, peak performance | 14+ years | CSS < 1:05/100m | 8+ years |
 
 ---
 
@@ -100,7 +37,7 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 
 ---
 
-### Tier: Youth Beginner (Ages 5-9)
+### Tier: Pre-Competitive
 
 **Recommended Styles (choose one or blend):**
 
@@ -137,17 +74,16 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 
 ---
 
-### Tier: Youth Developing (Ages 9-12)
+### Tier: Bronze
 
 **Recommended Styles (choose one or blend):**
 
 | Option | Style | Source | When to Use |
 |---|---|---|---|
 | A | Differential Learning | Soleimani et al. (2025) | Default — builds robust motor patterns during golden age of learning |
-| B | McKeever (empowerment) | Teri McKeever | When the swimmer is self-motivated and ready for ownership |
-| C | LTAD Learn to Train | Balyi framework | When structuring technique refinement across all 4 strokes |
-| D | Reese (adapted) | Eddie Reese | For steady, relationship-based progression |
-| E | Touretski (light) | Gennadi Touretski | When the swimmer shows exceptional technical aptitude |
+| B | LTAD Learn to Train | Balyi framework | When structuring technique refinement across all 4 strokes |
+| C | Reese (adapted) | Eddie Reese | For steady, relationship-based progression |
+| D | McKeever (empowerment) | Teri McKeever | When the swimmer is self-motivated and ready for ownership |
 
 **Focus:**
 - Refining technique across all 4 strokes (no specialization yet)
@@ -161,9 +97,9 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 - "Animal Strokes" — different animals = different movement patterns
 - Post-race self-analysis: "3 things you did well, 1 to work on"
 - Peer coaching: swimmers pair up to observe and give feedback
-- Stroke counting (Touretski): consistent strokes per length, not necessarily fewer
 - Swimmer's choice sets (McKeever): let them design one set per week
 - Short structured sets: 4-8 × 25m with clear focus
+- "Texas 100" style sets (Reese, shortened): 4-6 × 50m at comfortable pace
 
 **Avoid:**
 - Early specialization (picking one stroke or event)
@@ -173,61 +109,21 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 - Adversity training or pressure-based methods
 - Perfectionism — "good enough" is fine at this age
 
-**Key Principle:** Ages 9-12 are the "golden age of motor learning." Maximize variety. The nervous system is most receptive to learning new patterns now.
+**Key Principle:** Ages 8-12 are the "golden age of motor learning." Maximize variety. The nervous system is most receptive to learning new patterns now.
 
 ---
 
-### Tier: Novice Adult
-
-**Recommended Styles (choose one or blend):**
-
-| Option | Style | Source | When to Use |
-|---|---|---|---|
-| A | Reese (consistency) | Eddie Reese | Default — steady, patient, relationship-focused |
-| B | McKeever (empowerment) | Teri McKeever | When the swimmer is self-directed and wants ownership |
-| C | Counsilman (light) | Doc Counsilman | When the swimmer is analytical/data-curious |
-| D | Touretski (light) | Gennadi Touretski | When the swimmer wants to focus on technique quality |
-
-**Focus:**
-- Building consistent technique across all strokes
-- Establishing a regular training routine (2-3x/week)
-- CSS testing to establish baseline zones
-- Confidence building in the water
-- Understanding the "why" behind technique cues
-
-**Use:**
-- Video analysis (film from pool deck, review together)
-- CSS testing to establish training zones
-- Fist drill, tennis ball drill (Counsilman) for feel development
-- Stroke counting per length (Touretski) — focus on consistency
-- "Perfect 25" — one technically flawless rep before hard sets
-- "Swim through your hands" cue (Reese) — feel water on forearm
-- Swimmer's choice sets (McKeever) — build ownership
-- Simple structured sets: 4-8 × 50m with clear focus and adequate rest
-
-**Avoid:**
-- Overloading with volume too quickly
-- Comparing to competitive swimmers
-- Complex sets with multiple constraints
-- Adversity training — build confidence first
-- Lactate work or VO2max sets until aerobic base is established
-- Perfectionism — progress, not perfection
-
-**Key Principle:** Adults learn differently from kids — they need the "why" behind instructions. But they also carry more self-consciousness. Build confidence before adding pressure.
-
----
-
-### Tier: Intermediate
+### Tier: Silver
 
 **Recommended Styles (choose one or blend):**
 
 | Option | Style | Source | When to Use |
 |---|---|---|---|
 | A | Salo (data-informed) | David Salo | When the swimmer responds to numbers and measurement |
-| B | Bowman (light) | Bob Bowman | When preparing for competition; build mental toughness |
-| C | Touretski (technique) | Gennadi Touretski | When technique refinement is the priority |
-| D | Reese (consistency) | Eddie Reese | When steady progression over seasons is the goal |
-| E | McKeever (empowerment) | Teri McKeever | When the swimmer needs ownership and self-coaching skills |
+| B | Touretski (light) | Gennadi Touretski | When technique refinement is the priority |
+| C | Reese (consistency) | Eddie Reese | When steady progression over seasons is the goal |
+| D | McKeever (empowerment) | Teri McKeever | When the swimmer needs ownership and self-coaching skills |
+| E | Bowman (light) | Bob Bowman | When preparing for competition; build mental toughness |
 
 **Focus:**
 - Stroke rate vs. distance per stroke optimization
@@ -242,9 +138,9 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 - Negative-split sets (Bowman): second half faster than first
 - "Texas 100" style sets (Reese): 6-10 × 100m at target pace
 - Contrast sets (Touretski): hard → easy with tech focus → hard
-- Tempo Ladder drills (from evidence-based drills file)
-- Build & Hold sets: build SR, hold max rate for final segment
-- Video-delay feedback if available
+- Tempo Surge drills (from evidence-based drills file)
+- Race Pace Builder sets: build SR, hold max rate for final segment
+- Swimmer's choice sets (McKeever)
 
 **Avoid:**
 - Neglecting any stroke — all 4 should still be practiced
@@ -257,7 +153,7 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 
 ---
 
-### Tier: Advanced
+### Tier: Gold
 
 **Recommended Styles (choose one or blend):**
 
@@ -265,9 +161,10 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 |---|---|---|---|
 | A | Bowman (adversity) | Bob Bowman | When preparing for championship competition |
 | B | Salo (biomechanics) | David Salo | When fine-tuning technique with data |
-| C | Sweetenham (discipline) | Bill Sweetenham | When the swimmer needs higher standards and accountability |
-| D | Touretski (precision) | Gennadi Touretski | When marginal gains in technique are the priority |
+| C | Touretski (precision) | Gennadi Touretski | When marginal gains in technique are the priority |
+| D | Sweetenham (discipline) | Bill Sweetenham | When the swimmer needs higher standards and accountability |
 | E | Skinner (sprint) | Jonty Skinner | For 50-200m event specialists |
+| F | Reese (consistency) | Eddie Reese | When steady progression across the season is preferred |
 
 **Focus:**
 - Race-specific preparation (event selection, pacing strategy)
@@ -283,8 +180,7 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 - "Quality or quit" (Sweetenham): pull from set if standard not met
 - Resistance band starts, 15m wars (Skinner)
 - Stroke profile analysis (Salo): personalized optimal rate, DPS, breathing pattern
-- Performance contracts (Sweetenham): written commitments to standards
-- Differential Practice sets (from evidence-based drills) — maintain variety even at this level
+- FreeForm sets (from evidence-based drills file) — maintain variety even at this level
 - Video-based debriefs after every competition
 
 **Avoid:**
@@ -298,7 +194,46 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 
 ---
 
-### Tier: Elite
+### Tier: Senior
+
+**Recommended Styles (choose one or blend):**
+
+| Option | Style | Source | When to Use |
+|---|---|---|---|
+| A | Bowman (adversity) | Bob Bowman | Championship preparation, mental edge |
+| B | Touretski (precision) | Gennadi Touretski | Technical perfection, drag minimization |
+| C | Sweetenham (discipline) | Bill Sweetenham | Championship-level standards and accountability |
+| D | Salo (biomechanics) | David Salo | Biomechanical optimization, individualized profiles |
+| E | Skinner (sprint) | Jonty Skinner | Elite 50-200m specialists |
+
+**Focus:**
+- Peaking for specific competitions (periodization)
+- Marginal gains in every area: starts, turns, underwater, stroke efficiency
+- Mental rehearsal and race visualization
+- Recovery optimization
+- Race strategy and tactical preparation
+
+**Use:**
+- Detailed mental movie rehearsal (Bowman): visualize every stroke, turn, breath
+- Long-term periodization (Bowman): 4-year or seasonal cycles with specific themes
+- "Ideal stroke profile" (Salo): biomechanical analysis of optimal parameters
+- Parachute at sprint pace (Touretski): maintain technique under load
+- Instant video review (Skinner): feedback loop in seconds
+- Taper simulation: full race-pace efforts on full rest even in heavy training
+- Negative-split pyramid sets (Sweetenham): 100/200/300/400/300/200/100
+- Video-based race debriefs with written correction lists
+
+**Avoid:**
+- Radical changes close to competition
+- Overtraining — elite swimmers break from too much, not too little
+- Comparing to other swimmers — focus on own race plan
+- Neglecting the basics — even elite swimmers drift on fundamentals
+
+**Key Principle:** At the senior level, physical differences between swimmers are small. The winner is the one who executes their race plan under pressure. Mental preparation is as important as physical preparation.
+
+---
+
+### Tier: National
 
 **Recommended Styles (choose one or blend):**
 
@@ -336,82 +271,21 @@ Each tier lists **multiple style options**. Choose based on the swimmer's person
 
 ---
 
-### Tier: Sprint-Focused (Any Level)
-
-**Recommended Styles:**
-
-| Option | Style | Source | When to Use |
-|---|---|---|---|
-| A | Skinner (sprint) | Jonty Skinner | Default for 50-100m specialists |
-| B | Touretski (technique) | Gennadi Touretski | For technical precision at speed |
-
-**Focus:**
-- Starts, breakout, and first 15m underwater (highest ROI)
-- Neuromuscular speed — short, explosive efforts with full recovery
-- Maintaining technique at maximum velocity
-- Minimal slow aerobic work
-
-**Use:**
-- Resistance band starts, hyper-gravity starts (Skinner)
-- Broken 50s: 15m all-out / rest 5s / 15m / rest 5s / 20m all-out
-- 15-meter wars: gamified start racing (Skinner)
-- Parachute at sprint pace (Touretski)
-- Taper simulation: race-pace 50m on full rest during heavy training
-- Instant video review of starts and turns
-
-**Avoid:**
-- Long aerobic sets (> 200m continuous at slow pace)
-- High-volume yardage without speed work
-- Neglecting starts and turns in favor of swimming laps
-
----
-
-### Tier: Distance-Focused (Any Level)
-
-**Recommended Styles:**
-
-| Option | Style | Source | When to Use |
-|---|---|---|---|
-| A | Bowman (endurance) | Bob Bowman | For mental toughness in long events |
-| B | Reese (consistency) | Eddie Reese | For steady aerobic base building |
-| C | Sweetenham (discipline) | Bill Sweetenham | For holding standards over long sets |
-
-**Focus:**
-- Aerobic base development (Z1-Z2)
-- Negative-split pacing
-- Mental endurance — holding focus over long distances
-- Efficient stroke mechanics (minimize energy waste)
-
-**Use:**
-- Negative-split everything (Bowman): second half faster
-- 100m IM conditioning sets (Bowman)
-- Negative-split pyramid sets (Sweetenham)
-- CSS-based aerobic sets (Z1-Z2): 10-20 × 100m on steady intervals
-- Stroke efficiency focus: minimize drag, maximize DPS
-
-**Avoid:**
-- Only training slow — race-pace exposure is still needed
-- Neglecting starts and turns (they matter in distance events too)
-- Mindless yardage — every set should have a purpose
-
----
-
 ## Quick Lookup: Style → Swimmer Tier Compatibility
 
-| Coaching Style | YB (5-9) | YD (9-12) | NA | INT | ADV | ELT | Sprint | Distance |
-|---|---|---|---|---|---|---|---|---|
-| **Playful Learning** | ✅ Default | ⚠️ Partial | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Differential Learning** | ⚠️ Partial | ✅ Default | ⚠️ Partial | ⚠️ Partial | ❌ | ❌ | ❌ | ❌ |
-| **LTAD Framework** | ✅ Default | ✅ Default | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Sakamoto (adapted)** | ⚠️ Partial | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **McKeever** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
-| **Reese** | ❌ | ✅ | ✅ Default | ✅ | ✅ | ⚠️ Partial | ⚠️ Partial | ✅ |
-| **Counsilman (light)** | ❌ | ❌ | ⚠️ Partial | ✅ | ⚠️ Partial | ⚠️ Partial | ❌ | ❌ |
-| **Touretski** | ❌ | ⚠️ Light | ⚠️ Light | ✅ | ✅ | ✅ Default | ✅ | ⚠️ Partial |
-| **Salo** | ❌ | ❌ | ❌ | ✅ | ✅ | ✅ | ⚠️ Partial | ✅ |
-| **Bowman** | ❌ | ❌ | ❌ | ⚠️ Light | ✅ | ✅ Default | ❌ | ✅ |
-| **Sweetenham** | ❌ | ❌ | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ |
-| **Skinner** | ❌ | ❌ | ❌ | ❌ | ⚠️ Partial | ⚠️ Partial | ✅ Default | ❌ |
+| Coaching Style | Pre-Comp | Bronze | Silver | Gold | Senior | National |
+|---|---|---|---|---|---|---|
+| **Playful Learning** | ✅ Default | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Differential Learning** | ✅ | ✅ Default | ⚠️ Partial | ❌ | ❌ | ❌ |
+| **LTAD Framework** | ✅ Default | ✅ Default | ❌ | ❌ | ❌ | ❌ |
+| **Sakamoto (adapted)** | ✅ | ⚠️ | ❌ | ❌ | ❌ | ❌ |
+| **McKeever** | ❌ | ✅ | ✅ | ✅ | ❌ | ❌ |
+| **Reese** | ❌ | ✅ | ✅ Default | ✅ | ✅ | ⚠️ Partial |
+| **Touretski** | ❌ | ❌ | ✅ | ✅ | ✅ Default | ✅ Default |
+| **Salo** | ❌ | ❌ | ✅ Default | ✅ | ✅ | ✅ Default |
+| **Bowman** | ❌ | ❌ | ⚠️ Light | ✅ Default | ✅ Default | ✅ Default |
+| **Sweetenham** | ❌ | ❌ | ❌ | ✅ | ✅ Default | ✅ Default |
+| **Skinner** | ❌ | ❌ | ❌ | ✅ | ✅ | ⚠️ Partial |
 
 Legend: ✅ = Good fit | ⚠️ = Adapted/light version | ❌ = Not appropriate
 
@@ -422,62 +296,94 @@ Legend: ✅ = Good fit | ⚠️ = Adapted/light version | ❌ = Not appropriate
 When unsure which style to use, follow this logic:
 
 ```
-What is the swimmer's age?
-├── Under 9
-│   └── → Playful Learning (Papadimitriou) + LTAD FUNdamentals
-├── 9-12
-│   └── → Differential Learning + McKeever (empowerment) + LTAD Learn to Train
-├── 13+
-│   │
-│   What is their training age?
-│   ├── 0-2 years (novice)
-│   │   └── → Reese (consistency) + McKeever (empowerment)
-│   ├── 2-5 years (intermediate)
-│   │   └── → Salo (data) OR Touretski (technique) OR Reese (consistency)
-│   ├── 5-10 years (advanced)
-│   │   └── → Bowman (mental) OR Sweetenham (standards) OR Skinner (sprint)
-│   └── 10+ years (elite)
-│       └── → Bowman + Touretski + Salo (combine as needed)
-│
-What is their event focus?
-├── Sprint (50-100m)
-│   └── → Add Skinner to any style above
-└── Distance (400m+)
-    └── → Add Bowman or Reese to any style above
+What is the swimmer's TrainingTier?
+├── Pre-Competitive
+│   └── → Playful Learning + LTAD FUNdamentals
+├── Bronze
+│   └── → Differential Learning + LTAD Learn to Train
+├── Silver
+│   └── → Salo (data) OR Touretski (technique) OR Reese (consistency)
+├── Gold
+│   └── → Bowman (mental) OR Sweetenham (standards) OR Skinner (sprint)
+├── Senior
+│   └── → Bowman + Touretski + Salo (combine as needed)
+└── National
+    └── → Bowman + Touretski + Salo (combine as needed)
 ```
 
 ---
 
-## Signature Sets by Coaching Style (Quick Reference)
+## Signature Sets → Session Slot Mapping
 
-| Style | Signature Set | Purpose | Best Tier |
-|---|---|---|---|
-| **Playful Learning** | Shark and Minnows, Treasure Dive | Water comfort, fun | YB |
-| **Differential Learning** | Mystery Length, Animal Strokes, Choose Your Challenge | Motor variety | YD, NA |
-| **Reese** | Texas 100 (6-10 × 100m at race pace), Broken swims | Race-pace feel, consistency | NA, INT, ADV |
-| **McKeever** | Swimmer's Choice sets, Peer coaching, Talk test | Ownership, self-regulation | YD, NA, INT |
-| **Counsilman** | Hypoventilation ladder, Tennis ball drill, Pace clock precision | CO₂ tolerance, catch feel, pacing | NA, INT, ADV |
-| **Touretski** | Stroke counting, Perfect 25, Contrast sets | Technique precision, feel | INT, ADV, ELT |
-| **Salo** | Stroke rate calibration, Video-delay feedback, Ideal stroke profile | Data-informed optimization | INT, ADV, ELT |
-| **Bowman** | Broken goggles, 100m IM conditioning, Negative-split everything, Bonus set | Mental toughness, race prep | INT, ADV, ELT |
-| **Sweetenham** | Red plate drill, Negative-split pyramid, Quality or quit, Performance contracts | Standards, discipline, accountability | ADV, ELT |
-| **Skinner** | Resistance band starts, 15-meter wars, Broken 50s, Instant video review | Sprint speed, starts/turns | SPT, ADV, ELT |
+When building a session, pick **one option per active slot** from the session template. The table below maps each coaching style's signature sets to the specific slot IDs they belong to. Cross-reference with [[swimming-session-template|Session Template]] for the full option catalog.
 
----
+### Slot assignment by coaching style
 
-## Evidence-Based Drill Mapping by Tier
+| Style | Slot A (Warm-up) | Slot B (Activation) | Slot C1 (Drill 1) | Slot C2 (Drill 2) | Slot E1 (Main 1) | Slot E2 (Main 2) | Slot F (Speed) | Slot G (Pull) | Slot H (Cool-down) |
+|---|---|---|---|---|---|---|---|---|---|
+| **Playful Learning** | A6 Game-Based | B6 Skipped | C1h Skill Stations | C2d Differential Learning | E1i Playful/Exploratory | E2h Game/Relay | F5 15-Meter Wars | G5 Skipped | H5 Minimal |
+| **Differential Learning** | A6 or A2 | B6 or B2 | C1a-d Stroke Focus | C2d Differential Learning | E1i or E1b | E2h Game/Relay | F1 or F5 | G5 Skipped | H1 or H2 |
+| **Reese** | A2 Structured | B1 Build Swims | C1a-d Stroke Focus | C2b or C2f | E1h Race-Pace Intervals | E2a or E2g | F1 Start Practice | G1 Steady Pull | H1 Easy Swim |
+| **McKeever** | A2 Structured | B1 or B2 | C1a-d Stroke Focus | C2a or C2d | E1j Technique Under Fatigue | E2a (swimmer-designed) | F1 or F2 | G2 Pull Build | H2 Drill Cool-down |
+| **Touretski** | A5 Sculling-Based | B3 Perfect Rep | C1a-d Stroke Focus | C2c Contrast Drill | E1e Distance Per Stroke | E2f Contrast Set | F4 Underwater Isolation | G4 Pull Scull Mix | H2 Drill Cool-down |
+| **Salo** | A2 Structured | B1 Build Swims | C1a-d Stroke Focus | C2c Contrast Drill | E1d Threshold or E1h | E2a Speed Endurance | F1 or F2 | G1 Steady Pull | H1 Easy Swim |
+| **Bowman** | A2 Structured | B1 Build Swims | C1e Mixed Circuit | C2a Different Stroke | E1c IM Development | E2c or E2d | F1 or F2 | G5 Skipped | H1 Easy Swim |
+| **Sweetenham** | A2 Structured | B1 Build Swims | C1a-d Stroke Focus | C2f Skipped | E1f Negative-Split Pyramid | E2a Speed Endurance | F1 Start Practice | G5 Skipped | H1 Easy Swim |
+| **Skinner** | A3 Dynamic + Swim | B4 Speed Ramp | C1a-d Stroke Focus | C2c Contrast Drill | E1h Race-Pace Intervals | E2e Supra-Race-Pace | F4 Underwater Isolation | G5 Skipped | H1 Easy Swim |
 
-These drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidence-Based Drills]] map to tiers:
+### Stroke-specific evidence-based drills → slot assignment
 
-| Drill Code | Drill Name | Best Tier | Style Alignment |
-|---|---|---|---|
-| F1, B1, BR1, FL1 | Tempo Ladder (progressive SR build) | INT, ADV, ELT | Franken et al. (2023), Bowman, Salo |
-| F2, B2 | Roll Explorer (rotation angle variations) | INT, ADV, ELT | Psycharakis & Sanders, Touretski |
-| F3, B3, BR2, FL2 | Differential Practice (variable practice) | YD, NA, INT, ADV | Soleimani et al. (2025), Differential Learning |
-| F4, B4, BR3, FL3 | Build & Hold (race finish simulation) | INT, ADV, ELT | Bowman (race prep), Skinner |
-| F5, B5, BR4, FL4 | Constraints Circuit | NA, INT, ADV | Brackley et al. (2020), Touretski |
-| BR5 | Timing Explorer (phase isolation) | NA, INT, ADV | Touretski (technique focus) |
-| FL5 | Rhythm Explorer (two-kick timing) | NA, INT, ADV | Touretski (technique feel) |
+Drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidence-Based Drills]] fill **Slot C1** (primary drill block) or **Slot C2** (secondary drill block). The table below maps each drill to its slot and compatible coaching styles.
+
+| Drill Code | Drill Name | Slot | Best Tiers | Style Alignment |
+|---|---|---|---|---|
+| F1, B1, BR1, FL1 | Tempo Surge (progressive SR build) | C1a-d | Silver, Gold, Senior | Salo, Bowman |
+| F2, B2 | Roll Dial (rotation angle variations) | C1a-d | Silver, Gold, Senior | Touretski |
+| F3, B3, BR2, FL2 | FreeForm (variable practice) | C2d | Bronze, Silver, Gold | Differential Learning |
+| F4, B4, BR3, FL3 | Race Pace Builder (race finish simulation) | E2a | Gold, Senior, National | Bowman, Skinner |
+| F5, B5, BR4, FL4 | Constraint Lab | C1a-d or C2d | Bronze, Silver, Gold | Touretski, Reese |
+| BR5 | Phase Breaker (phase isolation) | C1c | Bronze, Silver, Gold | Touretski |
+| FL5 | Kick Rhythm (two-kick timing) | C1d | Bronze, Silver, Gold | Touretski |
+
+### Session configuration by coaching style
+
+For each style, the recommended **active slots** and **option picks** for a standard session:
+
+**Playful Learning (Pre-Competitive):**
+```
+A6 → B6 → C1h → C2d → E1i → E2h → H5
+```
+Total: ~600-1,200m (scale by sub-tier multiplier)
+
+**Differential Learning (Bronze):**
+```
+A2 → B2 → C1a-d → C2d → E1b → E2h → F1 → H1
+```
+Total: ~1,500-2,500m (scale by sub-tier multiplier)
+
+**Reese Consistency (Bronze → Gold):**
+```
+A2 → B1 → C1a-d → E1h → E2a → F1 → G1 → H1
+```
+Total: ~3,000-5,000m
+
+**Touretski Precision (Gold → National):**
+```
+A5 → B3 → C1a-d → C2c → E1e → E2f → F4 → G4 → H2
+```
+Total: ~3,000-5,000m
+
+**Bowman Adversity (Gold → National):**
+```
+A2 → B1 → C1e → C2a → E1c → E2d → F2 → H1
+```
+Total: ~4,000-6,000m
+
+**Skinner Sprint (Senior/National Sprint):**
+```
+A3 → B4 → C1a-d → C2c → E1h → E2e → F4 → H1
+```
+Total: ~2,500-4,000m
 
 ---
 
@@ -485,11 +391,11 @@ These drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidenc
 
 | Mistake | Why It's Bad | Applies To |
 |---|---|---|
-| Early specialization (before age 12) | Limits motor development, causes burnout | All youth tiers |
-| Training to win in FUNdamentals stage | Competition focus prevents skill exploration | YB, YD |
-| Adversity training for kids | Pressure damages young learners, increases cortisol | YB, YD, NA |
-| High-volume aerobic sets for pre-pubescent swimmers | Physiologically inappropriate, injury risk | YB, YD |
-| Ignoring the "why" for adults | Adults need understanding to commit | NA, INT |
+| Early specialization (before age 12) | Limits motor development, causes burnout | Pre-Competitive, Bronze |
+| Training to win in FUNdamentals stage | Competition focus prevents skill exploration | Pre-Competitive, Bronze |
+| Adversity training for young swimmers | Pressure damages young learners, increases cortisol | Pre-Competitive, Bronze |
+| High-volume aerobic sets for pre-pubescent swimmers | Physiologically inappropriate, injury risk | Pre-Competitive, Bronze |
+| Ignoring the "why" for new swimmers | New swimmers need understanding to commit | Pre-Competitive, Bronze, Silver |
 | Mindless repetition without variety | Research shows differential learning outperforms repetition | All tiers |
 | Copying another swimmer's program | Individual differences make generic programs suboptimal | All tiers |
 | Neglecting recovery and lifestyle | Sleep, nutrition, and mental health affect performance more than most coaches think | All tiers |
@@ -499,6 +405,7 @@ These drills from [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidenc
 
 ## Cross-References
 
+- **Session structure:** See [[swimming-session-template|Session Template]] for the 10-slot system and option catalog
 - **Intensity zones:** See [[swimming-interval-training-research|Interval Training Research]] for CSS-based Z0-Z6 definitions
 - **Actionable drills:** See [[swimming-strokes/stroke-evidence-based-drills|Stroke Evidence-Based Drills]] for table-parsable drill sets
 - **Full coach profiles:** See [[swimming-coaching-styles|Swimming Coaching Styles]] for detailed biographical context and extended methodology

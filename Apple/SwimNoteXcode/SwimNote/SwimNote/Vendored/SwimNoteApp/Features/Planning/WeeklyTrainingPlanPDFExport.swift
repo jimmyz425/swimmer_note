@@ -225,13 +225,12 @@ enum WeeklyTrainingPlanPDFExporter {
             if let g = session.addressesGoal, !g.isEmpty {
                 appendBody("Goal link: \(g)")
             }
-            appendSegment(title: "Warm-up", segment: session.warmUp)
-            appendSegment(title: "Drills", segment: session.drillSet)
-            if let sec = session.secondarySet {
-                appendSegment(title: "Secondary", segment: sec)
+            for slot in slotDescriptors(from: session) {
+                appendSegment(title: slot.title, segment: slot.segment)
+                if let drillCode = slot.segment.evidenceDrillCode {
+                    appendBody("Drill: \(drillCode)")
+                }
             }
-            appendSegment(title: "Main set", segment: session.mainSet)
-            appendSegment(title: "Cool-down", segment: session.coolDown)
             if let r = session.progressionRationale, !r.isEmpty {
                 out.append(NSAttributedString(string: "Progression\n", attributes: boldAttrs))
                 appendBody(r)

@@ -75,6 +75,10 @@ public final class CombinedToolExecutor: Sendable {
         case "read_coach_reference":
             return try readCoachReference(tier: args["tier"] as? String, section: args["section"] as? String)
 
+        // Session template reference
+        case "read_session_template":
+            return try readSessionTemplate(section: args["section"] as? String)
+
         // Technique drills extraction tool
         case "get_technique_drills":
             return try getTechniqueDrills(filename: args["filename"] as? String)

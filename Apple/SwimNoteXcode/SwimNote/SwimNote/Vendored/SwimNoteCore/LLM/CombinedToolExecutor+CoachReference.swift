@@ -7,15 +7,15 @@ extension CombinedToolExecutor {
     }
 
     if let tierCode = tier, !tierCode.isEmpty {
-      let normalized = tierCode.uppercased()
-      guard let coachTier = CoachSwimmerTier(rawValue: normalized) else {
-        let valid = CoachSwimmerTier.allCases.map(\.rawValue).joined(separator: ", ")
+      let normalized = tierCode.lowercased()
+      guard let trainingTier = TrainingTier(rawValue: normalized) else {
+        let valid = TrainingTier.allCases.map(\.rawValue).joined(separator: ", ")
         throw ToolError.invalidParameter("tier", "\(tierCode) — use one of: \(valid)")
       }
-      let tierSection = CoachingStyleCatalog.extractTierSection(content: content, tier: coachTier)
+      let tierSection = CoachingStyleCatalog.extractTierSection(content: content, tier: trainingTier)
       var payload: [String: Any] = [
-        "tier": coachTier.rawValue,
-        "tier_name": coachTier.displayName,
+        "tier": trainingTier.rawValue,
+        "tier_name": trainingTier.displayName,
         "content": tierSection,
         "planning_hint": "Blend user-selected coaching styles with this tier playbook. Choose drillSet/mainSet/secondarySet structure from Use/Avoid and signature sets — evidence drills are optional when styles call for exploration (Differential, Salo, Touretski, Bowman), not mandatory every session.",
       ]
@@ -36,7 +36,7 @@ extension CombinedToolExecutor {
     let indexEnd = content.range(of: "## Quick Lookup:")?.lowerBound ?? content.endIndex
     let overview = String(content[..<indexEnd]).prefix(12_000)
     return try encodeJSON([
-      "note": "Call with tier='INT' (etc.) for a full tier section. Sections: decision_tree, compatibility, signature_sets, evidence_mapping.",
+      "note": "Call with tier='silver' (etc.) for a full tier section. Sections: decision_tree, compatibility, signature_sets, evidence_mapping.",
       "overview": String(overview),
     ])
   }

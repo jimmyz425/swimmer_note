@@ -79,52 +79,17 @@ struct SessionCard: View, Equatable {
                     // Segments - scrollable
                     ScrollView {
                         LazyVStack(spacing: Spacing.medium) {
-                            SegmentView(
-                                title: "Warm-up",
-                                segment: session.warmUp,
-                                icon: "figure.walk",
-                                accentColor: .green,
-                                poolType: poolType,
-                                useTableStyleSetRows: false
-                            )
-
-                            SegmentView(
-                                title: "Drill Set",
-                                segment: session.drillSet,
-                                icon: "figure.pool.swim",
-                                accentColor: PoolTheme.mid,
-                                poolType: poolType,
-                                useTableStyleSetRows: false
-                            )
-
-                            if let secondary = session.secondarySet {
-                                SegmentView(
-                                    title: "Secondary",
-                                    segment: secondary,
-                                    icon: "plus.circle",
-                                    accentColor: .purple,
+                            ForEach(slotDescriptors(from: session), id: \.slotId) { slot in
+                                SegmentViewWithSlotId(
+                                    slotId: slot.slotId,
+                                    title: slot.title,
+                                    segment: slot.segment,
+                                    icon: slot.icon,
+                                    accentColor: slot.accentColor,
                                     poolType: poolType,
-                                    useTableStyleSetRows: true
+                                    useTableStyleSetRows: slot.useTableStyle
                                 )
                             }
-
-                            SegmentView(
-                                title: "Main Set",
-                                segment: session.mainSet,
-                                icon: "flame",
-                                accentColor: .orange,
-                                poolType: poolType,
-                                useTableStyleSetRows: false
-                            )
-
-                            SegmentView(
-                                title: "Cool-down",
-                                segment: session.coolDown,
-                                icon: "wind",
-                                accentColor: .blue,
-                                poolType: poolType,
-                                useTableStyleSetRows: false
-                            )
                         }
                         .padding(Spacing.medium)
                     }
@@ -466,6 +431,173 @@ private struct SegmentView: View {
             RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
                 .fill(accentColor.opacity(0.08))
         )
+    }
+}
+
+// MARK: - Slot Descriptor System (10-slot template)
+
+struct SessionSlotDescriptor: Identifiable {
+    let id = UUID()
+    let slotId: String
+    let title: String
+    let icon: String
+    let accentColor: Color
+    let segment: SessionSegment
+    let useTableStyle: Bool
+}
+
+func slotDescriptors(from session: DetailedSession) -> [SessionSlotDescriptor] {
+    var slots: [SessionSlotDescriptor] = []
+
+    slots.append(.init(slotId: "A", title: "Warm-up", icon: "figure.walk", accentColor: .green, segment: session.warmUp, useTableStyle: false))
+
+    if let activation = session.activation {
+        slots.append(.init(slotId: "B", title: "Activation", icon: "bolt.fill", accentColor: .yellow, segment: activation, useTableStyle: false))
+    }
+
+    slots.append(.init(slotId: "C1", title: "Drill Set", icon: "figure.pool.swim", accentColor: PoolTheme.mid, segment: session.drillSet, useTableStyle: false))
+
+    if let secondary = session.secondarySet {
+        slots.append(.init(slotId: "C2", title: "Drill Block 2", icon: "plus.circle", accentColor: .purple, segment: secondary, useTableStyle: true))
+    }
+
+    if let kick = session.kickSet {
+        slots.append(.init(slotId: "D", title: "Kick Set", icon: "figure.mixed.cardio", accentColor: .teal, segment: kick, useTableStyle: false))
+    }
+
+    slots.append(.init(slotId: "E1", title: "Main Set", icon: "flame", accentColor: .orange, segment: session.mainSet, useTableStyle: false))
+
+    if let mainSet2 = session.mainSet2 {
+        slots.append(.init(slotId: "E2", title: "Main Set 2", icon: "flame.fill", accentColor: .red, segment: mainSet2, useTableStyle: false))
+    }
+
+    if let speed = session.speedSkills {
+        slots.append(.init(slotId: "F", title: "Speed / Race Skills", icon: "speedometer", accentColor: .red, segment: speed, useTableStyle: true))
+    }
+
+    if let pull = session.pullSet {
+        slots.append(.init(slotId: "G", title: "Pull Set", icon: "hand.raised", accentColor: .indigo, segment: pull, useTableStyle: false))
+    }
+
+    slots.append(.init(slotId: "H", title: "Cool-down", icon: "wind", accentColor: .blue, segment: session.coolDown, useTableStyle: false))
+
+    return slots
+}
+
+// MARK: - Segment View with Slot ID Badge
+
+private struct SegmentViewWithSlotId: View {
+    let slotId: String
+    let title: String
+    let segment: SessionSegment
+    let icon: String
+    let accentColor: Color
+    let poolType: PoolType?
+    let useTableStyleSetRows: Bool
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: Spacing.small) {
+            SegmentHeaderWithSlotId(
+                slotId: slotId,
+                title: title,
+                icon: icon,
+                distance: segment.distance,
+                accentColor: accentColor,
+                evidenceDrillCode: segment.evidenceDrillCode
+            )
+
+            if let sets = segment.sets, !sets.isEmpty {
+                VStack(alignment: .leading, spacing: Spacing.small) {
+                    ForEach(sets) { set in
+                        SetRowView(
+                            set: set,
+                            accentColor: accentColor,
+                            poolType: poolType,
+                            useTableStyleSetRows: useTableStyleSetRows
+                        )
+                    }
+                }
+            } else {
+                Text(segment.description)
+                    .font(.system(size: 15, weight: .regular, design: .rounded))
+                    .foregroundStyle(PoolTheme.deep.opacity(0.8))
+            }
+        }
+        .padding(Spacing.medium)
+        .background(
+            RoundedRectangle(cornerRadius: CornerRadius.medium, style: .continuous)
+                .fill(accentColor.opacity(0.08))
+        )
+    }
+}
+
+private struct SegmentHeaderWithSlotId: View {
+    let slotId: String
+    let title: String
+    let icon: String
+    let distance: String
+    let accentColor: Color
+    let evidenceDrillCode: String?
+
+    var body: some View {
+        HStack(alignment: .center, spacing: Spacing.small) {
+            SlotBadge(slotId: slotId)
+
+            Image(systemName: icon)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(accentColor)
+
+            Text(title)
+                .font(.system(size: 15, weight: .bold, design: .rounded))
+                .foregroundStyle(accentColor)
+
+            if let drillCode = evidenceDrillCode {
+                EvidenceDrillBadge(code: drillCode)
+            }
+
+            Spacer()
+
+            Text(distance)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(.white)
+                .padding(.horizontal, Spacing.small)
+                .padding(.vertical, Spacing.tight + 1)
+                .background(
+                    Capsule(style: .continuous)
+                        .fill(accentColor)
+                )
+        }
+    }
+}
+
+private struct SlotBadge: View {
+    let slotId: String
+
+    var body: some View {
+        Text(slotId)
+            .font(.system(size: 9, weight: .black, design: .rounded))
+            .foregroundStyle(.white)
+            .frame(minWidth: 20)
+            .padding(.horizontal, 4)
+            .padding(.vertical, 2)
+            .background(RoundedRectangle(cornerRadius: 4).fill(PoolTheme.deep))
+    }
+}
+
+private struct EvidenceDrillBadge: View {
+    let code: String
+
+    var body: some View {
+        HStack(spacing: 2) {
+            Image(systemName: "flask.fill")
+                .font(.system(size: 7))
+            Text(code)
+                .font(.system(size: 9, weight: .bold, design: .rounded))
+        }
+        .foregroundStyle(.white)
+        .padding(.horizontal, 5)
+        .padding(.vertical, 2)
+        .background(Capsule().fill(.orange))
     }
 }
 

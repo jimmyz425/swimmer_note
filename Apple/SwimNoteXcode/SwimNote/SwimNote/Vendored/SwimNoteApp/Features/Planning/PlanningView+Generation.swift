@@ -59,7 +59,7 @@ extension PlanningView {
                 apiKeyReference: config.apiKeyReference,
                 baseURL: config.baseURL,
                 modelName: config.modelName,
-                timeoutSeconds: 180,  // 3 minutes for outline (large prompt with pre-gathered data)
+                timeoutSeconds: 300,  // 5 minutes for outline (expanded reasoning + slot template fields)
                 maxRetries: config.maxRetries
             )
         } catch {
@@ -70,8 +70,8 @@ extension PlanningView {
             let request = LLMRequest(
                 systemRole: strategy.buildSystemRole(),
                 prompt: strategy.buildOutlinePrompt(context: planContext),
-                // Outline JSON is large (tierGuidance + overview + schedule + technique plan).
-                maxTokens: 8192
+                // Outline JSON is large (tierGuidance + overview + schedule with slotTemplate + technique plan).
+                maxTokens: 12288
             )
             let rawOutput = try await streamNonToolCompletionToString(
                 request: request,
@@ -124,7 +124,7 @@ extension PlanningView {
         )
 
         // Tools for Phase 2: technique file reading + evidence-based drills
-        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference]
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference, UserDataTools.readSessionTemplate]
 
         do {
             let rawOutput = try await streamToolConversationToString(
@@ -324,7 +324,7 @@ extension PlanningView {
         )
 
         // Tools for Phase 2: technique file reading + evidence-based drills
-        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference]
+        let phase2Tools = ResourcesNavigationTools.all + [UserDataTools.readEvidenceDrills, UserDataTools.readCoachReference, UserDataTools.readSessionTemplate]
 
         do {
             let rawOutput = try await streamToolConversationToString(

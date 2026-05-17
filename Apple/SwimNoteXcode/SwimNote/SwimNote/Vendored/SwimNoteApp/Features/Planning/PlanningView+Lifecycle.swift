@@ -46,6 +46,9 @@ extension PlanningView {
 
     /// Pre-select tier-appropriate coaching styles when profile loads or selection is empty.
     func syncCoachingStyleDefaultsIfNeeded() {
+        // Migrate any old-style IDs (yb-*, int-*, etc.) to new TrainingTier IDs.
+        selectedCoachingStyleIDs = CoachingStyleCatalog.migrateSelectionIDs(selectedCoachingStyleIDs)
+
         let profile = appModel.activeProfile
         let pruned = CoachingStyleCatalog.pruneSelection(selectedCoachingStyleIDs, profile: profile)
         if pruned != selectedCoachingStyleIDs {
@@ -57,6 +60,13 @@ extension PlanningView {
 
     /// Reset all plan generation state when switching profiles
     func resetPlanState() {
+        // Race prep is Gold+ only — reset to mixed if the new profile isn't eligible
+        let tier = appModel.activeProfile?.trainingTier ?? .preCompetitive
+        let isGoldPlus = tier == .gold || tier == .senior || tier == .national
+        if planType == .racePrep && !isGoldPlus {
+            planType = .mixed
+            racePrepPhase = nil
+        }
         selectedCoachingStyleIDs = []
         syncCoachingStyleDefaultsIfNeeded()
         generatedPlan = nil
