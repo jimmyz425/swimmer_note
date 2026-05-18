@@ -115,17 +115,23 @@ internal func buildDefaultOutlinePrompt(_ context: PlanContext, planType: PlanTy
     - OPTIONAL based on session type and tier:
       B (activation): Gold+ nearly always; Pre-Comp merge into warm-up
       C2 (drill block 2): when two technique focuses are needed
-      D (kick set): leg strength focus or all-stroke session
+      D (kick set): **used by all tiers** — flutter kick, dolphin kick, kick on back, kick no board, mixed kick, speed kick, or skip
       E2 (main set 2): Gold+ when dual stimulus needed
       F (speed/race skills): sprint sessions, race prep, Gold+
       G (pull set): upper-body endurance, aerobic without legs
     - Pre-Competitive minimal: A, C1, E1, H
     - Gold+ typical: A, B, C1, C2, D, E1, E2, F, H (8-10 slots)
+    - Before picking slot options, call read_session_template(section="options") to see the full option catalog with D1-D7 kick set options.
     - For each active slot, select a slot option ID from the session template system:
+      A: A1 (easy choice), A2 (structured), A3 (dynamic+swim), A4 (meet warm-up), A5 (sculling), A6 (game-based)
+      B: B1 (build swims), B2 (stroke-specific build), B3 (perfect rep), B4 (speed ramp), B5 (underwater), B6 (skip)
       C1: C1a (freestyle), C1b (backstroke), C1c (breaststroke), C1d (butterfly), C1e (mixed), C1f (underwater), C1g (sculling), C1h (skill stations)
       C2: C2a (different stroke), C2b (starts/turns), C2c (contrast drill), C2d (differential learning), C2e (video/feedback), C2f (skip)
-      E1: E1a (aerobic base), E1b (all-four), E1c (threshold), E1d (sprint), E1e (VO2max), E1h (race-pace intervals)
-      F: F1 (start practice), F2 (turn practice), F3 (breakout), F4 (race pace), F5 (speed play)
+      D: D1 (flutter kick), D2 (dolphin kick), D3 (kick on back), D4 (kick no board), D5 (mixed kick), D6 (speed kick), D7 (skip)
+      E1: E1a (aerobic base), E1b (all-four-stroke), E1c (IM development), E1d (threshold), E1e (distance per stroke), E1f (negative-split), E1g (broken swims), E1h (race-pace intervals), E1i (playful/exploratory), E1j (technique under fatigue), E1k (speed play)
+      E2: E2a (speed endurance), E2b (sprint set), E2c (lactate tolerance), E2d (IM speed), E2e (supra-race-pace), E2f (contrast set), E2g (pull set as E2), E2h (game/relay), E2i (skip)
+      F: F1 (start practice), F2 (turn practice), F3 (sprint from dive), F4 (underwater isolation), F5 (15-meter wars), F6 (race rehearsal), F7 (relay takeovers), F8 (skip)
+      G: G1 (steady pull), G2 (pull build), G3 (pull with parachute), G4 (pull scull mix), G5 (skip)
 
     STEP 5 — TECHNIQUE CONTINUITY:
     - Map past technique files to current session needs
@@ -301,12 +307,13 @@ internal func buildDefaultDetailPrompt(_ sessionOutline: SessionOutline, weeklyO
     2. drillSet: get_technique_drills for stroke technique work and/or signature sets from the coach reference — match the active style(s), not a generic drill list. Set slotId="C1" and if using an evidence drill, set evidenceDrillCode (e.g. "F1").
     3. mainSet: primary block aligned with style. Set slotId="E1". Use embedded tier zones for intensity.
     4. Optional slots: When the session's outline slotTemplate includes B, C2, D, E2, F, or G, generate the corresponding segment:
-       - activation (slotId="B"): bridge warm-up to main work
+       - activation (slotId="B"): bridge warm-up to main work; options B1-B6
        - secondarySet (slotId="C2"): second drill block or exploration set
-       - kickSet (slotId="D"): leg strength or kick technique
+       - kickSet (slotId="D"): leg strength or kick technique; use D1-D7 options (flutter, dolphin, on back, no board, mixed, speed, skip)
        - mainSet2 (slotId="E2"): secondary training stimulus
        - speedSkills (slotId="F"): max velocity, starts, turns, breakouts
        - pullSet (slotId="G"): upper-body endurance, stroke feel
+       Call read_session_template(section="options") if you need the full slot option catalog.
     5. secondarySet: OPTIONAL evidence/exploration block. If used: read_evidence_drills(stroke="\(primaryStroke)") → pick ONE code → read_evidence_drills(stroke="\(primaryStroke)", drill="<CODE>") → one JSON set per table row with item/equipment/notes from the table. Set evidenceDrillCode on the segment. Omit entirely when styles don't call for it.
     6. For every segment, set the slotId field to the canonical slot (A, B, C1, C2, D, E1, E2, F, G, H). Set slotOptionId on individual SetItems when referencing the option catalog.
     7. sessionNotes: cite coaching style rationale and any evidence drill source when secondarySet is present.
