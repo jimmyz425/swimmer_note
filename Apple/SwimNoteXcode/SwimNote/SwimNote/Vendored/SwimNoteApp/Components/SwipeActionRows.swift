@@ -34,9 +34,9 @@ struct SwipeToDeleteRow<Content: View>: View {
                         .fill(PoolTheme.light.opacity(0.08))
                 )
                 .offset(x: offset)
-                // Use gesture with very low minimumDistance to beat ScrollView
+                // Require enough horizontal movement so it doesn't fight ScrollView
                 .gesture(
-                    DragGesture(minimumDistance: 5)
+                    DragGesture(minimumDistance: 20)
                         .onChanged { value in
                             // Detect if this is a horizontal swipe (not vertical scroll)
                             let isHorizontalSwipe = abs(value.translation.width) > abs(value.translation.height) * 2
@@ -107,7 +107,7 @@ struct SwipeToToggleCompleteRow<Content: View>: View {
                 .offset(x: offset)
                 // Use highPriorityGesture so swipe beats Button taps in SessionHeader
                 .highPriorityGesture(
-                    DragGesture(minimumDistance: 5)
+                    DragGesture(minimumDistance: 20)
                         .onChanged { value in
                             // Detect if this is a horizontal swipe (not vertical scroll)
                             let isHorizontalSwipe = abs(value.translation.width) > abs(value.translation.height) * 2
