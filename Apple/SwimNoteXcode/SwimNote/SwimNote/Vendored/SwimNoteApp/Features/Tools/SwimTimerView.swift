@@ -45,13 +45,7 @@ struct SwimTimerView: View {
                 .padding()
             }
         }
-        .background(
-            LinearGradient(
-                colors: [PoolTheme.surface, PoolTheme.light.opacity(0.3)],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-        )
+        .liquidPageBackground()
         .navigationTitle("Swim Timer")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -125,8 +119,7 @@ struct SwimTimerView: View {
                 .buttonStyle(.plain)
             }
         }
-        .background(.regularMaterial)
-        .clipShape(RoundedRectangle(cornerRadius: 12))
+        .glassBackground(cornerRadius: 12, shadowRadius: 4)
         .padding(.horizontal)
     }
 
@@ -607,8 +600,7 @@ struct IntervalConfigSheet: View {
                         .frame(maxWidth: .infinity)
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Rest Duration
                     VStack(alignment: .leading, spacing: 8) {
@@ -641,8 +633,7 @@ struct IntervalConfigSheet: View {
                         .frame(maxWidth: .infinity)
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Repetitions
                     VStack(alignment: .leading, spacing: 8) {
@@ -675,8 +666,7 @@ struct IntervalConfigSheet: View {
                         .frame(maxWidth: .infinity)
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Summary
                     VStack(alignment: .leading, spacing: 8) {
@@ -700,8 +690,7 @@ struct IntervalConfigSheet: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
                 }
                 .padding()
             }
@@ -803,8 +792,7 @@ struct SaveTimerSessionSheet: View {
                                 }
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 10)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .glassBackground(cornerRadius: 12, shadowRadius: 4)
                             }
                             .buttonStyle(.plain)
 
@@ -812,8 +800,7 @@ struct SaveTimerSessionSheet: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Pool
                     VStack(alignment: .leading, spacing: 8) {
@@ -864,8 +851,7 @@ struct SaveTimerSessionSheet: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Distance
                     VStack(alignment: .leading, spacing: 8) {
@@ -883,8 +869,7 @@ struct SaveTimerSessionSheet: View {
                             .foregroundStyle(.secondary)
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Summary
                     VStack(alignment: .leading, spacing: 8) {
@@ -914,8 +899,7 @@ struct SaveTimerSessionSheet: View {
                         }
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
 
                     // Split details with stroke metrics
                     if !engine.splits.isEmpty {
@@ -965,8 +949,7 @@ struct SaveTimerSessionSheet: View {
                             }
                         }
                         .padding()
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(cornerRadius: 12, shadowRadius: 4)
                     }
 
                     // Notes
@@ -983,8 +966,7 @@ struct SaveTimerSessionSheet: View {
                             .clipShape(RoundedRectangle(cornerRadius: 8))
                     }
                     .padding()
-                    .background(.regularMaterial)
-                    .clipShape(RoundedRectangle(cornerRadius: 12))
+                    .glassBackground(cornerRadius: 12, shadowRadius: 4)
                 }
                 .padding(.horizontal)
             }
@@ -1121,8 +1103,7 @@ struct TimerHistoryView: View {
                         ForEach(sortedSessions) { session in
                             TimerSessionHistoryRow(session: session)
                                 .padding(.horizontal)
-                                .background(.regularMaterial)
-                                .clipShape(RoundedRectangle(cornerRadius: 12))
+                                .glassBackground(cornerRadius: 12, shadowRadius: 4)
                         }
                     }
                     .padding()

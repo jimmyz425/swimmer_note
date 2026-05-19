@@ -16,13 +16,7 @@ struct ToolsView: View {
                 }
                 .padding()
             }
-            .background(
-                LinearGradient(
-                    colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .liquidPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showingUserSelection) {
                 UserSelectionView(appModel: appModel)
@@ -181,9 +175,7 @@ struct ToolCard<Destination: View>: View {
                     .foregroundStyle(PoolTheme.smoke)
             }
             .padding(16)
-            .background(.regularMaterial)
-            .clipShape(RoundedRectangle(cornerRadius: 16))
-            .shadow(color: PoolTheme.deep.opacity(0.08), radius: 4, y: 2)
+            .glassBackground(cornerRadius: 16, shadowRadius: 4)
         }
         .buttonStyle(.plain)
     }

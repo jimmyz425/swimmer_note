@@ -169,8 +169,7 @@ struct PBResultInputView: View {
                 if isSaving {
                     ProgressView("Saving...")
                         .padding()
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(cornerRadius: 12, shadowRadius: 4)
                 }
             }
         }

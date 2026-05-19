@@ -11,6 +11,7 @@ struct DashboardView: View {
     @State private var showingEditProfile = false
     @State private var selectedPlan: TrainingPlan?
     @State private var selectedSession: DetailedSession?
+    @State private var pendingUnassignSession: DetailedSession?
     @State private var selectedStrokeTab: StrokeID? = .freestyle
     @State private var showingGoalNotes: Goal?
     @State private var goalNotesText = ""
@@ -93,9 +94,7 @@ struct DashboardView: View {
                 }
                 .padding()
             }
-            .background(
-                LinearGradient(colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)], startPoint: .top, endPoint: .bottom)
-            )
+            .liquidPageBackground()
             .task {
                 note = await appModel.noteForToday()
                 isLoading = false
@@ -173,6 +172,28 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $showingSessionNotes) {
                 sessionNotesSheet
+            }
+            .confirmationDialog(
+                "Remove from Calendar",
+                isPresented: Binding(
+                    get: { pendingUnassignSession != nil },
+                    set: { if !$0 { pendingUnassignSession = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let session = pendingUnassignSession {
+                    Button("Remove Session \(session.sessionNumber)", role: .destructive) {
+                        Task<Void, Never> {
+                            try? await appModel.unassignSession(sessionId: session.id)
+                        }
+                        pendingUnassignSession = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingUnassignSession = nil }
+            } message: {
+                if let session = pendingUnassignSession {
+                    Text("Remove \"\(session.focus)\" from today? The session will remain in the plan.")
+                }
             }
         }
     }
@@ -863,7 +884,10 @@ struct DashboardView: View {
                             showDatePicker: false,
                             poolType: nil,
                             onDelete: nil,
-                            onComplete: nil
+                            onComplete: nil,
+                            onUnassign: {
+                                pendingUnassignSession = session
+                            }
                         )
                     }
                 }

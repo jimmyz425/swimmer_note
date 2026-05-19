@@ -16,6 +16,7 @@ struct SessionCard: View, Equatable {
     let poolType: PoolType?
     let onDelete: (() -> Void)?
     let onComplete: (() -> Void)?
+    let onUnassign: (() -> Void)?
 
     init(
         session: DetailedSession,
@@ -25,7 +26,8 @@ struct SessionCard: View, Equatable {
         showDatePicker: Bool = true,
         poolType: PoolType? = nil,
         onDelete: (() -> Void)? = nil,
-        onComplete: (() -> Void)? = nil
+        onComplete: (() -> Void)? = nil,
+        onUnassign: (() -> Void)? = nil
     ) {
         self.session = session
         self.isExpanded = isExpanded
@@ -35,6 +37,7 @@ struct SessionCard: View, Equatable {
         self.poolType = poolType
         self.onDelete = onDelete
         self.onComplete = onComplete
+        self.onUnassign = onUnassign
     }
 
     // Equatable: compare visual state only (ignore closures)
@@ -56,9 +59,11 @@ struct SessionCard: View, Equatable {
                 goalRef: session.addressesGoal,
                 isExpanded: isExpanded,
                 isCompleted: session.isCompleted,
+                isAssigned: session.isAssigned,
                 onToggle: onToggleExpand,
                 onDelete: onDelete,
-                onComplete: onComplete
+                onComplete: onComplete,
+                onUnassign: onUnassign
             )
 
             // Expanded content with animation
@@ -111,15 +116,7 @@ struct SessionCard: View, Equatable {
                 .transition(.opacity)
             }
         }
-        .background(
-            RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
-                .fill(PoolTheme.surface)
-                .shadow(color: PoolTheme.shadow, radius: 8, x: 0, y: 4)
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: CornerRadius.large, style: .continuous)
-                .strokeBorder(PoolTheme.border, lineWidth: 1)
-        )
+        .glassBackground(cornerRadius: CornerRadius.large, shadowRadius: 8)
     }
 }
 
@@ -148,9 +145,11 @@ private struct SessionHeader: View {
     let goalRef: String?
     let isExpanded: Bool
     let isCompleted: Bool
+    let isAssigned: Bool
     let onToggle: () -> Void
     let onDelete: (() -> Void)?
     let onComplete: (() -> Void)?
+    let onUnassign: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -190,17 +189,6 @@ private struct SessionHeader: View {
                             }
                             .buttonStyle(.plain)
                         }
-
-                        if let onDelete = onDelete {
-                            Button {
-                                onDelete()
-                            } label: {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 18, weight: .medium))
-                                    .foregroundStyle(.red.opacity(0.8))
-                            }
-                            .buttonStyle(.plain)
-                        }
                     }
 
                     Image(systemName: "chevron.right")
@@ -214,6 +202,22 @@ private struct SessionHeader: View {
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
+            .contextMenu {
+                if let onDelete {
+                    Button(role: .destructive) {
+                        onDelete()
+                    } label: {
+                        Label("Delete Session", systemImage: "trash")
+                    }
+                }
+                if isAssigned, let onUnassign {
+                    Button(role: .destructive) {
+                        onUnassign()
+                    } label: {
+                        Label("Remove from Calendar", systemImage: "calendar.badge.minus")
+                    }
+                }
+            }
 
             // Goal reference row (if exists)
             if let goalRef = goalRef {
@@ -339,9 +343,7 @@ private struct SessionSummaryBar: View {
         }
         .padding(.horizontal, Spacing.large)
         .padding(.vertical, Spacing.small + Spacing.tight)
-        .background(
-            PoolTheme.light.opacity(0.12)
-        )
+        .background(.ultraThinMaterial)
     }
 
     private func timeOfDayIcon(_ timeOfDay: SessionTimeOfDay) -> String {

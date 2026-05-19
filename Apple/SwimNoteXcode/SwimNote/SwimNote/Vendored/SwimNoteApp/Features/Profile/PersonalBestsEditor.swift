@@ -55,9 +55,27 @@ struct PersonalBestsEditor: View {
             case .three: return "Silver 3: 4-5 practices, 14-28 km/week. Has A times, preparing for Gold."
             default: return "Silver: 4-5 practices/week, 15-28 km/week. A times."
             }
-        case .gold: return "Gold: 5-6 practices/week, 25-40 km/week. AA times, Zone qualifiers."
-        case .senior: return "Senior: 6-8 practices/week, 40-60 km/week. AAA times, Junior Nationals."
-        case .national: return "National: 8-12+ practices/week, 50-80+ km/week. AAAA times, National level."
+        case .gold:
+            switch subTier {
+            case .sprint: return "Gold Sprint: 5 practices/week, 20-32 km/week. 50-200m events, race-pace specificity, speed emphasis."
+            case .distance: return "Gold Distance: 5-6 practices/week, 28-40 km/week. 400m+ events, aerobic capacity, pacing strategy."
+            case .mixed: return "Gold Mixed: 5 practices/week, 25-36 km/week. Balanced IM/versatile, speed-endurance mix."
+            default: return "Gold: 5-6 practices/week, 25-40 km/week. AA times, Zone qualifiers."
+            }
+        case .senior:
+            switch subTier {
+            case .sprint: return "Senior Sprint: 6 practices/week, 35-50 km/week. Championship sprint focus, lactate tolerance."
+            case .distance: return "Senior Distance: 6-8 practices/week, 45-65 km/week. Championship distance, endurance pacing."
+            case .mixed: return "Senior Mixed: 6 practices/week, 40-55 km/week. IM/multi-event championship."
+            default: return "Senior: 6-8 practices/week, 40-60 km/week. AAA times, Junior Nationals."
+            }
+        case .national:
+            switch subTier {
+            case .sprint: return "National Sprint: 8-10 practices/week, 45-65 km/week. Elite sprint specialist, peak speed."
+            case .distance: return "National Distance: 10-12 practices/week, 55-85 km/week. Elite distance, aerobic ceiling."
+            case .mixed: return "National Mixed: 8-10 practices/week, 50-75 km/week. Elite IM/multi-event."
+            default: return "National: 8-12+ practices/week, 50-80+ km/week. AAAA times, National level."
+            }
         }
     }
 
@@ -193,8 +211,7 @@ struct PersonalBestsEditor: View {
                 if isSaving {
                     ProgressView("Saving...")
                         .padding()
-                        .background(.regularMaterial)
-                        .clipShape(RoundedRectangle(cornerRadius: 12))
+                        .glassBackground(cornerRadius: 12, shadowRadius: 4)
                 }
             }
             .sheet(isPresented: $showTierGuide) {
@@ -208,9 +225,9 @@ struct PersonalBestsEditor: View {
         switch tier {
         case .preCompetitive:
             switch sub {
-            case .a: return "A - Foundations"
-            case .b: return "B - Skill Building"
-            case .c: return "C - Pre-Competitive"
+            case .one, .a: return "1 - Foundations"
+            case .two, .b: return "2 - Skill Building"
+            case .three, .c: return "3 - Pre-Competitive"
             default: return sub.displayName
             }
         case .bronze:
@@ -227,7 +244,27 @@ struct PersonalBestsEditor: View {
             case .three: return "3 - Upper Silver"
             default: return sub.displayName
             }
-        default: return sub.displayName
+        case .gold:
+            switch sub {
+            case .sprint: return "Sprint - 50-200m"
+            case .distance: return "Distance - 400m+"
+            case .mixed: return "Mixed - IM/Versatile"
+            default: return sub.displayName
+            }
+        case .senior:
+            switch sub {
+            case .sprint: return "Sprint - Championship Sprint"
+            case .distance: return "Distance - Championship Distance"
+            case .mixed: return "Mixed - IM/Multi-Event"
+            default: return sub.displayName
+            }
+        case .national:
+            switch sub {
+            case .sprint: return "Sprint - Elite Sprint"
+            case .distance: return "Distance - Elite Distance"
+            case .mixed: return "Mixed - Elite IM"
+            default: return sub.displayName
+            }
         }
     }
 

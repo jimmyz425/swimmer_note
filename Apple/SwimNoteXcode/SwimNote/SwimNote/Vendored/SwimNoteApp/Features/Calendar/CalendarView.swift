@@ -9,6 +9,7 @@ struct CalendarView: View {
     @State private var showingEditProfile = false
     @State private var selectedSession: DetailedSession?
     @State private var expandedSession: Bool = true
+    @State private var pendingUnassignSession: DetailedSession?
 
     private let calendar = Calendar.current
 
@@ -104,13 +105,7 @@ struct CalendarView: View {
                 }
                 .padding()
             }
-            .background(
-                LinearGradient(
-                    colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .liquidPageBackground()
             .task {
                 if let userId = appModel.activeProfile?.id {
                     await appModel.reloadNotes(userId: userId)
@@ -148,6 +143,28 @@ struct CalendarView: View {
                         SessionDetailView(session: session, plan: plan, appModel: appModel)
                     }
                     .presentationDetents([.large])
+                }
+            }
+            .confirmationDialog(
+                "Remove from Calendar",
+                isPresented: Binding(
+                    get: { pendingUnassignSession != nil },
+                    set: { if !$0 { pendingUnassignSession = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let session = pendingUnassignSession {
+                    Button("Remove Session \(session.sessionNumber)", role: .destructive) {
+                        Task<Void, Never> {
+                            try? await appModel.unassignSession(sessionId: session.id)
+                        }
+                        pendingUnassignSession = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingUnassignSession = nil }
+            } message: {
+                if let session = pendingUnassignSession {
+                    Text("Remove \"\(session.focus)\" from its scheduled date? The session will remain in the plan.")
                 }
             }
         }
@@ -314,7 +331,13 @@ struct CalendarView: View {
                 }
             },
             onDateChange: nil,
-            showDatePicker: false  // Calendar already shows the date
+            showDatePicker: false,  // Calendar already shows the date
+            poolType: nil,
+            onDelete: nil,
+            onComplete: nil,
+            onUnassign: {
+                pendingUnassignSession = session
+            }
         )
     }
 

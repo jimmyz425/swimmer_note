@@ -54,6 +54,32 @@ enum PoolTheme {
     /// Gold accent - unchanged for both modes (high contrast)
     static let gold = Color(red: 1.0, green: 0.71, blue: 0.16)
 
+    // MARK: - Glass Colors
+
+    /// Glass tint - subtle blue wash for cool-toned glass surfaces
+    /// Light: very light glacier blue (8% opacity)
+    /// Dark: deeper cobalt tint (15% opacity) for night-glass feel
+    static var glassTint: Color {
+        Color(light: Color(hex: "#A3D9E8").opacity(0.08), dark: Color(hex: "#1B4965").opacity(0.15))
+    }
+
+    /// Gradient border simulating light refraction on glass edges
+    static var glassBorderGradient: LinearGradient {
+        LinearGradient(
+            colors: [
+                Color(light: Color.white.opacity(0.6), dark: Color.white.opacity(0.3)),
+                Color(light: Color.white.opacity(0.1), dark: Color.white.opacity(0.05))
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+    }
+
+    /// Top-edge highlight - simulates light catching the upper glass edge
+    static var glassHighlight: Color {
+        Color(light: .white.opacity(0.5), dark: .white.opacity(0.15))
+    }
+
     // MARK: - Dark Mode Specific Colors
 
     /// Card background for dark mode - slightly elevated
@@ -148,27 +174,126 @@ extension Color {
     }
 }
 
-// MARK: - Pool Card Modifier (Adaptive)
+// MARK: - Glass Background Modifier
+
+/// Applies a liquid glass background.
+/// iOS 26+: native .glassEffect()
+/// iOS 17-25: .ultraThinMaterial + gradient border + top highlight
+struct GlassBackground: ViewModifier {
+    let cornerRadius: CGFloat
+    let shadowRadius: CGFloat
+
+    init(cornerRadius: CGFloat = 18, shadowRadius: CGFloat = 8) {
+        self.cornerRadius = cornerRadius
+        self.shadowRadius = shadowRadius
+    }
+
+    func body(content: Content) -> some View {
+        Group {
+            if #available(iOS 26.0, *) {
+                content
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(PoolTheme.glassTint)
+                    )
+                    .glassEffect(.regular.tint(PoolTheme.glassTint), in: RoundedRectangle(cornerRadius: cornerRadius, style: .continuous))
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(PoolTheme.glassBorderGradient, lineWidth: 1)
+                    }
+                    .shadow(color: PoolTheme.shadow, radius: shadowRadius, x: 0, y: 4)
+            } else {
+                content
+                    .background(
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .fill(.ultraThinMaterial)
+                    )
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(PoolTheme.glassBorderGradient, lineWidth: 1)
+                    }
+                    .overlay {
+                        RoundedRectangle(cornerRadius: cornerRadius, style: .continuous)
+                            .strokeBorder(
+                                LinearGradient(
+                                    colors: [PoolTheme.glassHighlight, .clear],
+                                    startPoint: .top,
+                                    endPoint: .bottom
+                                ),
+                                lineWidth: 1.5
+                            )
+                    }
+                    .shadow(color: PoolTheme.shadow, radius: shadowRadius, x: 0, y: 4)
+            }
+        }
+    }
+}
+
+extension View {
+    /// Apply glass background without automatic padding.
+    /// For components that manage their own layout (SessionCard, ToolCard).
+    func glassBackground(cornerRadius: CGFloat = 18, shadowRadius: CGFloat = 8) -> some View {
+        modifier(GlassBackground(cornerRadius: cornerRadius, shadowRadius: shadowRadius))
+    }
+}
+
+// MARK: - Pool Card Modifier (Glass)
 
 struct PoolCard: ViewModifier {
+    let cornerRadius: CGFloat
+
+    init(cornerRadius: CGFloat = 18) {
+        self.cornerRadius = cornerRadius
+    }
+
     func body(content: Content) -> some View {
         content
             .padding()
-            .background(
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .fill(PoolTheme.cardSurface)
-                    .shadow(color: PoolTheme.shadow, radius: 8, x: 0, y: 4)
-            )
-            .overlay {
-                RoundedRectangle(cornerRadius: 18, style: .continuous)
-                    .strokeBorder(PoolTheme.border, lineWidth: 1)
+            .modifier(GlassBackground(cornerRadius: cornerRadius))
+    }
+}
+
+extension View {
+    func poolCard(cornerRadius: CGFloat = 18) -> some View {
+        modifier(PoolCard(cornerRadius: cornerRadius))
+    }
+}
+
+// MARK: - Liquid Page Background
+
+struct LiquidPageBackground: ViewModifier {
+    func body(content: Content) -> some View {
+        content
+            .background {
+                ZStack {
+                    PoolTheme.surface
+
+                    Circle()
+                        .fill(PoolTheme.light.opacity(0.25))
+                        .frame(width: 300, height: 300)
+                        .offset(x: -100, y: -200)
+                        .blur(radius: 80)
+
+                    Circle()
+                        .fill(PoolTheme.mid.opacity(0.12))
+                        .frame(width: 250, height: 250)
+                        .offset(x: 120, y: 100)
+                        .blur(radius: 70)
+
+                    Circle()
+                        .fill(Color(light: .white.opacity(0.15), dark: PoolTheme.light.opacity(0.1)))
+                        .frame(width: 200, height: 200)
+                        .offset(x: 50, y: -50)
+                        .blur(radius: 60)
+                }
+                .ignoresSafeArea()
             }
     }
 }
 
 extension View {
-    func poolCard() -> some View {
-        modifier(PoolCard())
+    func liquidPageBackground() -> some View {
+        modifier(LiquidPageBackground())
     }
 }
 

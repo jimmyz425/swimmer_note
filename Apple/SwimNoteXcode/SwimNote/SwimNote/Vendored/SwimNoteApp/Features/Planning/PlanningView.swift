@@ -22,6 +22,9 @@ struct PlanningView: View {
     @State var isExportingPDF: Bool = false
     @State var pdfExportError: String?
 
+    /// Session pending confirmation for deletion.
+    @State var pendingDeleteSession: DetailedSession?
+
     // Two-phase generation state
     @State var planOutline: WeeklyPlanOutline?
     @State var isGeneratingOutline: Bool = false
@@ -99,13 +102,7 @@ struct PlanningView: View {
                 }
                 .padding()
             }
-            .background(
-                LinearGradient(
-                    colors: [PoolTheme.surface, PoolTheme.light.opacity(0.5)],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-            )
+            .liquidPageBackground()
             .navigationBarTitleDisplayMode(.inline)
             .sheet(isPresented: $showPlanHistory) {
                 PlanHistoryView(appModel: appModel, selectedPlan: $selectedHistoryPlan)
@@ -126,6 +123,33 @@ struct PlanningView: View {
                 Button("OK", role: .cancel) { pdfExportError = nil }
             } message: {
                 Text(pdfExportError ?? "")
+            }
+            .confirmationDialog(
+                "Delete Session",
+                isPresented: Binding(
+                    get: { pendingDeleteSession != nil },
+                    set: { if !$0 { pendingDeleteSession = nil } }
+                ),
+                titleVisibility: .visible
+            ) {
+                if let session = pendingDeleteSession {
+                    Button("Delete Session \(session.sessionNumber)", role: .destructive) {
+                        withAnimation(.easeInOut(duration: 0.2)) {
+                            parsedPlan?.detailedSessions.removeAll { $0.id == session.id }
+                        }
+                        Task {
+                            if let plan = parsedPlan {
+                                try? await appModel.saveWeeklyPlan(plan)
+                            }
+                        }
+                        pendingDeleteSession = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) { pendingDeleteSession = nil }
+            } message: {
+                if let session = pendingDeleteSession {
+                    Text("Remove \"\(session.focus)\" from this week's plan? This cannot be undone.")
+                }
             }
             .onChange(of: selectedHistoryPlan) { _, newPlan in
                 if let plan = newPlan {
